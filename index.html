@@ -25,13 +25,17 @@
   #end-shift {
     position:absolute; inset:0; background:rgba(0,0,0,0.95); color:#ff0040; font-size:6rem; text-align:center; padding-top:40vh; display:none; z-index:30;
   }
+  #click-to-play {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:3rem; color:#0ff; background:rgba(0,0,0,0.7); padding:30px; border-radius:15px; z-index:40;
+  }
 </style>
 </head>
 <body>
 
 <div id="ui">
   <div id="time">04:00</div>
-  <div id="hud"></div>
+  <div id="hud">Click screen to lock mouse • WASD move • Mouse look • Ctrl crouch • E interact • Shift phone</div>
 </div>
 
 <div id="phone">
@@ -41,6 +45,8 @@
 
 <div id="shift-message"></div>
 <div id="end-shift">YOUR SHIFT IS OVER<br>GO HOME</div>
+
+<div id="click-to-play">Click anywhere to play</div>
 
 <canvas id="c"></canvas>
 
@@ -54,7 +60,7 @@ c.height = window.innerHeight;
 let shift = parseInt(localStorage.getItem('currentShift') || '1');
 let timeLeft = 240;
 let gameState = 'shift';
-let playerX = 0, playerY = 0, playerAngle = 0;
+let playerX = 5, playerY = 5, playerAngle = 0;
 let pistolEquipped = false;
 let crouching = false;
 let childrenQueue = [];
@@ -79,70 +85,80 @@ function updateMissionText() {
 }
 updateMissionText();
 
+// Hide click prompt on first click
+document.addEventListener('click', () => {
+  document.getElementById('click-to-play').style.display = 'none';
+}, { once: true });
+
 // =============== INPUT ===============
 const keys = {};
-window.addEventListener('keydown', e => {
-  keys[e.key.toLowerCase()] = true;
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+// Phone toggle
+let phoneOpen = false;
+document.addEventListener('keydown', e => {
   if (e.key === 'Shift') {
-    document.getElementById('phone').classList.toggle('show');
+    phoneOpen = !phoneOpen;
+    document.getElementById('phone').classList.toggle('show', phoneOpen);
   }
 });
-window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 // =============== RAYCASTING 3D ===============
 const fov = Math.PI / 3;
-const rayCount = 240;
+const rayCount = 320;
 
 const map = [
-  [1,1,1,1,1,1,1,1,1,1],
-  [1,0,0,0,0,0,0,0,0,1],
-  [1,0,1,0,1,0,1,0,0,1],
-  [1,0,0,0,0,0,0,0,0,1],
-  [1,0,1,0,1,0,1,0,1,1],
-  [1,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,1],
-  [1,0,0,0,0,0,0,0,0,1],
-  [1,1,1,1,1,1,1,1,1,1]
+  [1,1,1,1,1,1,1,1,1,1,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,0,1,0,1,0,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,1,0,1,0,1,0,1,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,0,0,0,0,0,0,0,0,0,1],
+  [1,1,1,1,1,1,1,1,1,1,1]
 ];
 
 function castRay(angle) {
   let x = playerX, y = playerY;
   let dist = 0;
-  while (dist < 20) {
-    x += Math.cos(angle) * 0.1;
-    y += Math.sin(angle) * 0.1;
-    dist += 0.1;
+  while (dist < 30) {
+    x += Math.cos(angle) * 0.05;
+    y += Math.sin(angle) * 0.05;
+    dist += 0.05;
     const mx = Math.floor(x), my = Math.floor(y);
-    if (mx < 0 || mx >= map[0].length || my < 0 || my >= map.length) return {dist: 20, hit: false};
-    if (map[my][mx] === 1) return {dist, hit: true};
+    if (mx < 0 || mx >= map[0].length || my < 0 || my >= map.length) return {dist: 30, hit: false, wall: 0};
+    if (map[my][mx] === 1) return {dist, hit: true, wall: 1};
   }
-  return {dist: 20, hit: false};
+  return {dist: 30, hit: false, wall: 0};
 }
 
 function render() {
-  ctx.fillStyle = '#110022';
+  ctx.fillStyle = '#0a001a';
   ctx.fillRect(0,0,c.width,c.height);
 
   // Ceiling & floor
-  ctx.fillStyle = '#220044';
+  ctx.fillStyle = '#220033';
   ctx.fillRect(0, 0, c.width, c.height/2);
   ctx.fillStyle = '#001122';
   ctx.fillRect(0, c.height/2, c.width, c.height/2);
 
   for (let i = 0; i < rayCount; i++) {
     const rayAngle = playerAngle - fov/2 + (i / rayCount) * fov;
-    const {dist, hit} = castRay(rayAngle);
-    const height = c.height / dist * 80;
-    const shade = Math.max(0.2, 1 - dist/15);
-    ctx.fillStyle = hit ? `rgba(0,80,160,${shade})` : '#001122';
+    const {dist, hit, wall} = castRay(rayAngle);
+    const height = c.height / dist * 100;
+    const shade = Math.max(0.15, 1 - dist/25);
+    ctx.fillStyle = hit ? `rgba(${wall===1 ? '0,120,200' : '80,0,160'},${shade})` : '#001122';
     ctx.fillRect(i * (c.width/rayCount), c.height/2 - height/2, c.width/rayCount + 1, height);
   }
 
-  // Desk & monitor (overlay)
+  // Desk & monitor overlay
   ctx.fillStyle = '#442200';
   ctx.fillRect(c.width/2 - 220, c.height - 340, 440, 240);
-  ctx.fillStyle = '#00aa88';
+  ctx.fillStyle = '#00ffcc';
   ctx.fillRect(c.width/2 - 200, c.height - 320, 400, 200);
 
   // Pistol under desk
@@ -170,6 +186,15 @@ function updatePlayer(delta) {
   if (keys['d']) {
     playerX += Math.cos(playerAngle + Math.PI/2) * speed * delta;
     playerY += Math.sin(playerAngle + Math.PI/2) * speed * delta;
+  }
+
+  crouching = keys['control'];
+
+  // E to interact
+  if (keys['e']) {
+    // Simple interaction logic (expand later)
+    console.log("Interact pressed");
+    keys['e'] = false;
   }
 }
 
