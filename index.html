@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Office Game</title>
+<title>Office Game – Single File</title>
 <style>
   body { margin: 0; background: black; overflow: hidden; }
   canvas { display: block; margin: auto; background: black; }
@@ -14,41 +14,48 @@
 
 <script>
 /* =======================
+   EMBED YOUR IMAGES HERE
+======================= */
+const EMBEDDED_IMAGES = {
+  office: "data:image/png;base64,PASTE_HERE",
+  playerNormal: "data:image/png;base64,PASTE_HERE",
+  playerGun: "data:image/png;base64,PASTE_HERE",
+  playerAttack: "data:image/png;base64,PASTE_HERE",
+  npc: "data:image/png;base64,PASTE_HERE",
+  monster: "data:image/png;base64,PASTE_HERE",
+  giga: "data:image/png;base64,PASTE_HERE",
+  caught: "data:image/png;base64,PASTE_HERE"
+};
+
+/* =======================
    SETUP
 ======================= */
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const keys = {};
-window.addEventListener("keydown", e => {
+addEventListener("keydown", e => {
   keys[e.key.toLowerCase()] = true;
   if (["w","a","s","d"," "].includes(e.key.toLowerCase())) e.preventDefault();
 });
-window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 /* =======================
-   IMAGE LOADER (SAFE)
+   LOAD EMBEDDED IMAGES
 ======================= */
 const images = {};
 let loaded = 0;
-const total = 8;
+const TOTAL = Object.keys(EMBEDDED_IMAGES).length;
 
-function load(name, src) {
+for (const key in EMBEDDED_IMAGES) {
   const img = new Image();
-  img.src = src;
-  img.onload = () => loaded++;
-  img.onerror = () => console.error("FAILED TO LOAD:", src);
-  images[name] = img;
+  img.onload = () => {
+    loaded++;
+    if (loaded === TOTAL) requestAnimationFrame(update);
+  };
+  img.src = EMBEDDED_IMAGES[key];
+  images[key] = img;
 }
-
-load("office", "office.png");
-load("playerNormal", "player_normal.png");
-load("playerGun", "player_gun.png");
-load("playerAttack", "player_attack.png");
-load("npc", "npc.png");
-load("monster", "monster.png");
-load("giga", "giga_monster.png");
-load("caught", "caught_screen.png");
 
 /* =======================
    GAME STATE
@@ -61,10 +68,8 @@ let gameState = GAME_PLAYING;
    PLAYER
 ======================= */
 const player = {
-  x: 100,
-  y: 100,
-  w: 24,
-  h: 24,
+  x: 100, y: 100,
+  w: 24, h: 24,
   speed: 2,
   hasGun: false,
   attacking: false,
@@ -72,149 +77,86 @@ const player = {
 };
 
 /* =======================
-   NPCs (EXACTLY 20)
+   NPCs (20)
 ======================= */
 class NPC {
-  constructor(x, y, id) {
-    this.x = x;
-    this.y = y;
-    this.id = id;
-    this.alive = true;
-  }
-  draw() {
-    if (this.alive) ctx.drawImage(images.npc, this.x, this.y);
-  }
+  constructor(x,y,id){ this.x=x; this.y=y; this.id=id; this.alive=true; }
+  draw(){ if(this.alive) ctx.drawImage(images.npc,this.x,this.y); }
 }
-
-const npcs = [];
-for (let i = 0; i < 20; i++) {
-  npcs.push(new NPC(50 + i * 28, 380, i + 1));
-}
+const npcs=[];
+for(let i=0;i<20;i++) npcs.push(new NPC(60+i*28,380,i+1));
 
 /* =======================
    MONSTERS
 ======================= */
 class Monster {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.alive = true;
-  }
-  draw() {
-    if (this.alive) ctx.drawImage(images.monster, this.x, this.y);
-  }
+  constructor(x,y){ this.x=x; this.y=y; this.alive=true; }
+  draw(){ if(this.alive) ctx.drawImage(images.monster,this.x,this.y); }
 }
-
-const monsters = [
-  new Monster(420, 200),
-  new Monster(460, 200)
-];
+const monsters=[new Monster(420,200),new Monster(460,200)];
 
 /* =======================
-   GIGA MONSTER (DELAYED)
+   GIGA MONSTER (2 MIN)
 ======================= */
 class GigaMonster {
-  constructor(x, y) {
-    this.x = x;
-    this.y = y;
-    this.hits = 2;
-    this.speed = 0.6;
-    this.alive = true;
+  constructor(x,y){ this.x=x; this.y=y; this.hits=2; this.speed=0.6; this.alive=true; }
+  chase(){
+    const dx=player.x-this.x, dy=player.y-this.y;
+    const d=Math.hypot(dx,dy);
+    if(d){ this.x+=(dx/d)*this.speed; this.y+=(dy/d)*this.speed; }
   }
-  chase() {
-    const dx = player.x - this.x;
-    const dy = player.y - this.y;
-    const d = Math.hypot(dx, dy);
-    if (d > 0) {
-      this.x += (dx / d) * this.speed;
-      this.y += (dy / d) * this.speed;
-    }
-  }
-  draw() {
-    ctx.drawImage(images.giga, this.x, this.y);
-  }
+  draw(){ if(this.alive) ctx.drawImage(images.giga,this.x,this.y); }
 }
 
-let giga = null;
-const gameStartTime = performance.now();
+let giga=null;
+const startTime=performance.now();
 
 /* =======================
    MAIN LOOP
 ======================= */
-function update(time) {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(images.office, 0, 0);
+function update(time){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
+  ctx.drawImage(images.office,0,0);
 
-  if (gameState === GAME_PLAYING) {
+  if(gameState===GAME_PLAYING){
+    let dx=0,dy=0;
+    if(keys.w)dy-=player.speed;
+    if(keys.s)dy+=player.speed;
+    if(keys.a)dx-=player.speed;
+    if(keys.d)dx+=player.speed;
+    player.x+=dx; player.y+=dy;
 
-    /* Movement */
-    let dx = 0, dy = 0;
-    if (keys.w) dy -= player.speed;
-    if (keys.s) dy += player.speed;
-    if (keys.a) dx -= player.speed;
-    if (keys.d) dx += player.speed;
+    player.hasGun=keys["1"];
+    player.attacking=player.hasGun&&keys[" "];
 
-    player.x += dx;
-    player.y += dy;
-
-    /* Attack */
-    player.hasGun = keys["1"];
-    player.attacking = player.hasGun && keys[" "];
-
-    if (player.attacking && player.cooldown <= 0) {
-      player.cooldown = 20;
-
-      monsters.forEach(m => {
-        if (m.alive && Math.hypot(m.x - player.x, m.y - player.y) < 40) {
-          m.alive = false;
-        }
+    if(player.attacking&&player.cooldown<=0){
+      player.cooldown=20;
+      monsters.forEach(m=>{
+        if(m.alive&&Math.hypot(m.x-player.x,m.y-player.y)<40) m.alive=false;
       });
-
-      if (giga && giga.alive && Math.hypot(giga.x - player.x, giga.y - player.y) < 40) {
-        giga.hits--;
-        if (giga.hits <= 0) giga.alive = false;
+      if(giga&&giga.alive&&Math.hypot(giga.x-player.x,giga.y-player.y)<40){
+        giga.hits--; if(giga.hits<=0) giga.alive=false;
       }
     }
+    if(player.cooldown>0) player.cooldown--;
 
-    if (player.cooldown > 0) player.cooldown--;
-
-    /* Spawn GIGA after 2 minutes */
-    if (!giga && time - gameStartTime >= 120000) {
-      giga = new GigaMonster(520, 120);
-      console.log("GIGA MONSTER SPAWNED");
-    }
-
-    if (giga && giga.alive) {
+    if(!giga&&time-startTime>=120000) giga=new GigaMonster(520,120);
+    if(giga&&giga.alive){
       giga.chase();
-      if (Math.hypot(giga.x - player.x, giga.y - player.y) < 16) {
-        gameState = GAME_CAUGHT;
-      }
+      if(Math.hypot(giga.x-player.x,giga.y-player.y)<16) gameState=GAME_CAUGHT;
     }
 
-    /* Draw player */
-    const sprite =
-      player.attacking ? images.playerAttack :
-      player.hasGun ? images.playerGun :
-      images.playerNormal;
+    const sprite=player.attacking?images.playerAttack:player.hasGun?images.playerGun:images.playerNormal;
+    ctx.drawImage(sprite,player.x,player.y);
 
-    ctx.drawImage(sprite, player.x, player.y);
-
-    npcs.forEach(n => n.draw());
-    monsters.forEach(m => m.draw());
-    if (giga && giga.alive) giga.draw();
-
+    npcs.forEach(n=>n.draw());
+    monsters.forEach(m=>m.draw());
+    if(giga)giga.draw();
   } else {
-    ctx.drawImage(images.caught, 0, 0);
+    ctx.drawImage(images.caught,0,0);
   }
-
   requestAnimationFrame(update);
 }
-
-/* =======================
-   START GAME (NO BLOCKING)
-======================= */
-requestAnimationFrame(update);
 </script>
-
 </body>
 </html>
