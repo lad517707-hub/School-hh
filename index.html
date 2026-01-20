@@ -1,31 +1,31 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8" />
-<title>Shift Horror - 10 Nights</title>
-<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-<style>
-  body, html { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Courier New', monospace; color:#0f0; }
-  canvas { display:block; }
-  #ui {
-    position:absolute; inset:0; pointer-events:none; color:#0f0; text-shadow:0 0 6px #0f0; font-size:1.4rem; padding:20px; z-index:10;
-  }
-  #phone {
-    position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
-    width:360px; height:720px; background:#0a0a0a; border:6px solid #222; border-radius:36px;
-    padding:30px; box-shadow:0 0 60px #000; display:none; pointer-events:all; overflow-y:auto; font-size:1.2rem; line-height:1.6; z-index:20;
-  }
-  #phone.show { display:block; }
-  #time { position:absolute; top:20px; right:30px; font-size:3rem; text-shadow:0 0 12px #0f0; }
-  #hud { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:2rem; }
-  #shift-message {
-    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-    font-size:5rem; text-align:center; color:#f00; text-shadow:0 0 20px #f00; display:none;
-  }
-  #end-shift {
-    position:absolute; inset:0; background:rgba(0,0,0,0.95); color:#f00; font-size:6rem; text-align:center; padding-top:40vh; display:none;
-  }
-</style>
+  <meta charset="UTF-8" />
+  <title>Shift Horror - 10 Nights</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <style>
+    body, html { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Courier New', monospace; color:#0f0; }
+    canvas { display:block; }
+    #ui {
+      position:absolute; inset:0; pointer-events:none; color:#0f0; text-shadow:0 0 8px #0f0; font-size:1.4rem; padding:20px; z-index:10;
+    }
+    #phone {
+      position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
+      width:360px; height:720px; background:#0a001a; border:6px solid #330066; border-radius:36px;
+      padding:30px; box-shadow:0 0 60px #330066; display:none; pointer-events:all; overflow-y:auto; font-size:1.2rem; line-height:1.6; z-index:20;
+    }
+    #phone.show { display:block; }
+    #time { position:absolute; top:20px; right:30px; font-size:3rem; text-shadow:0 0 12px #ff00aa; }
+    #hud { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:2rem; text-shadow:0 0 10px #00ffff; }
+    #shift-message {
+      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+      font-size:5rem; text-align:center; color:#ff0040; text-shadow:0 0 20px #ff0040; display:none; z-index:30;
+    }
+    #end-shift {
+      position:absolute; inset:0; background:rgba(0,0,0,0.95); color:#ff0040; font-size:6rem; text-align:center; padding-top:40vh; display:none; z-index:30;
+    }
+  </style>
 </head>
 <body>
 
@@ -47,13 +47,13 @@
 <script>
 // =============== CONFIG ===============
 const scene = new THREE.Scene();
-scene.background = new THREE.Color(0x001100);
-scene.fog = new THREE.FogExp2(0x001100, 0.06);
+scene.background = new THREE.Color(0x110022);
+scene.fog = new THREE.FogExp2(0x110022, 0.05);
 
 const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
 const renderer = new THREE.WebGLRenderer({ antialias: false });
 renderer.setSize(window.innerWidth, window.innerHeight);
-renderer.setPixelRatio(0.8); // Low-res retro look
+renderer.setPixelRatio(0.7); // retro low-res
 document.body.appendChild(renderer.domElement);
 
 const controls = new THREE.PointerLockControls(camera, renderer.domElement);
@@ -61,22 +61,14 @@ scene.add(controls.getObject());
 
 camera.position.set(0, 1.8, 0);
 
-// Lighting
-scene.add(new THREE.AmbientLight(0x222222, 0.8));
-const redLight = new THREE.PointLight(0xff0040, 1.5, 30);
-redLight.position.set(5, 5, -5);
+// Lighting (varied colors)
+scene.add(new THREE.AmbientLight(0x222244, 0.7));
+const purpleLight = new THREE.PointLight(0x8800ff, 1.2, 40);
+purpleLight.position.set(5, 8, -5);
+scene.add(purpleLight);
+const redLight = new THREE.PointLight(0xff0040, 1.0, 30);
+redLight.position.set(-5, 5, 10);
 scene.add(redLight);
-
-// =============== INPUT ===============
-const keys = {};
-window.addEventListener('keydown', e => {
-  keys[e.key.toLowerCase()] = true;
-  if (e.key === 'Shift') togglePhone();
-});
-window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
-
-// Lock pointer on click
-renderer.domElement.addEventListener('click', () => controls.lock());
 
 // =============== GAME STATE ===============
 let shift = parseInt(localStorage.getItem('currentShift') || '1');
@@ -84,9 +76,11 @@ let timeLeft = 240;
 let gameState = 'shift'; // shift / end-shift / driving / next-shift
 let pistolEquipped = false;
 let crouching = false;
+let childrenQueue = [];
+let rooms = Array(18).fill(0); // max 20
 
 const missions = [
-  "", // 0
+  "",
   "Get all the children into their corresponding Class room",
   "get all the children into their corresponding class room...",
   "children in classroom",
@@ -106,56 +100,56 @@ updateMissionText();
 
 // =============== OFFICE 3D ===============
 function createOffice() {
-  // Floor
+  // Floor (purple-ish)
   const floor = new THREE.Mesh(
-    new THREE.PlaneGeometry(40, 40),
-    new THREE.MeshBasicMaterial({ color: 0x111133 })
+    new THREE.PlaneGeometry(50, 50),
+    new THREE.MeshBasicMaterial({ color: 0x220033 })
   );
   floor.rotation.x = -Math.PI/2;
   scene.add(floor);
 
-  // Walls (retro colors)
-  const wallMat = new THREE.MeshBasicMaterial({ color: 0x004433 });
-  scene.add(new THREE.Mesh(new THREE.BoxGeometry(40, 8, 0.5), wallMat).translateZ(-20));
-  scene.add(new THREE.Mesh(new THREE.BoxGeometry(40, 8, 0.5), wallMat).translateZ(20));
-  scene.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 8, 40), wallMat).translateX(-20));
-  scene.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 8, 40), wallMat).translateX(20));
+  // Walls (blue/purple tones)
+  const wallMat = new THREE.MeshBasicMaterial({ color: 0x003366 });
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(50, 10, 0.5), wallMat).translateZ(-25));
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(50, 10, 0.5), wallMat).translateZ(25));
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 50), wallMat).translateX(-25));
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 10, 50), wallMat).translateX(25));
 
-  // Desk
+  // Desk (orange wood)
   const desk = new THREE.Mesh(
-    new THREE.BoxGeometry(6, 2, 3),
-    new THREE.MeshBasicMaterial({ color: 0x442200 })
+    new THREE.BoxGeometry(8, 2.5, 4),
+    new THREE.MeshBasicMaterial({ color: 0x663300 })
   );
-  desk.position.set(0, 1, -8);
+  desk.position.set(0, 1.25, -12);
   scene.add(desk);
 
-  // Monitor
+  // Monitor (neon green)
   const monitor = new THREE.Mesh(
-    new THREE.BoxGeometry(2.5, 1.8, 0.4),
-    new THREE.MeshBasicMaterial({ color: 0x00aa22 })
+    new THREE.BoxGeometry(3, 2, 0.5),
+    new THREE.MeshBasicMaterial({ color: 0x00ff88 })
   );
-  monitor.position.set(2, 2.5, -8);
+  monitor.position.set(2.5, 3, -12);
   scene.add(monitor);
 
-  // Pistol
+  // Pistol under desk (metallic gray)
   const pistol = new THREE.Mesh(
-    new THREE.BoxGeometry(0.8, 0.3, 2),
-    new THREE.MeshBasicMaterial({ color: 0x333333 })
+    new THREE.BoxGeometry(1, 0.4, 2.2),
+    new THREE.MeshBasicMaterial({ color: 0x444466 })
   );
-  pistol.position.set(-1, 0.6, -8);
+  pistol.position.set(-1.5, 0.8, -12);
   pistol.visible = false;
   scene.add(pistol);
 }
 createOffice();
 
-// =============== ENTITIES (Children / Monsters) ===============
+// =============== ENTITIES ===============
 function spawnEntity() {
-  const isMonster = Math.random() < (shift * 0.1);
-  const geo = isMonster ? new THREE.DodecahedronGeometry(0.8, 0) : new THREE.CylinderGeometry(0.5, 0.5, 1.6, 8);
-  const color = isMonster ? 0xff0040 : 0x00aa22;
+  const isMonster = Math.random() < (shift * 0.12);
+  const geo = isMonster ? new THREE.OctahedronGeometry(0.9) : new THREE.CylinderGeometry(0.5, 0.5, 1.8, 8);
+  const color = isMonster ? 0xff0040 : 0x00aa44;
   const mat = new THREE.MeshBasicMaterial({ color });
   const entity = new THREE.Mesh(geo, mat);
-  entity.position.set(Math.random()*10 - 5, 0.8, Math.random()*8 + 8);
+  entity.position.set(Math.random()*12 - 6, 0.9, Math.random()*10 + 10);
   entity.userData = { isMonster, room: Math.floor(Math.random()*18) };
   scene.add(entity);
 
@@ -164,7 +158,7 @@ function spawnEntity() {
 
 setInterval(() => {
   if (gameState === 'shift') spawnEntity();
-}, 8000);
+}, 5000);
 
 // =============== INTERACTION ===============
 function interact() {
@@ -205,8 +199,8 @@ function updatePlayer(delta) {
     forward.y = 0; forward.normalize();
     const right = forward.clone().cross(camera.up);
 
-    velocity.add(forward.multiplyScalar(direction.z * 12 * delta));
-    velocity.add(right.multiplyScalar(direction.x * 12 * delta));
+    velocity.add(forward.multiplyScalar(direction.z * 14 * delta));
+    velocity.add(right.multiplyScalar(direction.x * 14 * delta));
   }
 
   controls.getObject().position.add(velocity);
@@ -253,14 +247,18 @@ function startDrivingPhase() {
   let t = 0;
   const drive = setInterval(() => {
     t += 0.1;
-    scene.background = new THREE.Color(0x000011);
-    scene.fog.color = new THREE.Color(0x000022);
-    // Car view (simple)
+    scene.background = new THREE.Color(0x000022);
+    scene.fog.color = new THREE.Color(0x000044);
+
+    // Simple car road (black with red lines)
     ctx.fillStyle = '#000';
     ctx.fillRect(0,0,canvas.width,canvas.height);
-    ctx.fillStyle = '#111';
-    ctx.fillRect(0, canvas.height/2 - 120, canvas.width, 240);
-    if (Math.random() < 0.3) addChatMsg("A distorted monster is chasing the car!");
+    ctx.fillStyle = '#880000';
+    ctx.fillRect(canvas.width/2 - 20, 0, 40, canvas.height);
+
+    if (Math.random() < 0.4) {
+      addChatMsg("A distorted monster is chasing the car!");
+    }
 
     if (t > 12) {
       clearInterval(drive);
@@ -293,7 +291,7 @@ animate();
 
 // =============== CHAT HELPER ===============
 function addChatMsg(msg) {
-  console.log(msg); // For now, expand with real UI later
+  console.log(msg); // expand later with UI
 }
 </script>
 </body>
