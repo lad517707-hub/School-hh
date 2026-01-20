@@ -5,7 +5,7 @@
 <title>Office Game</title>
 <style>
   body { margin: 0; background: black; overflow: hidden; }
-  canvas { display: block; margin: auto; background: black; }
+  canvas { display: block; margin: auto; background: #111; }
 </style>
 </head>
 <body>
@@ -24,33 +24,27 @@ document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 /* =======================
-   LOAD IMAGES (FIXED)
+   IMAGE LOADER (SAFE)
 ======================= */
-const images = {};
-let imagesLoaded = 0;
-const totalImages = 8;
-
-const load = src => {
+function loadImage(src) {
   const img = new Image();
-  img.onload = () => {
-    imagesLoaded++;
-    if (imagesLoaded === totalImages) {
-      requestAnimationFrame(update); // START GAME ONLY AFTER LOAD
-    }
-  };
-  img.onerror = () => console.error("Failed to load:", src);
   img.src = src;
+  img.loaded = false;
+  img.onload = () => img.loaded = true;
+  img.onerror = () => console.warn("Missing image:", src);
   return img;
-};
+}
 
-images.office = load("office.png");
-images.playerNormal = load("player_normal.png");
-images.playerGun = load("player_gun.png");
-images.playerAttack = load("player_attack.png");
-images.npc = load("npc.png");
-images.monster = load("monster.png");
-images.giga = load("giga_monster.png");
-images.caught = load("caught_screen.png");
+const images = {
+  office: loadImage("office.png"),
+  playerNormal: loadImage("player_normal.png"),
+  playerGun: loadImage("player_gun.png"),
+  playerAttack: loadImage("player_attack.png"),
+  npc: loadImage("npc.png"),
+  monster: loadImage("monster.png"),
+  giga: loadImage("giga_monster.png"),
+  caught: loadImage("caught_screen.png")
+};
 
 /* =======================
    GAME STATE
@@ -74,18 +68,10 @@ const player = {
 };
 
 /* =======================
-   WALL COLLISION (SAFE)
+   WALL COLLISION (DISABLED SAFELY)
 ======================= */
-function isWall(x, y) {
-  if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return true;
-  try {
-    const data = ctx.getImageData(x, y, 1, 1).data;
-    const [r, g, b] = data;
-    return (r === 255 && g === 255 && b === 0) ||
-           (r === 139 && g === 69 && b === 19);
-  } catch {
-    return false;
-  }
+function isWall() {
+  return false; // disable until map collision exists
 }
 
 /* =======================
@@ -99,37 +85,48 @@ class NPC {
     this.alive = true;
   }
   draw() {
-    if (this.alive) ctx.drawImage(images.npc, this.x, this.y);
+    if (!this.alive) return;
+    if (images.npc.loaded)
+      ctx.drawImage(images.npc, this.x, this.y);
+    else {
+      ctx.fillStyle = "cyan";
+      ctx.fillRect(this.x, this.y, 16, 16);
+    }
   }
 }
 
 const npcs = [];
 for (let i = 0; i < 20; i++) {
-  npcs.push(new NPC(100 + i * 28, 360, i + 1));
+  npcs.push(new NPC(40 + i * 28, 400, i + 1));
 }
 
 /* =======================
    MONSTERS
 ======================= */
 class Monster {
-  constructor(x, y, id) {
+  constructor(x, y) {
     this.x = x;
     this.y = y;
-    this.id = id;
     this.alive = true;
   }
   draw() {
-    if (this.alive) ctx.drawImage(images.monster, this.x, this.y);
+    if (!this.alive) return;
+    if (images.monster.loaded)
+      ctx.drawImage(images.monster, this.x, this.y);
+    else {
+      ctx.fillStyle = "red";
+      ctx.fillRect(this.x, this.y, 18, 18);
+    }
   }
 }
 
 const monsters = [
-  new Monster(400, 200, "MX-01"),
-  new Monster(440, 200, "MX-02")
+  new Monster(400, 200),
+  new Monster(440, 200)
 ];
 
 /* =======================
-   GIGA MONSTERS
+   GIGA MONSTER
 ======================= */
 class GigaMonster {
   constructor(x, y) {
@@ -149,35 +146,41 @@ class GigaMonster {
     }
   }
   draw() {
-    if (this.alive) ctx.drawImage(images.giga, this.x, this.y);
+    if (!this.alive) return;
+    if (images.giga.loaded)
+      ctx.drawImage(images.giga, this.x, this.y);
+    else {
+      ctx.fillStyle = "purple";
+      ctx.fillRect(this.x, this.y, 28, 28);
+    }
   }
 }
 
 const gigas = [ new GigaMonster(500, 100) ];
 
 /* =======================
-   CAUGHT SEQUENCE
-======================= */
-let pan = 0;
-let fade = 0;
-
-/* =======================
    MAIN LOOP
 ======================= */
 function update() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-  ctx.drawImage(images.office, 0, 0);
+
+  // Background
+  if (images.office.loaded) {
+    ctx.drawImage(images.office, 0, 0);
+  } else {
+    ctx.fillStyle = "#222";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
 
   if (gameState === GAME_PLAYING) {
-
     let dx = 0, dy = 0;
     if (keys.w) dy -= player.speed;
     if (keys.s) dy += player.speed;
     if (keys.a) dx -= player.speed;
     if (keys.d) dx += player.speed;
 
-    if (!isWall(player.x + dx, player.y)) player.x += dx;
-    if (!isWall(player.x, player.y + dy)) player.y += dy;
+    player.x += dx;
+    player.y += dy;
 
     player.hasGun = keys["1"];
     player.attacking = player.hasGun && keys[" "];
@@ -210,37 +213,29 @@ function update() {
       }
     });
 
-    const sprite =
-      player.attacking ? images.playerAttack :
-      player.hasGun ? images.playerGun :
-      images.playerNormal;
-
-    ctx.drawImage(sprite, player.x, player.y);
+    // Player draw
+    ctx.fillStyle = player.attacking ? "yellow" : player.hasGun ? "orange" : "white";
+    ctx.fillRect(player.x, player.y, player.w, player.h);
 
     npcs.forEach(n => n.draw());
     monsters.forEach(m => m.draw());
     gigas.forEach(g => g.draw());
 
   } else {
-    ctx.drawImage(images.caught, 0, -pan);
-    pan += 0.3;
-    fade += 1;
-    ctx.fillStyle = `rgba(0,0,0,${fade / 255})`;
+    ctx.fillStyle = "black";
     ctx.fillRect(0, 0, canvas.width, canvas.height);
+    ctx.fillStyle = "white";
+    ctx.font = "32px sans-serif";
+    ctx.fillText("CAUGHT", 260, 240);
   }
 
   requestAnimationFrame(update);
 }
 
 /* =======================
-   NPC ID CHECK
+   START GAME
 ======================= */
-document.addEventListener("keydown", e => {
-  if (e.key.toLowerCase() === "r") {
-    const npc = npcs.find(n => n.alive);
-    console.log(npc ? "NPC ID: " + npc.id : "No NPCs left");
-  }
-});
+requestAnimationFrame(update);
 </script>
 
 </body>
