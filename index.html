@@ -102,4 +102,199 @@ const missions = [
 function updateMissionText() {
   document.getElementById('mission-text').innerHTML = `<strong>Night ${shift} Mission:</strong><br><br>${missions[shift]}`;
 }
-updateMission
+updateMissionText();
+
+// =============== OFFICE 3D ===============
+function createOffice() {
+  // Floor
+  const floor = new THREE.Mesh(
+    new THREE.PlaneGeometry(40, 40),
+    new THREE.MeshBasicMaterial({ color: 0x111133 })
+  );
+  floor.rotation.x = -Math.PI/2;
+  scene.add(floor);
+
+  // Walls (retro colors)
+  const wallMat = new THREE.MeshBasicMaterial({ color: 0x004433 });
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(40, 8, 0.5), wallMat).translateZ(-20));
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(40, 8, 0.5), wallMat).translateZ(20));
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 8, 40), wallMat).translateX(-20));
+  scene.add(new THREE.Mesh(new THREE.BoxGeometry(0.5, 8, 40), wallMat).translateX(20));
+
+  // Desk
+  const desk = new THREE.Mesh(
+    new THREE.BoxGeometry(6, 2, 3),
+    new THREE.MeshBasicMaterial({ color: 0x442200 })
+  );
+  desk.position.set(0, 1, -8);
+  scene.add(desk);
+
+  // Monitor
+  const monitor = new THREE.Mesh(
+    new THREE.BoxGeometry(2.5, 1.8, 0.4),
+    new THREE.MeshBasicMaterial({ color: 0x00aa22 })
+  );
+  monitor.position.set(2, 2.5, -8);
+  scene.add(monitor);
+
+  // Pistol
+  const pistol = new THREE.Mesh(
+    new THREE.BoxGeometry(0.8, 0.3, 2),
+    new THREE.MeshBasicMaterial({ color: 0x333333 })
+  );
+  pistol.position.set(-1, 0.6, -8);
+  pistol.visible = false;
+  scene.add(pistol);
+}
+createOffice();
+
+// =============== ENTITIES (Children / Monsters) ===============
+function spawnEntity() {
+  const isMonster = Math.random() < (shift * 0.1);
+  const geo = isMonster ? new THREE.DodecahedronGeometry(0.8, 0) : new THREE.CylinderGeometry(0.5, 0.5, 1.6, 8);
+  const color = isMonster ? 0xff0040 : 0x00aa22;
+  const mat = new THREE.MeshBasicMaterial({ color });
+  const entity = new THREE.Mesh(geo, mat);
+  entity.position.set(Math.random()*10 - 5, 0.8, Math.random()*8 + 8);
+  entity.userData = { isMonster, room: Math.floor(Math.random()*18) };
+  scene.add(entity);
+
+  addChatMsg(`A ${isMonster ? 'distorted monster' : 'child'} says: Room ${entity.userData.room + 1}`);
+}
+
+setInterval(() => {
+  if (gameState === 'shift') spawnEntity();
+}, 8000);
+
+// =============== INTERACTION ===============
+function interact() {
+  const raycaster = new THREE.Raycaster();
+  raycaster.setFromCamera(new THREE.Vector2(0,0), camera);
+  const intersects = raycaster.intersectObjects(scene.children);
+
+  for (let obj of intersects) {
+    if (obj.object.userData && obj.object.userData.room) {
+      const entity = obj.object;
+      const room = entity.userData.room;
+      if (rooms[room] < 20 && !entity.userData.isMonster) {
+        rooms[room]++;
+        addChatMsg(`Child let into room ${room + 1}.`);
+      } else {
+        addChatMsg(`Invalid - pistol required.`);
+      }
+      scene.remove(entity);
+    }
+  }
+}
+
+// =============== PLAYER MOVEMENT ===============
+const velocity = new THREE.Vector3();
+const direction = new THREE.Vector3();
+
+function updatePlayer(delta) {
+  velocity.x *= 0.9;
+  velocity.z *= 0.9;
+
+  direction.z = Number(keys['w']) - Number(keys['s']);
+  direction.x = Number(keys['d']) - Number(keys['a']);
+  direction.normalize();
+
+  if (direction.lengthSq() > 0) {
+    const forward = new THREE.Vector3();
+    camera.getWorldDirection(forward);
+    forward.y = 0; forward.normalize();
+    const right = forward.clone().cross(camera.up);
+
+    velocity.add(forward.multiplyScalar(direction.z * 12 * delta));
+    velocity.add(right.multiplyScalar(direction.x * 12 * delta));
+  }
+
+  controls.getObject().position.add(velocity);
+
+  // Crouch
+  if (keys['control']) {
+    camera.position.y = 1.2;
+    crouching = true;
+  } else {
+    camera.position.y = 1.8;
+    crouching = false;
+  }
+
+  // E to interact
+  if (keys['e']) {
+    interact();
+    keys['e'] = false;
+  }
+}
+
+// =============== TIMER ===============
+function updateTimer() {
+  if (gameState !== 'shift') return;
+  timeLeft--;
+  document.getElementById('time').textContent = 
+    `${Math.floor(timeLeft/60).toString().padStart(2,'0')}:${(timeLeft%60).toString().padStart(2,'0')}`;
+
+  if (timeLeft <= 0) {
+    gameState = 'end-shift';
+    document.getElementById('end-shift').style.display = 'block';
+    setTimeout(() => {
+      gameState = 'driving';
+      document.getElementById('end-shift').style.display = 'none';
+      startDrivingPhase();
+    }, 6000);
+  }
+}
+setInterval(updateTimer, 1000);
+
+// =============== DRIVING PHASE ===============
+function startDrivingPhase() {
+  addChatMsg("Driving home...");
+
+  let t = 0;
+  const drive = setInterval(() => {
+    t += 0.1;
+    scene.background = new THREE.Color(0x000011);
+    scene.fog.color = new THREE.Color(0x000022);
+    // Car view (simple)
+    ctx.fillStyle = '#000';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillStyle = '#111';
+    ctx.fillRect(0, canvas.height/2 - 120, canvas.width, 240);
+    if (Math.random() < 0.3) addChatMsg("A distorted monster is chasing the car!");
+
+    if (t > 12) {
+      clearInterval(drive);
+      shift++;
+      if (shift > 10) {
+        addChatMsg("All shifts complete. The nightmare is over... or is it?");
+        localStorage.removeItem('currentShift');
+      } else {
+        localStorage.setItem('currentShift', shift);
+        timeLeft = 240;
+        updateMissionText();
+        gameState = 'shift';
+      }
+    }
+  }, 100);
+}
+
+// =============== GAME LOOP ===============
+let lastTime = performance.now();
+function animate() {
+  const now = performance.now();
+  const delta = (now - lastTime) / 1000;
+  lastTime = now;
+
+  updatePlayer(delta);
+  renderer.render(scene, camera);
+  requestAnimationFrame(animate);
+}
+animate();
+
+// =============== CHAT HELPER ===============
+function addChatMsg(msg) {
+  console.log(msg); // For now, expand with real UI later
+}
+</script>
+</body>
+</html>
