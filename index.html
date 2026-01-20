@@ -5,7 +5,7 @@
 <title>Office Game</title>
 <style>
   body { margin: 0; background: black; overflow: hidden; }
-  canvas { display: block; margin: auto; }
+  canvas { display: block; margin: auto; background: black; }
 </style>
 </head>
 <body>
@@ -24,11 +24,21 @@ document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 /* =======================
-   LOAD IMAGES
+   LOAD IMAGES (FIXED)
 ======================= */
 const images = {};
+let imagesLoaded = 0;
+const totalImages = 8;
+
 const load = src => {
   const img = new Image();
+  img.onload = () => {
+    imagesLoaded++;
+    if (imagesLoaded === totalImages) {
+      requestAnimationFrame(update); // START GAME ONLY AFTER LOAD
+    }
+  };
+  img.onerror = () => console.error("Failed to load:", src);
   img.src = src;
   return img;
 };
@@ -64,13 +74,18 @@ const player = {
 };
 
 /* =======================
-   WALL COLLISION (YELLOW/BROWN)
+   WALL COLLISION (SAFE)
 ======================= */
 function isWall(x, y) {
   if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return true;
-  const data = ctx.getImageData(x, y, 1, 1).data;
-  const r = data[0], g = data[1], b = data[2];
-  return (r === 255 && g === 255 && b === 0) || (r === 139 && g === 69 && b === 19);
+  try {
+    const data = ctx.getImageData(x, y, 1, 1).data;
+    const [r, g, b] = data;
+    return (r === 255 && g === 255 && b === 0) ||
+           (r === 139 && g === 69 && b === 19);
+  } catch {
+    return false;
+  }
 }
 
 /* =======================
@@ -150,6 +165,7 @@ let fade = 0;
    MAIN LOOP
 ======================= */
 function update() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
   ctx.drawImage(images.office, 0, 0);
 
   if (gameState === GAME_PLAYING) {
@@ -225,8 +241,6 @@ document.addEventListener("keydown", e => {
     console.log(npc ? "NPC ID: " + npc.id : "No NPCs left");
   }
 });
-
-update();
 </script>
 
 </body>
