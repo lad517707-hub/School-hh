@@ -1,35 +1,35 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <title>Shift Horror - 10 Nights</title>
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <style>
-    body, html { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Courier New', monospace; color:#0f0; }
-    canvas { display:block; }
-    #ui {
-      position:absolute; inset:0; pointer-events:none; color:#0f0; text-shadow:0 0 8px #0f0; font-size:1.4rem; padding:20px; z-index:10;
-    }
-    #phone {
-      position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
-      width:360px; height:720px; background:#0a001a; border:6px solid #330066; border-radius:36px;
-      padding:30px; box-shadow:0 0 60px #330066; display:none; pointer-events:all; overflow-y:auto; font-size:1.2rem; line-height:1.6; z-index:20;
-    }
-    #phone.show { display:block; }
-    #time { position:absolute; top:20px; right:30px; font-size:3rem; text-shadow:0 0 12px #ff00aa; }
-    #hud { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:2rem; text-shadow:0 0 10px #00ffff; }
-    #shift-message {
-      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-      font-size:5rem; text-align:center; color:#ff0040; text-shadow:0 0 20px #ff0040; display:none; z-index:30;
-    }
-    #end-shift {
-      position:absolute; inset:0; background:rgba(0,0,0,0.95); color:#ff0040; font-size:6rem; text-align:center; padding-top:40vh; display:none; z-index:30;
-    }
-    #click-to-play {
-      position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
-      font-size:3rem; color:#0ff; background:rgba(0,0,0,0.7); padding:30px; border-radius:15px; z-index:40;
-    }
-  </style>
+<meta charset="UTF-8" />
+<title>Shift Horror - 10 Nights</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<style>
+  body, html { margin:0; padding:0; overflow:hidden; background:#000; font-family:'Courier New', monospace; color:#0f0; }
+  canvas { display:block; }
+  #ui {
+    position:absolute; inset:0; pointer-events:none; color:#0f0; text-shadow:0 0 8px #0f0; font-size:1.4rem; padding:20px; z-index:10;
+  }
+  #phone {
+    position:absolute; bottom:40px; left:50%; transform:translateX(-50%);
+    width:360px; height:720px; background:#0a001a; border:6px solid #330066; border-radius:36px;
+    padding:30px; box-shadow:0 0 60px #330066; display:none; pointer-events:all; overflow-y:auto; font-size:1.2rem; line-height:1.6; z-index:20;
+  }
+  #phone.show { display:block; }
+  #time { position:absolute; top:20px; right:30px; font-size:3rem; text-shadow:0 0 12px #ff00aa; }
+  #hud { position:absolute; bottom:20px; left:50%; transform:translateX(-50%); font-size:2rem; text-shadow:0 0 10px #00ffff; }
+  #shift-message {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:5rem; text-align:center; color:#ff0040; text-shadow:0 0 20px #ff0040; display:none; z-index:30;
+  }
+  #end-shift {
+    position:absolute; inset:0; background:rgba(0,0,0,0.95); color:#ff0040; font-size:6rem; text-align:center; padding-top:40vh; display:none; z-index:30;
+  }
+  #click-to-play {
+    position:absolute; top:50%; left:50%; transform:translate(-50%,-50%);
+    font-size:3rem; color:#0ff; background:rgba(0,0,0,0.7); padding:30px; border-radius:15px; z-index:40;
+  }
+</style>
 </head>
 <body>
 
@@ -192,7 +192,6 @@ function updatePlayer(delta) {
 
   // E to interact
   if (keys['e']) {
-    // Simple interaction logic (expand later)
     console.log("Interact pressed");
     keys['e'] = false;
   }
