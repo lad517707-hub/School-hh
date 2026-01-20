@@ -5,7 +5,7 @@
 <title>Office Game</title>
 <style>
   body { margin: 0; background: black; overflow: hidden; }
-  canvas { display: block; margin: auto; background: #111; }
+  canvas { display: block; margin: auto; background: black; }
 </style>
 </head>
 <body>
@@ -20,31 +20,35 @@ const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
 const keys = {};
-document.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-document.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+window.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+  if (["w","a","s","d"," "].includes(e.key.toLowerCase())) e.preventDefault();
+});
+window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 /* =======================
    IMAGE LOADER (SAFE)
 ======================= */
-function loadImage(src) {
+const images = {};
+let loaded = 0;
+const total = 8;
+
+function load(name, src) {
   const img = new Image();
   img.src = src;
-  img.loaded = false;
-  img.onload = () => img.loaded = true;
-  img.onerror = () => console.warn("Missing image:", src);
-  return img;
+  img.onload = () => loaded++;
+  img.onerror = () => console.error("FAILED TO LOAD:", src);
+  images[name] = img;
 }
 
-const images = {
-  office: loadImage("office.png"),
-  playerNormal: loadImage("player_normal.png"),
-  playerGun: loadImage("player_gun.png"),
-  playerAttack: loadImage("player_attack.png"),
-  npc: loadImage("npc.png"),
-  monster: loadImage("monster.png"),
-  giga: loadImage("giga_monster.png"),
-  caught: loadImage("caught_screen.png")
-};
+load("office", "office.png");
+load("playerNormal", "player_normal.png");
+load("playerGun", "player_gun.png");
+load("playerAttack", "player_attack.png");
+load("npc", "npc.png");
+load("monster", "monster.png");
+load("giga", "giga_monster.png");
+load("caught", "caught_screen.png");
 
 /* =======================
    GAME STATE
@@ -68,14 +72,7 @@ const player = {
 };
 
 /* =======================
-   WALL COLLISION (DISABLED SAFELY)
-======================= */
-function isWall() {
-  return false; // disable until map collision exists
-}
-
-/* =======================
-   NPCs
+   NPCs (EXACTLY 20)
 ======================= */
 class NPC {
   constructor(x, y, id) {
@@ -85,19 +82,13 @@ class NPC {
     this.alive = true;
   }
   draw() {
-    if (!this.alive) return;
-    if (images.npc.loaded)
-      ctx.drawImage(images.npc, this.x, this.y);
-    else {
-      ctx.fillStyle = "cyan";
-      ctx.fillRect(this.x, this.y, 16, 16);
-    }
+    if (this.alive) ctx.drawImage(images.npc, this.x, this.y);
   }
 }
 
 const npcs = [];
 for (let i = 0; i < 20; i++) {
-  npcs.push(new NPC(40 + i * 28, 400, i + 1));
+  npcs.push(new NPC(50 + i * 28, 380, i + 1));
 }
 
 /* =======================
@@ -110,30 +101,24 @@ class Monster {
     this.alive = true;
   }
   draw() {
-    if (!this.alive) return;
-    if (images.monster.loaded)
-      ctx.drawImage(images.monster, this.x, this.y);
-    else {
-      ctx.fillStyle = "red";
-      ctx.fillRect(this.x, this.y, 18, 18);
-    }
+    if (this.alive) ctx.drawImage(images.monster, this.x, this.y);
   }
 }
 
 const monsters = [
-  new Monster(400, 200),
-  new Monster(440, 200)
+  new Monster(420, 200),
+  new Monster(460, 200)
 ];
 
 /* =======================
-   GIGA MONSTER
+   GIGA MONSTER (DELAYED)
 ======================= */
 class GigaMonster {
   constructor(x, y) {
     this.x = x;
     this.y = y;
     this.hits = 2;
-    this.speed = 0.7;
+    this.speed = 0.6;
     this.alive = true;
   }
   chase() {
@@ -146,33 +131,23 @@ class GigaMonster {
     }
   }
   draw() {
-    if (!this.alive) return;
-    if (images.giga.loaded)
-      ctx.drawImage(images.giga, this.x, this.y);
-    else {
-      ctx.fillStyle = "purple";
-      ctx.fillRect(this.x, this.y, 28, 28);
-    }
+    ctx.drawImage(images.giga, this.x, this.y);
   }
 }
 
-const gigas = [ new GigaMonster(500, 100) ];
+let giga = null;
+const gameStartTime = performance.now();
 
 /* =======================
    MAIN LOOP
 ======================= */
-function update() {
+function update(time) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
-
-  // Background
-  if (images.office.loaded) {
-    ctx.drawImage(images.office, 0, 0);
-  } else {
-    ctx.fillStyle = "#222";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-  }
+  ctx.drawImage(images.office, 0, 0);
 
   if (gameState === GAME_PLAYING) {
+
+    /* Movement */
     let dx = 0, dy = 0;
     if (keys.w) dy -= player.speed;
     if (keys.s) dy += player.speed;
@@ -182,6 +157,7 @@ function update() {
     player.x += dx;
     player.y += dy;
 
+    /* Attack */
     player.hasGun = keys["1"];
     player.attacking = player.hasGun && keys[" "];
 
@@ -194,46 +170,48 @@ function update() {
         }
       });
 
-      gigas.forEach(g => {
-        if (g.alive && Math.hypot(g.x - player.x, g.y - player.y) < 40) {
-          g.hits--;
-          if (g.hits <= 0) g.alive = false;
-        }
-      });
+      if (giga && giga.alive && Math.hypot(giga.x - player.x, giga.y - player.y) < 40) {
+        giga.hits--;
+        if (giga.hits <= 0) giga.alive = false;
+      }
     }
 
     if (player.cooldown > 0) player.cooldown--;
 
-    gigas.forEach(g => {
-      if (g.alive) {
-        g.chase();
-        if (Math.hypot(g.x - player.x, g.y - player.y) < 16) {
-          gameState = GAME_CAUGHT;
-        }
-      }
-    });
+    /* Spawn GIGA after 2 minutes */
+    if (!giga && time - gameStartTime >= 120000) {
+      giga = new GigaMonster(520, 120);
+      console.log("GIGA MONSTER SPAWNED");
+    }
 
-    // Player draw
-    ctx.fillStyle = player.attacking ? "yellow" : player.hasGun ? "orange" : "white";
-    ctx.fillRect(player.x, player.y, player.w, player.h);
+    if (giga && giga.alive) {
+      giga.chase();
+      if (Math.hypot(giga.x - player.x, giga.y - player.y) < 16) {
+        gameState = GAME_CAUGHT;
+      }
+    }
+
+    /* Draw player */
+    const sprite =
+      player.attacking ? images.playerAttack :
+      player.hasGun ? images.playerGun :
+      images.playerNormal;
+
+    ctx.drawImage(sprite, player.x, player.y);
 
     npcs.forEach(n => n.draw());
     monsters.forEach(m => m.draw());
-    gigas.forEach(g => g.draw());
+    if (giga && giga.alive) giga.draw();
 
   } else {
-    ctx.fillStyle = "black";
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
-    ctx.fillStyle = "white";
-    ctx.font = "32px sans-serif";
-    ctx.fillText("CAUGHT", 260, 240);
+    ctx.drawImage(images.caught, 0, 0);
   }
 
   requestAnimationFrame(update);
 }
 
 /* =======================
-   START GAME
+   START GAME (NO BLOCKING)
 ======================= */
 requestAnimationFrame(update);
 </script>
