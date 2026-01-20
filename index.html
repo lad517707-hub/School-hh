@@ -1,26 +1,26 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Mini Smash Game</title>
+<title>Kamen Rider Smash</title>
 <style>
   body {
     margin: 0;
-    background: #111;
+    background: #000;
     display: flex;
     justify-content: center;
     align-items: center;
     height: 100vh;
   }
   canvas {
-    background: #222;
+    background: #111;
     border: 2px solid white;
   }
 </style>
 </head>
 <body>
 
-<canvas id="game" width="800" height="450"></canvas>
+<canvas id="game" width="900" height="500"></canvas>
 
 <script>
 const canvas = document.getElementById("game");
@@ -30,40 +30,61 @@ const keys = {};
 addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
-const gravity = 0.6;
-const friction = 0.8;
+/* =====================
+   GAME STATES
+===================== */
+const SELECT = 0;
+const PLAY = 1;
+let gameState = SELECT;
+
+/* =====================
+   CHARACTERS
+===================== */
+const characters = [
+  { name: "WIZARD", color: "#c33", speed: 4, power: 8 },
+  { name: "GHOST", color: "#ddd", speed: 5, power: 6 },
+  { name: "GAIM", color: "#fa3", speed: 4, power: 7 },
+  { name: "DRIVE", color: "#f00", speed: 6, power: 5 },
+  { name: "OOO", color: "#ff0", speed: 4, power: 8 },
+  { name: "DOUBLE", color: "#0f0", speed: 4, power: 7 },
+  { name: "REVI", color: "#4af", speed: 5, power: 6 },
+  { name: "VICE", color: "#a4f", speed: 5, power: 6 }
+];
+
+let selected = 0;
+
+/* =====================
+   FIGHTER
+===================== */
+function Fighter(x, char) {
+  return {
+    x, y: 100,
+    w: 40, h: 50,
+    vx: 0, vy: 0,
+    onGround: false,
+    percent: 0,
+    facing: 1,
+    char
+  };
+}
+
+let player, enemy;
 
 /* =====================
    PLATFORM
 ===================== */
 const platforms = [
-  { x: 200, y: 350, w: 400, h: 20 },
-  { x: 100, y: 250, w: 150, h: 15 },
-  { x: 550, y: 250, w: 150, h: 15 }
+  { x: 200, y: 380, w: 500, h: 20 },
+  { x: 100, y: 280, w: 180, h: 15 },
+  { x: 620, y: 280, w: 180, h: 15 }
 ];
 
-/* =====================
-   PLAYER
-===================== */
-function Fighter(x, color) {
-  return {
-    x, y: 50,
-    w: 30, h: 40,
-    vx: 0, vy: 0,
-    onGround: false,
-    percent: 0,
-    color,
-    facing: 1
-  };
-}
-
-const player = Fighter(300, "#4af");
-const enemy  = Fighter(500, "#f44");
+const gravity = 0.6;
 
 /* =====================
    COLLISION
 ===================== */
-function rectsCollide(a, b) {
+function hit(a, b) {
   return (
     a.x < b.x + b.w &&
     a.x + a.w > b.x &&
@@ -76,27 +97,26 @@ function rectsCollide(a, b) {
    ATTACK
 ===================== */
 function attack(attacker, target) {
-  const hitbox = {
+  const box = {
     x: attacker.x + attacker.facing * attacker.w,
-    y: attacker.y + 10,
-    w: 20,
+    y: attacker.y + 15,
+    w: 25,
     h: 20
   };
-
-  if (rectsCollide(hitbox, target)) {
-    target.percent += 8;
-    target.vx = attacker.facing * (4 + target.percent * 0.05);
-    target.vy = -5;
+  if (hit(box, target)) {
+    target.percent += attacker.char.power;
+    target.vx = attacker.facing * (4 + target.percent * 0.04);
+    target.vy = -6;
   }
 }
 
 /* =====================
-   UPDATE
+   UPDATE FIGHTER
 ===================== */
-function updateFighter(f, controls) {
-  if (controls) {
-    if (keys.a) { f.vx = -4; f.facing = -1; }
-    if (keys.d) { f.vx =  4; f.facing =  1; }
+function updateFighter(f, control) {
+  if (control) {
+    if (keys.a) { f.vx = -f.char.speed; f.facing = -1; }
+    if (keys.d) { f.vx =  f.char.speed; f.facing = 1; }
     if (keys.w && f.onGround) {
       f.vy = -12;
       f.onGround = false;
@@ -107,21 +127,20 @@ function updateFighter(f, controls) {
   f.vy += gravity;
   f.x += f.vx;
   f.y += f.vy;
-  f.vx *= friction;
+  f.vx *= 0.8;
 
   f.onGround = false;
   platforms.forEach(p => {
-    if (rectsCollide(f, p) && f.vy >= 0) {
+    if (hit(f, p) && f.vy >= 0) {
       f.y = p.y - f.h;
       f.vy = 0;
       f.onGround = true;
     }
   });
 
-  // Ring out
   if (f.y > canvas.height + 200) {
-    f.x = Math.random() * 400 + 200;
     f.y = 0;
+    f.x = Math.random() * 400 + 200;
     f.percent = 0;
     f.vx = f.vy = 0;
   }
@@ -131,9 +150,9 @@ function updateFighter(f, controls) {
    ENEMY AI
 ===================== */
 function enemyAI() {
-  if (enemy.x < player.x - 10) { enemy.vx = 2; enemy.facing = 1; }
-  if (enemy.x > player.x + 10) { enemy.vx = -2; enemy.facing = -1; }
-  if (Math.random() < 0.01 && enemy.onGround) enemy.vy = -10;
+  if (enemy.x < player.x) enemy.vx = 2;
+  if (enemy.x > player.x) enemy.vx = -2;
+  if (Math.random() < 0.01 && enemy.onGround) enemy.vy = -11;
   if (Math.abs(enemy.x - player.x) < 50) attack(enemy, player);
 }
 
@@ -141,35 +160,72 @@ function enemyAI() {
    DRAW
 ===================== */
 function drawFighter(f) {
-  ctx.fillStyle = f.color;
+  ctx.fillStyle = f.char.color;
   ctx.fillRect(f.x, f.y, f.w, f.h);
+  ctx.fillStyle = "black";
+  ctx.fillText(f.char.name[0], f.x + 14, f.y + 32);
   ctx.fillStyle = "white";
   ctx.fillText(Math.floor(f.percent) + "%", f.x, f.y - 5);
 }
 
-function draw() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+/* =====================
+   SELECT SCREEN
+===================== */
+function drawSelect() {
+  ctx.fillStyle = "white";
+  ctx.font = "30px monospace";
+  ctx.fillText("CHARACTER SELECT", 280, 80);
 
-  ctx.fillStyle = "#555";
-  platforms.forEach(p => ctx.fillRect(p.x, p.y, p.w, p.h));
+  characters.forEach((c, i) => {
+    ctx.fillStyle = i === selected ? "yellow" : "white";
+    ctx.fillText(c.name, 350, 140 + i * 35);
+  });
 
-  drawFighter(player);
-  drawFighter(enemy);
+  ctx.font = "18px monospace";
+  ctx.fillText("Press E to change character", 300, 430);
+  ctx.fillText("Press ENTER to start", 330, 460);
 }
+
+/* =====================
+   INPUT
+===================== */
+addEventListener("keydown", e => {
+  if (gameState === SELECT) {
+    if (e.key.toLowerCase() === "e") {
+      selected = (selected + 1) % characters.length;
+    }
+    if (e.key === "Enter") {
+      player = Fighter(300, characters[selected]);
+      enemy = Fighter(520, characters[Math.floor(Math.random() * characters.length)]);
+      gameState = PLAY;
+    }
+  }
+});
 
 /* =====================
    LOOP
 ===================== */
 function loop() {
-  updateFighter(player, true);
-  enemyAI();
-  updateFighter(enemy, false);
-  draw();
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if (gameState === SELECT) {
+    drawSelect();
+  } else {
+    platforms.forEach(p => {
+      ctx.fillStyle = "#555";
+      ctx.fillRect(p.x, p.y, p.w, p.h);
+    });
+    updateFighter(player, true);
+    enemyAI();
+    updateFighter(enemy, false);
+    drawFighter(player);
+    drawFighter(enemy);
+  }
+
   requestAnimationFrame(loop);
 }
 
 loop();
 </script>
-
 </body>
 </html>
