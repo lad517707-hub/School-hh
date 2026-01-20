@@ -68,4 +68,166 @@ const player = {
 ======================= */
 function isWall(x, y) {
   if (x < 0 || y < 0 || x >= canvas.width || y >= canvas.height) return true;
-  const data = ctx.getImageDat
+  const data = ctx.getImageData(x, y, 1, 1).data;
+  const r = data[0], g = data[1], b = data[2];
+  return (r === 255 && g === 255 && b === 0) || (r === 139 && g === 69 && b === 19);
+}
+
+/* =======================
+   NPCs
+======================= */
+class NPC {
+  constructor(x, y, id) {
+    this.x = x;
+    this.y = y;
+    this.id = id;
+    this.alive = true;
+  }
+  draw() {
+    if (this.alive) ctx.drawImage(images.npc, this.x, this.y);
+  }
+}
+
+const npcs = [];
+for (let i = 0; i < 20; i++) {
+  npcs.push(new NPC(100 + i * 28, 360, i + 1));
+}
+
+/* =======================
+   MONSTERS
+======================= */
+class Monster {
+  constructor(x, y, id) {
+    this.x = x;
+    this.y = y;
+    this.id = id;
+    this.alive = true;
+  }
+  draw() {
+    if (this.alive) ctx.drawImage(images.monster, this.x, this.y);
+  }
+}
+
+const monsters = [
+  new Monster(400, 200, "MX-01"),
+  new Monster(440, 200, "MX-02")
+];
+
+/* =======================
+   GIGA MONSTERS
+======================= */
+class GigaMonster {
+  constructor(x, y) {
+    this.x = x;
+    this.y = y;
+    this.hits = 2;
+    this.speed = 0.7;
+    this.alive = true;
+  }
+  chase() {
+    const dx = player.x - this.x;
+    const dy = player.y - this.y;
+    const d = Math.hypot(dx, dy);
+    if (d > 0) {
+      this.x += (dx / d) * this.speed;
+      this.y += (dy / d) * this.speed;
+    }
+  }
+  draw() {
+    if (this.alive) ctx.drawImage(images.giga, this.x, this.y);
+  }
+}
+
+const gigas = [ new GigaMonster(500, 100) ];
+
+/* =======================
+   CAUGHT SEQUENCE
+======================= */
+let pan = 0;
+let fade = 0;
+
+/* =======================
+   MAIN LOOP
+======================= */
+function update() {
+  ctx.drawImage(images.office, 0, 0);
+
+  if (gameState === GAME_PLAYING) {
+
+    let dx = 0, dy = 0;
+    if (keys.w) dy -= player.speed;
+    if (keys.s) dy += player.speed;
+    if (keys.a) dx -= player.speed;
+    if (keys.d) dx += player.speed;
+
+    if (!isWall(player.x + dx, player.y)) player.x += dx;
+    if (!isWall(player.x, player.y + dy)) player.y += dy;
+
+    player.hasGun = keys["1"];
+    player.attacking = player.hasGun && keys[" "];
+
+    if (player.attacking && player.cooldown <= 0) {
+      player.cooldown = 20;
+
+      monsters.forEach(m => {
+        if (m.alive && Math.hypot(m.x - player.x, m.y - player.y) < 40) {
+          m.alive = false;
+        }
+      });
+
+      gigas.forEach(g => {
+        if (g.alive && Math.hypot(g.x - player.x, g.y - player.y) < 40) {
+          g.hits--;
+          if (g.hits <= 0) g.alive = false;
+        }
+      });
+    }
+
+    if (player.cooldown > 0) player.cooldown--;
+
+    gigas.forEach(g => {
+      if (g.alive) {
+        g.chase();
+        if (Math.hypot(g.x - player.x, g.y - player.y) < 16) {
+          gameState = GAME_CAUGHT;
+        }
+      }
+    });
+
+    const sprite =
+      player.attacking ? images.playerAttack :
+      player.hasGun ? images.playerGun :
+      images.playerNormal;
+
+    ctx.drawImage(sprite, player.x, player.y);
+
+    npcs.forEach(n => n.draw());
+    monsters.forEach(m => m.draw());
+    gigas.forEach(g => g.draw());
+
+  } else {
+    ctx.drawImage(images.caught, 0, -pan);
+    pan += 0.3;
+    fade += 1;
+    ctx.fillStyle = `rgba(0,0,0,${fade / 255})`;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  }
+
+  requestAnimationFrame(update);
+}
+
+/* =======================
+   NPC ID CHECK
+======================= */
+document.addEventListener("keydown", e => {
+  if (e.key.toLowerCase() === "r") {
+    const npc = npcs.find(n => n.alive);
+    console.log(npc ? "NPC ID: " + npc.id : "No NPCs left");
+  }
+});
+
+update();
+</script>
+
+</body>
+</html>
