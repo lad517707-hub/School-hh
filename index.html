@@ -178,14 +178,16 @@ function update(time) {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
   /* LOADING SCREEN */
-  if (loaded < TOTAL_IMAGES) {
-    ctx.fillStyle = "white";
-    ctx.font = "20px monospace";
-    ctx.fillText("Loading images...", 220, 220);
-    ctx.fillText(`${loaded} / ${TOTAL_IMAGES}`, 280, 250);
-    requestAnimationFrame(update);
-    return;
-  }
+  const FORCE_START_AFTER = 5000; // ms
+
+if (loaded < TOTAL_IMAGES && time < FORCE_START_AFTER) {
+  ctx.fillStyle = "white";
+  ctx.font = "20px monospace";
+  ctx.fillText("Loading images...", 220, 220);
+  ctx.fillText(`${loaded} / ${TOTAL_IMAGES}`, 280, 250);
+  requestAnimationFrame(update);
+  return;
+}
 
   ctx.drawImage(images.office, 0, 0);
 
