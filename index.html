@@ -37,7 +37,7 @@ const SELECT = 0, PLAY = 1;
 let state = SELECT;
 
 /* =====================
-   CHARACTERS (INSPIRED)
+   CHARACTERS
 ===================== */
 const roster = [
   { name:"WIZARD", color:"#c33", speed:4, power:8 },
@@ -53,19 +53,18 @@ const roster = [
 let selected = 0;
 
 /* =====================
-   FIGHTER FACTORY
+   FIGHTER
 ===================== */
 function Fighter(x, char, controls) {
   return {
-    x, y: 50,
+    x, y: 80,
     vx: 0, vy: 0,
-    w: 30, h: 50,
+    w: 28, h: 54,
     facing: 1,
     onGround: false,
     percent: 0,
-    special: 0,
+    meter: 0,
     state: "idle",
-    frame: 0,
     char,
     controls
   };
@@ -74,15 +73,30 @@ function Fighter(x, char, controls) {
 let p1, p2;
 
 /* =====================
-   PLATFORM
+   PLATFORMS
 ===================== */
 const platforms = [
   {x:200,y:380,w:500,h:20},
-  {x:100,y:280,w:180,h:15},
-  {x:620,y:280,w:180,h:15}
+  {x:120,y:280,w:180,h:15},
+  {x:600,y:280,w:180,h:15}
 ];
 
 const gravity = 0.6;
+
+/* =====================
+   FIREBALL ULTIMATE
+===================== */
+const fireballs = [];
+
+function spawnFireball(owner, target) {
+  fireballs.push({
+    x: owner.x + owner.facing * 30,
+    y: owner.y + 20,
+    r: 18,
+    target,
+    life: 240
+  });
+}
 
 /* =====================
    COLLISION
@@ -93,19 +107,20 @@ function hit(a,b){
 }
 
 /* =====================
-   ATTACKS
+   ATTACK
 ===================== */
 function attack(attacker, target, strength){
   const box = {
-    x: attacker.x + attacker.facing*attacker.w,
-    y: attacker.y+20,
-    w: 25, h: 20
+    x: attacker.x + attacker.facing * attacker.w,
+    y: attacker.y + 18,
+    w: 26,
+    h: 22
   };
   if(hit(box,target)){
     target.percent += strength;
-    target.vx = attacker.facing*(4+target.percent*0.04);
+    target.vx = attacker.facing * (4 + target.percent * 0.04);
     target.vy = -6;
-    attacker.special = Math.min(100, attacker.special+10);
+    attacker.meter = Math.min(100, attacker.meter + 15);
   }
 }
 
@@ -120,23 +135,16 @@ function updateFighter(f, enemy){
   else f.state="idle";
 
   if(keys[c.jump] && f.onGround){
-    f.vy=-12; f.onGround=false; f.state="jump";
+    f.vy=-12;
+    f.onGround=false;
   }
 
-  if(keys[c.punch]){
-    f.state="punch";
-    attack(f,enemy,f.char.power);
-  }
+  if(keys[c.punch]){ f.state="punch"; attack(f,enemy,f.char.power); }
+  if(keys[c.kick]){ f.state="kick"; attack(f,enemy,f.char.power+2); }
 
-  if(keys[c.kick]){
-    f.state="kick";
-    attack(f,enemy,f.char.power+2);
-  }
-
-  if(keys[c.special] && f.special>=100){
-    f.state="special";
-    attack(f,enemy,f.char.power*2);
-    f.special=0;
+  if(keys[c.ultimate] && f.meter>=100){
+    spawnFireball(f,enemy);
+    f.meter=0;
   }
 
   f.vy+=gravity;
@@ -155,103 +163,6 @@ function updateFighter(f, enemy){
 
   if(f.y>canvas.height+200){
     f.x=300+Math.random()*200;
-    f.y=0; f.percent=0; f.vx=f.vy=0;
-  }
-}
-
-/* =====================
-   DRAW SPRITE (PROCEDURAL)
-===================== */
-function drawFighter(f){
-  ctx.save();
-  ctx.translate(f.x+f.w/2,f.y+f.h/2);
-  ctx.scale(f.facing,1);
-
-  // body
-  ctx.fillStyle=f.char.color;
-  ctx.fillRect(-10,0,20,25);
-
-  // head
-  ctx.fillStyle="black";
-  ctx.fillRect(-8,-18,16,18);
-
-  // visor
-  ctx.fillStyle="white";
-  ctx.fillRect(-6,-14,12,4);
-
-  // arms
-  ctx.fillStyle=f.char.color;
-  let armOffset = f.state==="punch"?15:5;
-  ctx.fillRect(10,5,armOffset,6);
-  ctx.fillRect(-10-armOffset,5,armOffset,6);
-
-  // legs
-  ctx.fillRect(-8,25,6,15);
-  ctx.fillRect(2,25,6,15);
-
-  ctx.restore();
-
-  ctx.fillStyle="white";
-  ctx.fillText(Math.floor(f.percent)+"%",f.x,f.y-5);
-
-  // special meter
-  ctx.fillStyle="cyan";
-  ctx.fillRect(f.x,f.y+f.h+4,f.special/2,4);
-}
-
-/* =====================
-   SELECT SCREEN
-===================== */
-function drawSelect(){
-  ctx.fillStyle="white";
-  ctx.font="28px monospace";
-  ctx.fillText("SELECT FIGHTER",320,70);
-  roster.forEach((c,i)=>{
-    ctx.fillStyle=i===selected?"yellow":"white";
-    ctx.fillText(c.name,360,130+i*30);
-  });
-  ctx.font="16px monospace";
-  ctx.fillText("E = Change   ENTER = Start",320,450);
-}
-
-/* =====================
-   INPUT
-===================== */
-addEventListener("keydown",e=>{
-  if(state===SELECT){
-    if(e.key.toLowerCase()==="e") selected=(selected+1)%roster.length;
-    if(e.key==="Enter"){
-      p1=Fighter(300,roster[selected],
-        {left:"a",right:"d",jump:"w",punch:" ",kick:"s",special:"q"});
-      p2=Fighter(520,roster[(selected+1)%roster.length],
-        {left:"arrowleft",right:"arrowright",jump:"arrowup",punch:"1",kick:"2",special:""});
-      state=PLAY;
-    }
-  }
-});
-
-/* =====================
-   LOOP
-===================== */
-function loop(){
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  if(state===SELECT){
-    drawSelect();
-  }else{
-    platforms.forEach(p=>{
-      ctx.fillStyle="#555";
-      ctx.fillRect(p.x,p.y,p.w,p.h);
-    });
-    updateFighter(p1,p2);
-    updateFighter(p2,p1);
-    drawFighter(p1);
-    drawFighter(p2);
-  }
-  requestAnimationFrame(loop);
-}
-
-loop();
-</script>
-</body>
-</html>
+    f.y=0;
+    f.percent=0;
+    f.
