@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Smash-Style Test (FIXED)</title>
+<title>Smash-Style Game (300% KO)</title>
 <style>
 body {
   margin: 0;
@@ -46,7 +46,6 @@ function makePlayer(x, color, controls) {
     onGround: false,
     percent: 0,
     meter: 0,
-    attacking: false,
     controls,
     color
   };
@@ -84,7 +83,7 @@ function spawnFireball(owner, target) {
 }
 
 /* =====================
-   HIT CHECK
+   COLLISION
 ===================== */
 function hit(a, b) {
   return a.x < b.x + b.w &&
@@ -109,6 +108,20 @@ function attack(attacker, target) {
     target.vx = attacker.facing * (4 + target.percent * 0.03);
     target.vy = -6;
     attacker.meter = Math.min(100, attacker.meter + 20);
+  }
+}
+
+/* =====================
+   KO CHECK (300%)
+===================== */
+function checkKO(p) {
+  if (p.percent >= 300) {
+    p.x = Math.random() * 600 + 150;
+    p.y = 0;
+    p.vx = 0;
+    p.vy = 0;
+    p.percent = 0;
+    p.meter = 0;
   }
 }
 
@@ -152,10 +165,15 @@ function updatePlayer(p, enemy) {
   }
 
   if (p.y > canvas.height + 200) {
-    p.x = Math.random() * 600 + 100;
+    p.x = Math.random() * 600 + 150;
     p.y = 0;
+    p.vx = 0;
+    p.vy = 0;
     p.percent = 0;
+    p.meter = 0;
   }
+
+  checkKO(p);
 }
 
 /* =====================
@@ -246,7 +264,6 @@ function drawFireballs() {
 function loop() {
   ctx.clearRect(0, 0, canvas.width, canvas.height);
 
-  // Ground
   ctx.fillStyle = "#444";
   ctx.fillRect(0, groundY, canvas.width, 10);
 
