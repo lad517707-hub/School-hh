@@ -2,20 +2,20 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Kamen Rider Smash</title>
+<title>Masked Fighters Arena</title>
 <style>
-  body {
-    margin: 0;
-    background: #000;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    height: 100vh;
-  }
-  canvas {
-    background: #111;
-    border: 2px solid white;
-  }
+body {
+  margin: 0;
+  background: black;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+canvas {
+  background: #111;
+  border: 2px solid white;
+}
 </style>
 </head>
 <body>
@@ -31,52 +31,55 @@ addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
 addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 /* =====================
-   GAME STATES
+   GAME STATE
 ===================== */
-const SELECT = 0;
-const PLAY = 1;
-let gameState = SELECT;
+const SELECT = 0, PLAY = 1;
+let state = SELECT;
 
 /* =====================
-   CHARACTERS
+   CHARACTERS (INSPIRED)
 ===================== */
-const characters = [
-  { name: "WIZARD", color: "#c33", speed: 4, power: 8 },
-  { name: "GHOST", color: "#ddd", speed: 5, power: 6 },
-  { name: "GAIM", color: "#fa3", speed: 4, power: 7 },
-  { name: "DRIVE", color: "#f00", speed: 6, power: 5 },
-  { name: "OOO", color: "#ff0", speed: 4, power: 8 },
-  { name: "DOUBLE", color: "#0f0", speed: 4, power: 7 },
-  { name: "REVI", color: "#4af", speed: 5, power: 6 },
-  { name: "VICE", color: "#a4f", speed: 5, power: 6 }
+const roster = [
+  { name:"WIZARD", color:"#c33", speed:4, power:8 },
+  { name:"GHOST", color:"#ddd", speed:5, power:6 },
+  { name:"GAIM", color:"#fa3", speed:4, power:7 },
+  { name:"DRIVE", color:"#f00", speed:6, power:5 },
+  { name:"OOO", color:"#ff0", speed:4, power:8 },
+  { name:"DOUBLE", color:"#0f0", speed:4, power:7 },
+  { name:"REVI", color:"#4af", speed:5, power:6 },
+  { name:"VICE", color:"#a4f", speed:5, power:6 }
 ];
 
 let selected = 0;
 
 /* =====================
-   FIGHTER
+   FIGHTER FACTORY
 ===================== */
-function Fighter(x, char) {
+function Fighter(x, char, controls) {
   return {
-    x, y: 100,
-    w: 40, h: 50,
+    x, y: 50,
     vx: 0, vy: 0,
+    w: 30, h: 50,
+    facing: 1,
     onGround: false,
     percent: 0,
-    facing: 1,
-    char
+    special: 0,
+    state: "idle",
+    frame: 0,
+    char,
+    controls
   };
 }
 
-let player, enemy;
+let p1, p2;
 
 /* =====================
    PLATFORM
 ===================== */
 const platforms = [
-  { x: 200, y: 380, w: 500, h: 20 },
-  { x: 100, y: 280, w: 180, h: 15 },
-  { x: 620, y: 280, w: 180, h: 15 }
+  {x:200,y:380,w:500,h:20},
+  {x:100,y:280,w:180,h:15},
+  {x:620,y:280,w:180,h:15}
 ];
 
 const gravity = 0.6;
@@ -84,120 +87,145 @@ const gravity = 0.6;
 /* =====================
    COLLISION
 ===================== */
-function hit(a, b) {
-  return (
-    a.x < b.x + b.w &&
-    a.x + a.w > b.x &&
-    a.y < b.y + b.h &&
-    a.y + a.h > b.y
-  );
+function hit(a,b){
+  return a.x < b.x+b.w && a.x+a.w > b.x &&
+         a.y < b.y+b.h && a.y+a.h > b.y;
 }
 
 /* =====================
-   ATTACK
+   ATTACKS
 ===================== */
-function attack(attacker, target) {
+function attack(attacker, target, strength){
   const box = {
-    x: attacker.x + attacker.facing * attacker.w,
-    y: attacker.y + 15,
-    w: 25,
-    h: 20
+    x: attacker.x + attacker.facing*attacker.w,
+    y: attacker.y+20,
+    w: 25, h: 20
   };
-  if (hit(box, target)) {
-    target.percent += attacker.char.power;
-    target.vx = attacker.facing * (4 + target.percent * 0.04);
+  if(hit(box,target)){
+    target.percent += strength;
+    target.vx = attacker.facing*(4+target.percent*0.04);
     target.vy = -6;
+    attacker.special = Math.min(100, attacker.special+10);
   }
 }
 
 /* =====================
    UPDATE FIGHTER
 ===================== */
-function updateFighter(f, control) {
-  if (control) {
-    if (keys.a) { f.vx = -f.char.speed; f.facing = -1; }
-    if (keys.d) { f.vx =  f.char.speed; f.facing = 1; }
-    if (keys.w && f.onGround) {
-      f.vy = -12;
-      f.onGround = false;
-    }
-    if (keys[" "]) attack(f, enemy);
+function updateFighter(f, enemy){
+  const c = f.controls;
+
+  if(keys[c.left]){ f.vx=-f.char.speed; f.facing=-1; f.state="walk"; }
+  else if(keys[c.right]){ f.vx=f.char.speed; f.facing=1; f.state="walk"; }
+  else f.state="idle";
+
+  if(keys[c.jump] && f.onGround){
+    f.vy=-12; f.onGround=false; f.state="jump";
   }
 
-  f.vy += gravity;
-  f.x += f.vx;
-  f.y += f.vy;
-  f.vx *= 0.8;
+  if(keys[c.punch]){
+    f.state="punch";
+    attack(f,enemy,f.char.power);
+  }
 
-  f.onGround = false;
-  platforms.forEach(p => {
-    if (hit(f, p) && f.vy >= 0) {
-      f.y = p.y - f.h;
-      f.vy = 0;
-      f.onGround = true;
+  if(keys[c.kick]){
+    f.state="kick";
+    attack(f,enemy,f.char.power+2);
+  }
+
+  if(keys[c.special] && f.special>=100){
+    f.state="special";
+    attack(f,enemy,f.char.power*2);
+    f.special=0;
+  }
+
+  f.vy+=gravity;
+  f.x+=f.vx;
+  f.y+=f.vy;
+  f.vx*=0.8;
+
+  f.onGround=false;
+  platforms.forEach(p=>{
+    if(hit(f,p)&&f.vy>=0){
+      f.y=p.y-f.h;
+      f.vy=0;
+      f.onGround=true;
     }
   });
 
-  if (f.y > canvas.height + 200) {
-    f.y = 0;
-    f.x = Math.random() * 400 + 200;
-    f.percent = 0;
-    f.vx = f.vy = 0;
+  if(f.y>canvas.height+200){
+    f.x=300+Math.random()*200;
+    f.y=0; f.percent=0; f.vx=f.vy=0;
   }
 }
 
 /* =====================
-   ENEMY AI
+   DRAW SPRITE (PROCEDURAL)
 ===================== */
-function enemyAI() {
-  if (enemy.x < player.x) enemy.vx = 2;
-  if (enemy.x > player.x) enemy.vx = -2;
-  if (Math.random() < 0.01 && enemy.onGround) enemy.vy = -11;
-  if (Math.abs(enemy.x - player.x) < 50) attack(enemy, player);
-}
+function drawFighter(f){
+  ctx.save();
+  ctx.translate(f.x+f.w/2,f.y+f.h/2);
+  ctx.scale(f.facing,1);
 
-/* =====================
-   DRAW
-===================== */
-function drawFighter(f) {
-  ctx.fillStyle = f.char.color;
-  ctx.fillRect(f.x, f.y, f.w, f.h);
-  ctx.fillStyle = "black";
-  ctx.fillText(f.char.name[0], f.x + 14, f.y + 32);
-  ctx.fillStyle = "white";
-  ctx.fillText(Math.floor(f.percent) + "%", f.x, f.y - 5);
+  // body
+  ctx.fillStyle=f.char.color;
+  ctx.fillRect(-10,0,20,25);
+
+  // head
+  ctx.fillStyle="black";
+  ctx.fillRect(-8,-18,16,18);
+
+  // visor
+  ctx.fillStyle="white";
+  ctx.fillRect(-6,-14,12,4);
+
+  // arms
+  ctx.fillStyle=f.char.color;
+  let armOffset = f.state==="punch"?15:5;
+  ctx.fillRect(10,5,armOffset,6);
+  ctx.fillRect(-10-armOffset,5,armOffset,6);
+
+  // legs
+  ctx.fillRect(-8,25,6,15);
+  ctx.fillRect(2,25,6,15);
+
+  ctx.restore();
+
+  ctx.fillStyle="white";
+  ctx.fillText(Math.floor(f.percent)+"%",f.x,f.y-5);
+
+  // special meter
+  ctx.fillStyle="cyan";
+  ctx.fillRect(f.x,f.y+f.h+4,f.special/2,4);
 }
 
 /* =====================
    SELECT SCREEN
 ===================== */
-function drawSelect() {
-  ctx.fillStyle = "white";
-  ctx.font = "30px monospace";
-  ctx.fillText("CHARACTER SELECT", 280, 80);
-
-  characters.forEach((c, i) => {
-    ctx.fillStyle = i === selected ? "yellow" : "white";
-    ctx.fillText(c.name, 350, 140 + i * 35);
+function drawSelect(){
+  ctx.fillStyle="white";
+  ctx.font="28px monospace";
+  ctx.fillText("SELECT FIGHTER",320,70);
+  roster.forEach((c,i)=>{
+    ctx.fillStyle=i===selected?"yellow":"white";
+    ctx.fillText(c.name,360,130+i*30);
   });
-
-  ctx.font = "18px monospace";
-  ctx.fillText("Press E to change character", 300, 430);
-  ctx.fillText("Press ENTER to start", 330, 460);
+  ctx.font="16px monospace";
+  ctx.fillText("E = Change   ENTER = Start",320,450);
 }
 
 /* =====================
    INPUT
 ===================== */
-addEventListener("keydown", e => {
-  if (gameState === SELECT) {
-    if (e.key.toLowerCase() === "e") {
-      selected = (selected + 1) % characters.length;
-    }
-    if (e.key === "Enter") {
-      player = Fighter(300, characters[selected]);
-      enemy = Fighter(520, characters[Math.floor(Math.random() * characters.length)]);
-      gameState = PLAY;
+addEventListener("keydown",e=>{
+  if(state===SELECT){
+    if(e.key.toLowerCase()==="e") selected=(selected+1)%roster.length;
+    if(e.key==="Enter"){
+      p1=Fighter(300,roster[selected],
+        {left:"a",right:"d",jump:"w",punch:" ",kick:"s",special:"q"});
+      p2=Fighter(520,roster[(selected+1)%roster.length],
+        {left:"arrowleft",right:"arrowright",jump:"arrowup",punch:"1",kick:"2",special:""});
+      state=PLAY;
     }
   }
 });
@@ -205,23 +233,21 @@ addEventListener("keydown", e => {
 /* =====================
    LOOP
 ===================== */
-function loop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
+function loop(){
+  ctx.clearRect(0,0,canvas.width,canvas.height);
 
-  if (gameState === SELECT) {
+  if(state===SELECT){
     drawSelect();
-  } else {
-    platforms.forEach(p => {
-      ctx.fillStyle = "#555";
-      ctx.fillRect(p.x, p.y, p.w, p.h);
+  }else{
+    platforms.forEach(p=>{
+      ctx.fillStyle="#555";
+      ctx.fillRect(p.x,p.y,p.w,p.h);
     });
-    updateFighter(player, true);
-    enemyAI();
-    updateFighter(enemy, false);
-    drawFighter(player);
-    drawFighter(enemy);
+    updateFighter(p1,p2);
+    updateFighter(p2,p1);
+    drawFighter(p1);
+    drawFighter(p2);
   }
-
   requestAnimationFrame(loop);
 }
 
