@@ -2,7 +2,7 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Masked Fighters Arena</title>
+<title>Smash-Style Test (FIXED)</title>
 <style>
 body {
   margin: 0;
@@ -26,143 +26,242 @@ canvas {
 const canvas = document.getElementById("game");
 const ctx = canvas.getContext("2d");
 
+/* =====================
+   INPUT
+===================== */
 const keys = {};
-addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
 
 /* =====================
-   GAME STATE
+   PLAYER FACTORY
 ===================== */
-const SELECT = 0, PLAY = 1;
-let state = SELECT;
-
-/* =====================
-   CHARACTERS
-===================== */
-const roster = [
-  { name:"WIZARD", color:"#c33", speed:4, power:8 },
-  { name:"GHOST", color:"#ddd", speed:5, power:6 },
-  { name:"GAIM", color:"#fa3", speed:4, power:7 },
-  { name:"DRIVE", color:"#f00", speed:6, power:5 },
-  { name:"OOO", color:"#ff0", speed:4, power:8 },
-  { name:"DOUBLE", color:"#0f0", speed:4, power:7 },
-  { name:"REVI", color:"#4af", speed:5, power:6 },
-  { name:"VICE", color:"#a4f", speed:5, power:6 }
-];
-
-let selected = 0;
-
-/* =====================
-   FIGHTER
-===================== */
-function Fighter(x, char, controls) {
+function makePlayer(x, color, controls) {
   return {
-    x, y: 80,
+    x, y: 300,
+    w: 30, h: 55,
     vx: 0, vy: 0,
-    w: 28, h: 54,
+    speed: 4,
     facing: 1,
     onGround: false,
     percent: 0,
     meter: 0,
-    state: "idle",
-    char,
-    controls
+    attacking: false,
+    controls,
+    color
   };
 }
 
-let p1, p2;
+const p1 = makePlayer(250, "red", {
+  left: "a", right: "d", jump: "w",
+  attack: " ", ultimate: "q"
+});
+
+const p2 = makePlayer(600, "cyan", {
+  left: "arrowleft", right: "arrowright", jump: "arrowup",
+  attack: "alt", ultimate: "shift"
+});
 
 /* =====================
-   PLATFORMS
+   PHYSICS
 ===================== */
-const platforms = [
-  {x:200,y:380,w:500,h:20},
-  {x:120,y:280,w:180,h:15},
-  {x:600,y:280,w:180,h:15}
-];
-
-const gravity = 0.6;
+const gravity = 0.7;
+const groundY = 380;
 
 /* =====================
-   FIREBALL ULTIMATE
+   FIREBALLS
 ===================== */
 const fireballs = [];
 
 function spawnFireball(owner, target) {
   fireballs.push({
     x: owner.x + owner.facing * 30,
-    y: owner.y + 20,
-    r: 18,
+    y: owner.y + 25,
+    r: 16,
     target,
     life: 240
   });
 }
 
 /* =====================
-   COLLISION
+   HIT CHECK
 ===================== */
-function hit(a,b){
-  return a.x < b.x+b.w && a.x+a.w > b.x &&
-         a.y < b.y+b.h && a.y+a.h > b.y;
+function hit(a, b) {
+  return a.x < b.x + b.w &&
+         a.x + a.w > b.x &&
+         a.y < b.y + b.h &&
+         a.y + a.h > b.y;
 }
 
 /* =====================
    ATTACK
 ===================== */
-function attack(attacker, target, strength){
+function attack(attacker, target) {
   const box = {
     x: attacker.x + attacker.facing * attacker.w,
-    y: attacker.y + 18,
-    w: 26,
-    h: 22
+    y: attacker.y + 20,
+    w: 25,
+    h: 20
   };
-  if(hit(box,target)){
-    target.percent += strength;
-    target.vx = attacker.facing * (4 + target.percent * 0.04);
+
+  if (hit(box, target)) {
+    target.percent += 8;
+    target.vx = attacker.facing * (4 + target.percent * 0.03);
     target.vy = -6;
-    attacker.meter = Math.min(100, attacker.meter + 15);
+    attacker.meter = Math.min(100, attacker.meter + 20);
   }
 }
 
 /* =====================
-   UPDATE FIGHTER
+   UPDATE PLAYER
 ===================== */
-function updateFighter(f, enemy){
-  const c = f.controls;
+function updatePlayer(p, enemy) {
+  const c = p.controls;
 
-  if(keys[c.left]){ f.vx=-f.char.speed; f.facing=-1; f.state="walk"; }
-  else if(keys[c.right]){ f.vx=f.char.speed; f.facing=1; f.state="walk"; }
-  else f.state="idle";
-
-  if(keys[c.jump] && f.onGround){
-    f.vy=-12;
-    f.onGround=false;
+  if (keys[c.left]) {
+    p.vx = -p.speed;
+    p.facing = -1;
+  } else if (keys[c.right]) {
+    p.vx = p.speed;
+    p.facing = 1;
   }
 
-  if(keys[c.punch]){ f.state="punch"; attack(f,enemy,f.char.power); }
-  if(keys[c.kick]){ f.state="kick"; attack(f,enemy,f.char.power+2); }
-
-  if(keys[c.ultimate] && f.meter>=100){
-    spawnFireball(f,enemy);
-    f.meter=0;
+  if (keys[c.jump] && p.onGround) {
+    p.vy = -12;
+    p.onGround = false;
   }
 
-  f.vy+=gravity;
-  f.x+=f.vx;
-  f.y+=f.vy;
-  f.vx*=0.8;
+  if (keys[c.attack]) {
+    attack(p, enemy);
+  }
 
-  f.onGround=false;
-  platforms.forEach(p=>{
-    if(hit(f,p)&&f.vy>=0){
-      f.y=p.y-f.h;
-      f.vy=0;
-      f.onGround=true;
+  if (keys[c.ultimate] && p.meter >= 100) {
+    spawnFireball(p, enemy);
+    p.meter = 0;
+  }
+
+  p.vy += gravity;
+  p.x += p.vx;
+  p.y += p.vy;
+  p.vx *= 0.8;
+
+  if (p.y + p.h >= groundY) {
+    p.y = groundY - p.h;
+    p.vy = 0;
+    p.onGround = true;
+  }
+
+  if (p.y > canvas.height + 200) {
+    p.x = Math.random() * 600 + 100;
+    p.y = 0;
+    p.percent = 0;
+  }
+}
+
+/* =====================
+   DRAW PLAYER
+===================== */
+function drawPlayer(p) {
+  ctx.save();
+  ctx.translate(p.x + p.w / 2, p.y + p.h / 2);
+  ctx.scale(p.facing, 1);
+
+  ctx.strokeStyle = p.color;
+  ctx.lineWidth = 4;
+
+  // Head
+  ctx.beginPath();
+  ctx.arc(0, -18, 8, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // Torso
+  ctx.beginPath();
+  ctx.moveTo(0, -10);
+  ctx.lineTo(0, 20);
+  ctx.stroke();
+
+  // Arms
+  ctx.beginPath();
+  ctx.moveTo(0, 0);
+  ctx.lineTo(18, 8);
+  ctx.moveTo(0, 4);
+  ctx.lineTo(-12, 12);
+  ctx.stroke();
+
+  // Legs
+  ctx.beginPath();
+  ctx.moveTo(0, 20);
+  ctx.lineTo(8, 42);
+  ctx.moveTo(0, 20);
+  ctx.lineTo(-8, 42);
+  ctx.stroke();
+
+  ctx.restore();
+
+  ctx.fillStyle = "white";
+  ctx.fillText(Math.floor(p.percent) + "%", p.x, p.y - 6);
+
+  ctx.fillStyle = "cyan";
+  ctx.fillRect(p.x, p.y + p.h + 4, p.meter / 2, 4);
+}
+
+/* =====================
+   FIREBALL UPDATE
+===================== */
+function updateFireballs() {
+  for (let i = fireballs.length - 1; i >= 0; i--) {
+    const f = fireballs[i];
+    const dx = f.target.x - f.x;
+    const dy = f.target.y - f.y;
+    const d = Math.hypot(dx, dy) || 1;
+
+    f.x += dx / d * 4;
+    f.y += dy / d * 4;
+    f.life--;
+
+    if (hit({ x: f.x - f.r, y: f.y - f.r, w: f.r * 2, h: f.r * 2 }, f.target)) {
+      f.target.percent += 15;
+      f.target.vx += dx / d * 6;
+      f.target.vy = -8;
+      fireballs.splice(i, 1);
+      continue;
     }
-  });
 
-  if(f.y>canvas.height+200){
-    f.x=300+Math.random()*200;
-    f.y=0;
-    f.percent=0;
-    f.
+    if (f.life <= 0) fireballs.splice(i, 1);
+  }
+}
+
+function drawFireballs() {
+  fireballs.forEach(f => {
+    ctx.fillStyle = "orange";
+    ctx.beginPath();
+    ctx.arc(f.x, f.y, f.r, 0, Math.PI * 2);
+    ctx.fill();
+  });
+}
+
+/* =====================
+   GAME LOOP
+===================== */
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  // Ground
+  ctx.fillStyle = "#444";
+  ctx.fillRect(0, groundY, canvas.width, 10);
+
+  updatePlayer(p1, p2);
+  updatePlayer(p2, p1);
+  updateFireballs();
+
+  drawPlayer(p1);
+  drawPlayer(p2);
+  drawFireballs();
+
+  requestAnimationFrame(loop);
+}
+
+loop();
+</script>
+</body>
+</html>
