@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AI Dungeon Master D&D - Pixel Edition</title>
+    <title>AI Dungeon Master D&D - Pixel Edition (Fixed)</title>
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
         body {
@@ -15,11 +15,7 @@
             text-align: center;
             overflow-x: hidden;
         }
-        #container {
-            max-width: 1000px;
-            margin: 0 auto;
-            padding: 20px;
-        }
+        #container { max-width: 1000px; margin: 0 auto; padding: 20px; }
         h1 { color: #8bac0f; text-shadow: 2px 2px 0 #0f574f; }
         button {
             background: linear-gradient(#306230, #38b554);
@@ -34,7 +30,6 @@
             box-shadow: 2px 2px 0 #0f574f;
         }
         button:hover { background: linear-gradient(#38b554, #8bac0f); transform: translateY(-1px); }
-        button:active { box-shadow: 1px 1px 0 #0f574f; transform: translateY(0); }
         select, input {
             padding: 10px;
             margin: 5px;
@@ -63,15 +58,11 @@
             margin: 30px 0;
             gap: 60px;
         }
-        .model-container {
-            position: relative;
-            width: 160px;
-        }
+        .model-container { position: relative; width: 160px; }
         .pixel-model {
             width: 128px;
             height: 128px;
             margin: 0 auto;
-            position: relative;
             image-rendering: pixelated;
             border: 3px solid #8bac0f;
             box-shadow: 0 0 10px #8bac0f;
@@ -114,7 +105,6 @@
             background: #0f380f;
             border: 2px solid #306230;
             margin: 10px auto;
-            border-radius: 0;
             overflow: hidden;
         }
         .health-fill {
@@ -123,8 +113,7 @@
             transition: width 0.5s ease;
         }
         #story { font-size: 12px; padding: 20px; background: rgba(15,56,15,0.8); border: 3px solid #306230; margin: 20px 0; min-height: 100px; }
-        #dice, #action-buttons { margin: 20px 0; }
-        #quest-log { background: rgba(139,172,15,0.2); border: 2px solid #8bac0f; padding: 10px; margin: 10px 0; font-size: 10px; }
+        #action-buttons { margin: 20px 0; }
         #death {
             position: fixed;
             inset: 0;
@@ -135,13 +124,8 @@
             justify-content: center;
             font-size: 24px;
             color: #ff5252;
-            animation: pulse 1.5s infinite;
         }
-        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.6; } }
         .bg-forest { background: linear-gradient(to bottom, #0f574f, #0f380f, #306230); }
-        .bg-dungeon { background: linear-gradient(to bottom, #0f0f0f, #1a1a1a, #2a2a2a); }
-        .bg-mountain { background: linear-gradient(to bottom, #8bac0f, #306230, #0f380f); }
-        .bg-tavern { background: linear-gradient(to bottom, #daa520, #cd853f, #8b4513); }
     </style>
 </head>
 <body class="bg-forest">
@@ -149,7 +133,7 @@
 <div id="container">
     <div id="creation">
         <h1>Summon the Dungeon Master</h1>
-        <label>Race:</label>
+        <label>Race:</label><br>
         <select id="race">
             <option value="human">Human</option>
             <option value="elf">Elf</option>
@@ -157,7 +141,7 @@
             <option value="orc">Orc</option>
         </select><br><br>
 
-        <label>Class:</label>
+        <label>Class:</label><br>
         <select id="class">
             <option value="fighter">Fighter</option>
             <option value="wizard">Wizard</option>
@@ -165,19 +149,19 @@
             <option value="cleric">Cleric</option>
         </select><br><br>
 
-        <label>Level (1–10):</label>
+        <label>Level (1–10):</label><br>
         <input type="number" id="level" value="1" min="1" max="10"><br><br>
 
-        <label>Weapons (comma separated):</label>
+        <label>Weapons:</label><br>
         <input type="text" id="weapons" value="Shortsword, Dagger"><br><br>
 
-        <label>Armor:</label>
+        <label>Armor:</label><br>
         <input type="text" id="armor" value="Leather Armor"><br><br>
 
-        <label>Spells (comma separated):</label>
+        <label>Spells:</label><br>
         <input type="text" id="spells" value="Firebolt, Cure Wounds"><br><br>
 
-        <label>Inventory (comma separated):</label>
+        <label>Inventory:</label><br>
         <input type="text" id="inventory" value="Healing Potion x3, Torch"><br><br>
 
         <button onclick="startAdventure()">Begin Quest</button>
@@ -185,45 +169,28 @@
 
     <div id="game">
         <h1 id="quest-title">Quest Loading...</h1>
-
-        <div id="dm-narration">
-            <strong>DM:</strong> Welcome, Elias of Chicago. The winds carry your name to the realms beyond...
-        </div>
-
+        <div id="dm-narration"><strong>DM:</strong> Welcome, Elias...</div>
         <div class="combat-area">
             <div class="model-container">
                 <div class="pixel-model" id="player-model"></div>
-                <div class="stats-bar" id="player-stats">Your hero</div>
+                <div class="stats-bar" id="player-stats"></div>
                 <div class="health-bar"><div class="health-fill" id="player-hp-fill"></div></div>
             </div>
-
             <div class="model-container">
                 <div class="pixel-model" id="enemy-model" style="display:none;"></div>
-                <div class="stats-bar" id="enemy-stats">Enemy</div>
+                <div class="stats-bar" id="enemy-stats"></div>
                 <div class="health-bar" id="enemy-hp-bar" style="display:none;">
                     <div class="health-fill" id="enemy-hp-fill"></div>
                 </div>
             </div>
         </div>
-
         <div id="story">The tale begins...</div>
-
         <div id="action-buttons"></div>
-
         <div id="dice" style="display:none;">
             <button onclick="rollAttack()">Attack (Weapon)</button>
-            <button onclick="rollSpell()">Cast Spell</button>
-            <button onclick="usePotion()">Use Potion</button>
             <p id="roll-result"></p>
         </div>
-
-        <div id="shop" style="display:none;">
-            <h2>Traveler's Stall</h2>
-            <div id="shop-items"></div>
-            <button onclick="exitShop()">Leave</button>
-        </div>
-
-        <div id="quest-log">Quest Progress: 0%</div>
+        <div id="quest-log">Progress: 0%</div>
     </div>
 
     <div id="death">
@@ -235,37 +202,56 @@
 
 <script>
 let char = {};
-let currentHP, maxHP;
-let gold = 0, silver = 0, copper = 0;
-let enemy = { name: "", hp: 0, maxHp: 0 };
+let currentHP = 20;
+let maxHP = 20;
 let inCombat = false;
 let playerTurn = true;
+let enemy = { name: "", hp: 0, maxHp: 0 };
 
 function startAdventure() {
+    // Reset important values
+    currentHP = 20;
+    maxHP = 20;
+    inCombat = false;
+
     char.race     = document.getElementById("race").value;
     char.class    = document.getElementById("class").value;
-    char.level    = parseInt(document.getElementById("level").value);
+    char.level    = parseInt(document.getElementById("level").value) || 1;
     char.weapons  = document.getElementById("weapons").value.split(",").map(s=>s.trim()).filter(Boolean);
-    char.armor    = document.getElementById("armor").value.trim();
+    char.armor    = document.getElementById("armor").value.trim() || "None";
     char.spells   = document.getElementById("spells").value.split(",").map(s=>s.trim()).filter(Boolean);
     char.inventory = document.getElementById("inventory").value.split(",").map(s=>s.trim()).filter(Boolean);
 
-    maxHP = 15 + char.level * 7 + (char.class === "fighter" ? 12 : 0);
-    currentHP = maxHP;
+    // Calculate HP AFTER reading level/class
+    maxHP = 15 + (char.level * 7) + (char.class === "fighter" ? 12 : 0);
+    currentHP = maxHP;  // Make sure this runs AFTER maxHP is set
+
+    // Debug
+    console.log("Character created:", char);
+    console.log("HP set to:", currentHP, "/", maxHP);
 
     renderPixelModel("player-model", char.race, true);
     document.getElementById("player-stats").textContent = `${char.race} ${char.class} Lv${char.level}  HP:${currentHP}/${maxHP}`;
 
     document.getElementById("creation").style.display = "none";
     document.getElementById("game").style.display = "block";
+    document.getElementById("death").style.display = "none";
 
-    dmSpeak(`Elias of Chicago, the mists part before you. You are a ${char.race} ${char.class}, armed with ${char.weapons.join(" & ")}. Your journey begins now...`);
+    dmSpeak(`Elias of Chicago, the mists part. You are a ${char.race} ${char.class}. Your journey begins now...`);
+    updatePlayerHP();
     nextEncounter();
 }
 
 function dmSpeak(text) {
     document.getElementById("dm-narration").innerHTML += `<br><strong>DM:</strong> ${text}`;
     document.getElementById("dm-narration").scrollTop = document.getElementById("dm-narration").scrollHeight;
+}
+
+function updatePlayerHP() {
+    const perc = Math.max(0, Math.min(100, (currentHP / maxHP) * 100));
+    document.getElementById("player-hp-fill").style.width = perc + "%";
+    document.getElementById("player-stats").textContent = `${char.race} ${char.class} Lv${char.level}  HP:${currentHP}/${maxHP}`;
+    console.log("HP updated:", currentHP, perc + "%");
 }
 
 function renderPixelModel(id, race, isPlayer) {
@@ -276,21 +262,9 @@ function renderPixelModel(id, race, isPlayer) {
         px.className = "px";
         el.appendChild(px);
     }
-
-    // Simple 16×16 pattern - head / body / legs
-    const base = isPlayer ? {
-        head: "#c0c0c0", hair: "#8bac0f", body: "#306230", legs: "#0f574f"
-    } : {
-        head: "#ff5252", hair: "#ff8c00", body: "#b22222", legs: "#8b0000"
-    };
-
-    if (race === "elf")    base.head = "#90ee90", base.hair = "#5fb565";
-    if (race === "dwarf")  base.head = "#daa520", base.hair = "#cd853f";
-    if (race === "orc")    base.head = "#228b22", base.hair = "#006400";
-
-    // Fill head (rows 3-7, cols 5-11)
-    for (let r=3; r<8; r++) for (let c=5; c<12; c++)  el.children[r*16+c].className += " px-skin";
-    // Hair accent
+    // Head area
+    for (let r=3; r<8; r++) for (let c=5; c<12; c++) el.children[r*16+c].className += " px-skin";
+    // Hair
     for (let c=5; c<12; c++) el.children[2*16+c].className += " px-hair";
     // Body
     for (let r=8; r<13; r++) for (let c=4; c<13; c++) el.children[r*16+c].className += " px-clothes";
@@ -301,26 +275,15 @@ function renderPixelModel(id, race, isPlayer) {
 function nextEncounter() {
     document.getElementById("dice").style.display = "none";
     document.getElementById("action-buttons").innerHTML = "";
-
-    const roll = Math.random();
-    if (roll < 0.5) {
-        startCombat();
-    } else if (roll < 0.75) {
-        enterShop();
-    } else {
-        dmSpeak("You discover a small cache of treasure.");
-        addCoins(2, 5, 10);
-        setTimeout(nextEncounter, 1800);
-    }
+    dmSpeak("You continue your journey...");
+    startCombat(); // For testing — change back to random logic later
 }
 
 function startCombat() {
-    const enemies = ["goblin", "skeleton", "bandit", "dire wolf", "young dragon"];
-    enemy.name = enemies[Math.floor(Math.random() * enemies.length)];
-    enemy.maxHp = enemy.name.includes("dragon") ? 45 : 18 + Math.floor(Math.random()*15);
-    enemy.hp = enemy.maxHp;
+    enemy.name = "Goblin Scout";
+    enemy.maxHp = 18;
+    enemy.hp = 18;
 
-    renderPixelModel("enemy-model", enemy.name.includes("dragon") ? "dragon" : "goblin", false);
     document.getElementById("enemy-model").style.display = "block";
     document.getElementById("enemy-hp-bar").style.display = "block";
     updateEnemyHP();
@@ -328,7 +291,7 @@ function startCombat() {
     inCombat = true;
     playerTurn = true;
 
-    dmSpeak(`A ${enemy.name} lunges from the shadows! Prepare yourself!`);
+    dmSpeak(`A ${enemy.name} appears! What do you do?`);
     showCombatActions();
 }
 
@@ -337,67 +300,57 @@ function showCombatActions() {
         <button onclick="startTurn('weapon')">Attack with Weapon</button>
         <button onclick="startTurn('spell')">Cast Spell</button>
         <button onclick="startTurn('potion')">Use Potion</button>
-        <button onclick="attemptRun()">Attempt to Run</button>
+        <button onclick="attemptRun()">Run</button>
     `;
-    document.getElementById("dice").style.display = "none";
 }
 
 function startTurn(type) {
-    document.getElementById("action-buttons").innerHTML = "";
-    document.getElementById("dice").style.display = "block";
-
-    if (type === "potion") {
-        if (char.inventory.some(i => i.toLowerCase().includes("potion"))) {
+    if (type === 'potion') {
+        const potionIndex = char.inventory.findIndex(i => i.toLowerCase().includes("potion"));
+        if (potionIndex !== -1) {
             dmSpeak("You drink a healing potion...");
             currentHP = Math.min(maxHP, currentHP + 10);
-            char.inventory = char.inventory.filter(i => !i.toLowerCase().includes("potion") || --char.inventory[char.inventory.indexOf(i)]); // crude remove one
+            char.inventory.splice(potionIndex, 1);
             updatePlayerHP();
             playerTurn = false;
             setTimeout(enemyTurn, 800);
         } else {
-            dmSpeak("You have no potions left!");
-            showCombatActions();
+            dmSpeak("No potions left!");
         }
         return;
     }
 
+    document.getElementById("dice").style.display = "block";
+    document.getElementById("action-buttons").innerHTML = "";
     document.getElementById("roll-result").textContent = `Roll d20 for ${type}...`;
-    // The actual roll happens when player clicks "Roll d20"
     window.currentActionType = type;
 }
 
 function rollAttack() {
-    if (!playerTurn || !inCombat) return;
-
+    if (!inCombat || !playerTurn) return;
     const roll = Math.floor(Math.random() * 20) + 1;
-    let resultText = `Rolled ${roll} → `;
+    let msg = `You roll ${roll} → `;
 
     if (roll <= 9) {
-        resultText += "Miss!";
+        msg += "miss!";
     } else {
         let dmg = roll - 9;
-        if (roll === 20) {
-            dmg *= 2;
-            resultText += `Critical hit! (${dmg} damage)`;
-        } else {
-            resultText += `Hit! (${dmg} damage)`;
-        }
-
+        if (roll === 20) dmg *= 2;
         enemy.hp -= dmg;
+        msg += `hit for ${dmg} damage!`;
         document.getElementById("enemy-model").classList.add("attack");
         setTimeout(() => document.getElementById("enemy-model").classList.remove("attack"), 500);
         updateEnemyHP();
 
         if (enemy.hp <= 0) {
-            dmSpeak(`The ${enemy.name} falls! Victory is yours.`);
-            addCoins(3, 8, 15);
+            dmSpeak(`The ${enemy.name} is defeated!`);
             endCombat();
-            setTimeout(nextEncounter, 2200);
+            setTimeout(nextEncounter, 2000);
             return;
         }
     }
 
-    document.getElementById("roll-result").textContent = resultText;
+    document.getElementById("roll-result").textContent = msg;
     playerTurn = false;
     setTimeout(enemyTurn, 1000);
 }
@@ -428,21 +381,15 @@ function enemyTurn() {
 }
 
 function attemptRun() {
-    if (Math.random() < 0.65) {
-        dmSpeak("You escape into the shadows!");
+    if (Math.random() < 0.6) {
+        dmSpeak("You escape!");
         endCombat();
         setTimeout(nextEncounter, 1500);
     } else {
-        dmSpeak("The enemy blocks your path!");
+        dmSpeak("No escape! Enemy attacks.");
         playerTurn = false;
         enemyTurn();
     }
-}
-
-function updatePlayerHP() {
-    const perc = Math.max(0, (currentHP / maxHP) * 100);
-    document.getElementById("player-hp-fill").style.width = perc + "%";
-    document.getElementById("player-stats").textContent = `${char.race} ${char.class} Lv${char.level}  HP:${currentHP}/${maxHP}`;
 }
 
 function updateEnemyHP() {
@@ -458,65 +405,6 @@ function endCombat() {
     document.getElementById("dice").style.display = "none";
     document.getElementById("action-buttons").innerHTML = "";
     document.getElementById("roll-result").textContent = "";
-}
-
-function enterShop() {
-    dmSpeak("A wandering merchant appears, offering wares under the moonlight.");
-    document.getElementById("shop").style.display = "block";
-    const itemsDiv = document.getElementById("shop-items");
-    itemsDiv.innerHTML = "";
-
-    const shopGoods = [
-        {name:"Healing Potion", costCopper:20},
-        {name:"Greater Healing Potion", costSilver:8},
-        {name:"Iron Dagger", costSilver:15},
-        {name:"Mana Crystal", costGold:2}
-    ];
-
-    shopGoods.forEach(item => {
-        const btn = document.createElement("button");
-        let priceStr = "";
-        if (item.costCopper) priceStr += `${item.costCopper} copper `;
-        if (item.costSilver) priceStr += `${item.costSilver} silver `;
-        if (item.costGold)   priceStr += `${item.costGold} gold`;
-        btn.textContent = `${item.name} - ${priceStr}`;
-        btn.onclick = () => buyItem(item);
-        itemsDiv.appendChild(btn);
-    });
-}
-
-function buyItem(item) {
-    let canBuy = true;
-    if (item.costGold   && gold   < item.costGold)   canBuy = false;
-    if (item.costSilver && silver < item.costSilver) canBuy = false;
-    if (item.costCopper && copper < item.costCopper) canBuy = false;
-
-    if (canBuy) {
-        if (item.costGold)   gold   -= item.costGold;
-        if (item.costSilver) silver -= item.costSilver;
-        if (item.costCopper) copper -= item.costCopper;
-        char.inventory.push(item.name);
-        dmSpeak(`Purchased ${item.name}. May it serve you well.`);
-        updateCurrencyDisplay();
-    } else {
-        dmSpeak("Your purse is too light for that.");
-    }
-}
-
-function exitShop() {
-    document.getElementById("shop").style.display = "none";
-    nextEncounter();
-}
-
-function addCoins(g=0, s=0, c=0) {
-    gold   += g;
-    silver += s;
-    copper += c;
-    updateCurrencyDisplay();
-}
-
-function updateCurrencyDisplay() {
-    // Could show in UI if wanted
 }
 
 function restartGame() {
