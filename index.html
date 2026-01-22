@@ -2,66 +2,47 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D Game - Death Screen Fixed</title>
+    <title>TEST - D&D Game</title>
     <style>
-        body {
+        body { 
             font-family: Arial, sans-serif;
+            background: #0a1f0a;
+            color: #d4ffcc;
             margin: 0;
-            padding: 20px;
-            background: #111;
-            color: #eee;
+            padding: 40px;
             text-align: center;
         }
-        #creation, #game, #death { display: none; }
         button {
-            background: #4a6;
+            background: #4CAF50;
             color: white;
             border: none;
-            padding: 12px 28px;
-            margin: 12px;
-            font-size: 18px;
+            padding: 15px 40px;
+            font-size: 20px;
+            margin: 20px;
             cursor: pointer;
-            border-radius: 6px;
+            border-radius: 8px;
         }
-        button:hover { background: #6c8; }
-        select, input {
-            padding: 10px;
-            font-size: 16px;
-            margin: 8px;
-            background: #222;
-            color: white;
-            border: 2px solid #666;
-        }
-        .pixel-model {
-            width: 120px;
-            height: 160px;
-            margin: 20px auto;
-            background: #444;
-            border: 4px solid #888;
-            position: relative;
-        }
-        .head { width: 50px; height: 50px; background: #ffd; border-radius: 50%; position: absolute; top: 10px; left: 35px; }
-        .body { width: 60px; height: 80px; background: #555; position: absolute; top: 55px; left: 30px; border-radius: 15px; }
-        .health-bar {
-            width: 200px;
-            height: 24px;
+        #hp-bar {
+            width: 300px;
+            height: 30px;
             background: #333;
+            margin: 30px auto;
             border: 3px solid #555;
-            margin: 20px auto;
-            position: relative;
+            border-radius: 8px;
             overflow: hidden;
+            position: relative;
         }
-        .health-fill {
+        #hp-fill {
             height: 100%;
-            background: #4caf50;
+            background: #4CAF50;
             width: 100%;
-            transition: width 0.4s;
+            transition: width 0.5s;
         }
-        .health-text {
+        #hp-text {
             position: absolute;
             inset: 0;
             color: white;
+            font-size: 18px;
             font-weight: bold;
             display: flex;
             align-items: center;
@@ -71,134 +52,66 @@
             position: fixed;
             inset: 0;
             background: black;
-            color: #f44;
-            font-size: 40px;
-            display: flex;
+            color: #ff4444;
+            font-size: 48px;
+            display: none;
             flex-direction: column;
             align-items: center;
             justify-content: center;
-        }
-        #dm-text {
-            font-size: 18px;
-            line-height: 1.5;
-            margin: 30px auto;
-            padding: 20px;
-            background: #1a1a1a;
-            border: 2px solid #444;
-            max-width: 700px;
         }
     </style>
 </head>
 <body>
 
-<div id="creation">
-    <h1>D&D Adventure</h1>
-    <label>Race:</label><br>
-    <select id="race">
-        <option value="human">Human</option>
-        <option value="elf">Elf</option>
-        <option value="dwarf">Dwarf</option>
-    </select><br><br>
+<div id="main">
+    <h1 style="color:#8bc34a">TEST D&D GAME</h1>
+    <p style="font-size:22px">If you see this text and the green bar below → the game loaded correctly</p>
 
-    <label>Class:</label><br>
-    <select id="class">
-        <option value="fighter">Fighter</option>
-        <option value="wizard">Wizard</option>
-        <option value="rogue">Rogue</option>
-    </select><br><br>
-
-    <label>Weapons:</label><br>
-    <input type="text" id="weapons" value="Sword"><br><br>
-
-    <button onclick="startGame()">Start Game</button>
-</div>
-
-<div id="game">
-    <h1>Your Adventure</h1>
-
-    <div class="pixel-model">
-        <div class="head"></div>
-        <div class="body"></div>
+    <div id="hp-bar">
+        <div id="hp-fill"></div>
+        <div id="hp-text">HP: 30 / 30</div>
     </div>
 
-    <div class="health-bar">
-        <div class="health-fill" id="hp-fill"></div>
-        <div class="health-text" id="hp-text">HP: 20 / 20</div>
-    </div>
-
-    <div id="dm-text">DM: Welcome, Elias. Your journey begins...</div>
-
-    <div id="actions">
-        <button onclick="startFight()">Fight</button>
-        <button onclick="rest()">Rest</button>
-    </div>
+    <button onclick="takeDamage(8)">Take 8 damage (test)</button>
+    <button onclick="heal(10)">Heal 10 HP (test)</button>
+    <button onclick="alert('You attacked!')">Attack (test)</button>
 </div>
 
 <div id="death">
-    You have fallen...<br>Rise up
+    YOU HAVE FALLEN...<br>RISE UP
     <br><br>
-    <button onclick="location.reload()" style="font-size:28px; padding:20px 50px;">Restart</button>
+    <button onclick="location.reload()" style="font-size:32px; padding:20px 60px; background:#444; color:#fff;">Restart</button>
 </div>
 
 <script>
-let currentHP = 25;
-let maxHP = 25;
-
-function startGame() {
-    const cls = document.getElementById("class").value;
-
-    // Force positive HP
-    maxHP = 20 + (cls === "fighter" ? 12 : 8);
-    currentHP = maxHP;
-
-    console.log("Game started → HP:", currentHP, "/", maxHP);
-
-    document.getElementById("creation").style.display = "none";
-    document.getElementById("game").style.display = "block";
-    document.getElementById("death").style.display = "none";
-
-    updateHP();
-    document.getElementById("dm-text").textContent = "DM: You stand ready, " + cls + ". What now?";
-}
+let hp = 30;
+let maxHp = 30;
 
 function updateHP() {
-    if (currentHP < 1) currentHP = 1; // safety net
-    const percent = (currentHP / maxHP) * 100;
+    if (hp < 0) hp = 0;
+    const percent = (hp / maxHp) * 100;
     document.getElementById("hp-fill").style.width = percent + "%";
-    document.getElementById("hp-text").textContent = `HP: ${currentHP} / ${maxHP}`;
-    console.log("HP updated to:", currentHP, percent + "%");
-}
+    document.getElementById("hp-text").textContent = `HP: ${hp} / ${maxHp}`;
 
-function startFight() {
-    document.getElementById("dm-text").textContent = "DM: A goblin attacks!";
-    document.getElementById("actions").innerHTML = `
-        <button onclick="playerAttack()">Attack</button>
-        <button onclick="takeDamage(5)">Take sample damage (test)</button>
-    `;
-}
-
-function playerAttack() {
-    const roll = Math.floor(Math.random() * 20) + 1;
-    document.getElementById("dm-text").textContent = `You roll ${roll}! ${roll >= 10 ? "Hit!" : "Miss!"}`;
-}
-
-function takeDamage(amount) {
-    currentHP -= amount;
-    if (currentHP <= 0) {
-        currentHP = 0;
-        document.getElementById("game").style.display = "none";
+    if (hp <= 0) {
+        document.getElementById("main").style.display = "none";
         document.getElementById("death").style.display = "flex";
-    } else {
-        updateHP();
-        document.getElementById("dm-text").textContent = `You take ${amount} damage. HP now ${currentHP}/${maxHP}`;
     }
 }
 
-function rest() {
-    currentHP = Math.min(maxHP, currentHP + 8);
+function takeDamage(dmg) {
+    hp -= dmg;
     updateHP();
-    document.getElementById("dm-text").textContent = "DM: You rest and recover. HP now " + currentHP + "/" + maxHP;
 }
+
+function heal(amount) {
+    hp = Math.min(maxHp, hp + amount);
+    updateHP();
+}
+
+// Make sure it starts visible
+document.getElementById("main").style.display = "block";
+updateHP();
 </script>
 </body>
 </html>
