@@ -2,7 +2,8 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>D&D - AI Dungeon Master (Fixed Health)</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>D&D AI Dungeon Master – Fixed Restart & Health</title>
 <style>
     @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
 
@@ -13,11 +14,12 @@
         background: #0f380f;
         color: #e0f8d0;
         text-align: center;
+        min-height: 100vh;
     }
 
     #container { max-width: 960px; margin: 0 auto; padding: 20px; }
 
-    h1 { color: #8bac0f; text-shadow: 3px 3px #0f574f; margin-bottom: 10px; }
+    h1 { color: #8bac0f; text-shadow: 3px 3px #0f574f; margin: 10px 0 20px; }
 
     button {
         background: linear-gradient(#306230, #38b554);
@@ -73,13 +75,11 @@
 
     .px { background: #0f380f; }
 
-    /* Basic character pixel fill */
     .head { grid-area: 3/4 / 7/9; background: #c0c0c0; }
     .hair { grid-area: 2/4 / 4/9; background: #8bac0f; }
     .body { grid-area: 7/3 / 12/10; background: #306230; }
     .legs { grid-area: 12/4 / 16/9; background: #0f574f; }
 
-    /* Race color overrides */
     .elf    .head { background: #a8e6cf; }
     .elf    .hair { background: #90ee90; }
     .dwarf  .head { background: #daa520; }
@@ -169,6 +169,7 @@
         flex-direction: column;
         align-items: center;
         justify-content: center;
+        z-index: 9999;
     }
 
     .bg-forest { background: linear-gradient(to bottom, #0f574f 0%, #0f380f 60%, #306230 100%); }
@@ -178,7 +179,6 @@
 
 <div id="container">
 
-    <!-- Creation Screen -->
     <div id="creation">
         <h1>Begin Your Quest</h1>
 
@@ -216,7 +216,6 @@
         <button onclick="startGame()">Enter the Realm</button>
     </div>
 
-    <!-- Main Game -->
     <div id="game">
         <h1 id="quest-title">The Adventure Begins</h1>
 
@@ -246,7 +245,7 @@
         </div>
 
         <div id="dm-narration">
-            <strong>DM:</strong> Elias... the veil between worlds thins. Your legend begins now.
+            <strong>DM:</strong> Elias… the veil between worlds thins. Your legend begins now.
         </div>
 
         <div id="story">The forest whispers your name...</div>
@@ -259,18 +258,17 @@
         </div>
     </div>
 
-    <!-- Death Screen -->
     <div id="death">
         You and your fellow warriors have fallen.<br>
         <span style="font-size:28px; margin:20px 0; display:block;">Rise up.</span>
-        <button onclick="location.reload()">New Journey</button>
+        <button onclick="restartGame()">New Journey</button>
     </div>
 
 </div>
 
 <script>
 // ────────────────────────────────────────
-// Core variables
+// Core variables – reset on restart
 // ────────────────────────────────────────
 let player = {
     race: "",
@@ -290,49 +288,55 @@ let inCombat = false;
 let currentAction = null;
 
 // ────────────────────────────────────────
-// Start the game
+// Start / Restart game
 // ────────────────────────────────────────
 function startGame() {
-    player.race     = document.getElementById("race").value;
-    player.class    = document.getElementById("class").value;
-    player.level    = parseInt(document.getElementById("level").value) || 1;
-    player.weapons  = document.getElementById("weapons").value.split(",").map(s=>s.trim()).filter(Boolean);
-    player.armor    = document.getElementById("armor").value.trim() || "None";
-    player.spells   = document.getElementById("spells").value.split(",").map(s=>s.trim()).filter(Boolean);
-    player.inventory = document.getElementById("inventory").value.split(",").map(s=>s.trim()).filter(Boolean);
+    // Reset everything
+    player = {
+        race: document.getElementById("race").value,
+        class: document.getElementById("class").value,
+        level: parseInt(document.getElementById("level").value) || 1,
+        weapons: document.getElementById("weapons").value.split(",").map(s=>s.trim()).filter(Boolean),
+        armor: document.getElementById("armor").value.trim() || "None",
+        spells: document.getElementById("spells").value.split(",").map(s=>s.trim()).filter(Boolean),
+        inventory: document.getElementById("inventory").value.split(",").map(s=>s.trim()).filter(Boolean)
+    };
 
-    // Calculate HP safely
     player.maxHp = 18 + player.level * 6 + (player.class === "fighter" ? 10 : 0);
     player.hp    = player.maxHp;
 
-    // Safety check
-    if (player.hp < 1 || isNaN(player.hp)) {
-        player.hp = player.maxHp = 30;
-    }
-
-    // Update UI
-    document.getElementById("player-tooltip").textContent =
-        `${player.race} ${player.class} Lv${player.level}\nHP: ${player.hp}/${player.maxHp}`;
+    // Force valid HP
+    if (player.hp < 10 || isNaN(player.hp)) player.hp = player.maxHp = 30;
 
     updateHealthBar("player", player.hp, player.maxHp);
 
-    // Hide creation, show game
+    document.getElementById("player-tooltip").textContent =
+        `${player.race} ${player.class} Lv${player.level}\nHP: ${player.hp}/${player.maxHp}`;
+
     document.getElementById("creation").style.display = "none";
     document.getElementById("game").style.display = "block";
+    document.getElementById("death").style.display = "none";
 
-    dmSay(`Elias, ${player.race} ${player.class}, the mists of fate part before you. Your saga begins...`);
+    dmSay(`Elias, ${player.race} ${player.class}, the mists part. Your saga begins...`);
 
-    // Start first encounter
     setTimeout(firstEncounter, 1200);
 }
 
-function firstEncounter() {
-    dmSay("A lone goblin scout steps from the undergrowth, blade drawn.");
-    startCombat("goblin", 18);
+function restartGame() {
+    // Force full page reload to completely reset state
+    location.reload();
 }
 
 // ────────────────────────────────────────
-// Combat flow
+// First encounter
+// ────────────────────────────────────────
+function firstEncounter() {
+    dmSay("A lone goblin scout steps from the undergrowth, blade drawn.");
+    startCombat("Goblin Scout", 18);
+}
+
+// ────────────────────────────────────────
+// Combat
 // ────────────────────────────────────────
 function startCombat(name, maxHpVal) {
     enemy.name   = name;
@@ -386,7 +390,7 @@ function rollD20() {
         if (enemy.hp <= 0) {
             dmSay(`The ${enemy.name} collapses! Victory.`);
             endCombat();
-            setTimeout(() => dmSay("You catch your breath..."), 1800);
+            setTimeout(() => dmSay("You catch your breath... new path ahead."), 1800);
             return;
         }
     }
@@ -419,13 +423,13 @@ function enemyAttack() {
     }
 
     dmSay(msg);
-    showActions(); // Show action buttons again
+    showActions();
 }
 
 function usePotion() {
     const potionIdx = player.inventory.findIndex(i => i.toLowerCase().includes("potion"));
     if (potionIdx === -1) {
-        dmSay("You have no potions left.");
+        dmSay("No potions remaining.");
         return;
     }
 
@@ -435,8 +439,6 @@ function usePotion() {
     updateHealthBar("player", player.hp, player.maxHp);
     dmSay(`You drink a healing potion and recover ${heal} HP.`);
 
-    // Enemy turn after potion use
-    playerTurn = false;
     setTimeout(enemyAttack, 900);
 }
 
@@ -464,10 +466,8 @@ function endCombat() {
 // ────────────────────────────────────────
 function updateHealthBar(side, hp, max) {
     const perc = Math.max(0, Math.min(100, (hp / max) * 100));
-    const fill = document.getElementById(`${side}-hp-bar`);
-    const text = document.getElementById(`${side}-hp-text`);
-    fill.style.width = perc + "%";
-    text.textContent = `HP: ${hp} / ${max}`;
+    document.getElementById(`${side}-hp-bar`).style.width = perc + "%";
+    document.getElementById(`${side}-hp-text`).textContent = `HP: ${hp} / ${max}`;
 }
 
 function dmSay(text) {
@@ -497,7 +497,7 @@ function showActions(actions = null) {
     });
 }
 
-// Init
+// Show creation screen
 document.getElementById("creation").style.display = "block";
 </script>
 </body>
