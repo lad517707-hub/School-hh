@@ -3,476 +3,456 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D Adventure Game</title>
+    <title>D&D Adventure Game - Fixed Version</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: Arial, Helvetica, sans-serif;
             margin: 0;
-            padding: 0;
-            color: white;
+            padding: 20px;
+            background-color: #0d001a;
+            color: #e0e0ff;
+            min-height: 100vh;
             text-align: center;
-            background-color: black;
-            transition: background-image 1s ease-in-out;
         }
         #game-container {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
-            padding: 20px;
-            position: relative;
         }
-        #character-creation, #game-screen, #death-screen {
-            display: none;
-        }
-        #death-screen {
-            background-color: black;
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 24px;
-            animation: fadeIn 2s;
-        }
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
+        h1, h2, h3 {
+            color: #ffd700;
         }
         button {
-            margin: 10px;
+            background: #4a148c;
+            color: white;
+            border: 2px solid #7e57c2;
             padding: 10px 20px;
+            margin: 8px;
             font-size: 16px;
             cursor: pointer;
+            border-radius: 6px;
         }
-        #story-text {
-            margin: 20px 0;
-            font-size: 18px;
+        button:hover {
+            background: #7e57c2;
         }
-        .model-container {
-            width: 200px;
-            height: 200px;
-            margin: 20px;
-            background-size: cover;
-            background-repeat: no-repeat;
-            position: absolute;
-            top: 100px;
-        }
-        #character-model {
-            left: 50px;
-        }
-        #enemy-model {
-            right: 50px;
-        }
-        .stats-bar {
-            display: none;
-            background-color: black;
+        select, input {
+            padding: 8px;
+            margin: 8px;
+            font-size: 16px;
+            background: #1a0033;
             color: white;
-            padding: 5px;
-            position: absolute;
-            bottom: -30px;
-            width: 100%;
+            border: 1px solid #7e57c2;
+            border-radius: 4px;
+        }
+        #character-creation, #game-screen, #death-screen, #shop-screen {
+            display: none;
+        }
+        .combat-area {
+            display: flex;
+            justify-content: space-between;
+            margin: 40px 0;
+            position: relative;
+            min-height: 300px;
+        }
+        .character-side, .enemy-side {
+            width: 220px;
             text-align: center;
         }
-        .model-container:hover .stats-bar {
-            display: block;
-        }
-        #dice-select {
-            margin: 10px;
-        }
-        /* Health Bars */
-        .health-bar {
-            width: 200px;
-            height: 20px;
-            background-color: grey;
-            margin: 10px auto;
+        .model {
+            width: 180px;
+            height: 180px;
+            margin: 0 auto 10px;
+            background-size: cover;
+            background-position: center;
+            border: 3px solid #7e57c2;
+            border-radius: 12px;
             position: relative;
+        }
+        .health-bar {
+            width: 180px;
+            height: 24px;
+            background: #333;
+            border: 2px solid #555;
+            margin: 10px auto;
+            border-radius: 6px;
+            overflow: hidden;
         }
         .health-fill {
             height: 100%;
-            background-color: green;
-            transition: width 0.5s;
+            background: linear-gradient(to right, #00cc44, #88ff88);
+            transition: width 0.4s ease;
         }
         .health-text {
             position: absolute;
-            top: 0;
-            left: 0;
-            width: 100%;
+            width: 180px;
             text-align: center;
             color: white;
+            font-weight: bold;
+            text-shadow: 1px 1px 2px black;
         }
-        #player-health {
-            position: absolute;
-            top: 320px;
-            left: 50px;
+        #story-text {
+            font-size: 18px;
+            line-height: 1.5;
+            margin: 20px 0;
+            padding: 15px;
+            background: rgba(0,0,0,0.4);
+            border-radius: 8px;
+            min-height: 80px;
         }
-        #enemy-health {
-            position: absolute;
-            top: 320px;
-            right: 50px;
-            display: none;
+        #dice-result {
+            font-size: 20px;
+            font-weight: bold;
+            margin: 15px 0;
+            min-height: 30px;
         }
-        /* Background classes with texture (simple patterns) */
-        .forest-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJncmVlbi1wYXR0ZXJuIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMwMDgwNDAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIxMCIgZmlsbD0iIzAwNTAyMCIvPjwvcGF0dGVybj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyZWVuLXBhdHRlcm4pIi8+PC9zdmc+'); } /* Textured forest */
-        .dungeon-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJncmF5LXBhdHRlcm4iIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzQwNDA0MCIvPjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjMzAzMDMwIi8+PC9wYXR0ZXJuPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JheS1wYXR0ZXJuKSIvPjwvc3ZnPg=='); } /* Textured dungeon */
-        .mountain-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJicm93bi1wYXR0ZXJuIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiM4MDgwODAiLz48bGluZSB4MT0iMCIgeTE9IjAiIHgyPSIxMDAiIHkyPSIxMDAiIHN0cm9rZT0iIzYwNjA2MCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9wYXR0ZXJuPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjYnJvd24tcGF0dGVybikiLz48L3N2Zz4='); } /* Textured mountain */
-        .tavern-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJ3b29kLXBhdHRlcm4iIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmYTUwMCIvPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAiIGZpbGw9IiNkZDg4MDAiLz48cmVjdCB4PSIwIiB5PSIyMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMCIgZmlsbD0iI2RkODgwMCIvPjwvcGF0dGVybj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3dvb2QtcGF0dGVybikiLz48L3N2Zz4='); } /* Wood texture for tavern */
+        #death-screen {
+            position: fixed;
+            inset: 0;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 36px;
+            color: #ff4444;
+        }
+        .hidden { display: none !important; }
     </style>
 </head>
-<body id="game-body">
-    <div id="game-container">
-        <!-- Character Creation Menu -->
-        <div id="character-creation">
-            <h1>Create Your Character</h1>
-            <label for="race">Race/Species:</label>
-            <select id="race">
-                <option value="Human">Human</option>
-                <option value="Elf">Elf</option>
-                <option value="Dwarf">Dwarf</option>
-                <option value="Orc">Orc</option>
-                <option value="Halfling">Halfling</option>
-                <option value="Tiefling">Tiefling</option>
-                <option value="Dragonborn">Dragonborn</option>
-            </select><br><br>
-            
-            <label for="class">Class:</label>
-            <select id="class">
-                <option value="Fighter">Fighter</option>
-                <option value="Wizard">Wizard</option>
-                <option value="Rogue">Rogue</option>
-                <option value="Cleric">Cleric</option>
-                <option value="Barbarian">Barbarian</option>
-            </select><br><br>
-            
-            <label for="level">Starting Level:</label>
-            <input type="number" id="level" value="1" min="1"><br><br>
-            
-            <label for="weapons">Weapons (comma-separated):</label>
-            <input type="text" id="weapons" placeholder="e.g., Sword, Bow"><br><br>
-            
-            <label for="armor">Armor:</label>
-            <input type="text" id="armor" placeholder="e.g., Leather Armor"><br><br>
-            
-            <label for="spells">Spells (comma-separated, if applicable):</label>
-            <input type="text" id="spells" placeholder="e.g., Fireball, Heal"><br><br>
-            
-            <label for="inventory">Inventory (comma-separated):</label>
-            <input type="text" id="inventory" placeholder="e.g., Potion"><br><br>
-            
-            <button onclick="startGame()">Start Adventure</button>
-        </div>
+<body>
+
+<div id="game-container">
+
+    <!-- CHARACTER CREATION -->
+    <div id="character-creation">
+        <h1>Create Your Hero</h1>
         
-        <!-- Game Screen -->
-        <div id="game-screen">
-            <h1>Your Adventure</h1>
-            <div id="character-info">
-                <h2>Character Stats</h2>
-                <p id="char-race"></p>
-                <p id="char-class"></p>
-                <p id="char-level"></p>
-                <p id="char-currency">Currency: 0 gold, 0 silver, 0 copper</p>
-                <p id="char-weapons"></p>
-                <p id="char-armor"></p>
-                <p id="char-spells"></p>
-                <p id="char-inventory"></p>
+        <label>Race:</label><br>
+        <select id="race">
+            <option value="Human">Human</option>
+            <option value="Elf">Elf</option>
+            <option value="Dwarf">Dwarf</option>
+            <option value="Orc">Orc</option>
+        </select><br><br>
+
+        <label>Class:</label><br>
+        <select id="class">
+            <option value="Fighter">Fighter</option>
+            <option value="Wizard">Wizard</option>
+            <option value="Rogue">Rogue</option>
+            <option value="Cleric">Cleric</option>
+        </select><br><br>
+
+        <label>Starting Weapons (comma separated):</label><br>
+        <input type="text" id="weapons" value="Shortsword" placeholder="Shortsword, Bow"><br><br>
+
+        <label>Starting Armor:</label><br>
+        <input type="text" id="armor" value="Leather Armor"><br><br>
+
+        <button onclick="startGame()">Begin Adventure</button>
+    </div>
+
+    <!-- MAIN GAME SCREEN -->
+    <div id="game-screen">
+        <h1>D&D Adventure</h1>
+
+        <div class="combat-area">
+            <div class="character-side">
+                <div id="player-model" class="model"></div>
+                <div class="health-bar">
+                    <div id="player-health-fill" class="health-fill" style="width:100%"></div>
+                    <div id="player-health-text" class="health-text">HP: 20 / 20</div>
+                </div>
+                <h3 id="player-name">Your Hero</h3>
             </div>
-            <div class="model-container" id="character-model">
-                <div class="stats-bar" id="player-stats-bar"></div>
-            </div>
-            <div class="model-container" id="enemy-model">
-                <div class="stats-bar" id="enemy-stats-bar"></div>
-            </div>
-            <div id="player-health" class="health-bar">
-                <div class="health-fill" id="player-health-fill"></div>
-                <div class="health-text" id="player-health-text">HP: 20/20</div>
-            </div>
-            <div id="enemy-health" class="health-bar">
-                <div class="health-fill" id="enemy-health-fill"></div>
-                <div class="health-text" id="enemy-health-text">Enemy HP: 15/15</div>
-            </div>
-            <div id="story-text"></div>
-            <div id="choices"></div>
-            <div id="dice-roller" style="display:none;">
-                <h3>Roll Dice for Attack</h3>
-                <select id="dice-select">
-                    <option value="20">d20 (Standard Attack)</option>
-                </select>
-                <button onclick="playerRollDice()">Roll</button>
-                <p id="dice-result"></p>
-            </div>
-            <div id="shop-screen" style="display:none;">
-                <h2>Shop</h2>
-                <div id="shop-items"></div>
-                <button onclick="exitShop()">Exit Shop</button>
+
+            <div class="enemy-side">
+                <div id="enemy-model" class="model"></div>
+                <div id="enemy-health-container" class="health-bar hidden">
+                    <div id="enemy-health-fill" class="health-fill" style="width:100%"></div>
+                    <div id="enemy-health-text" class="health-text">Enemy HP</div>
+                </div>
+                <h3 id="enemy-name">—</h3>
             </div>
         </div>
-        
-        <!-- Death Screen -->
-        <div id="death-screen" style="display:none;">
-            You and your fellow warriors have fallen, Rise up
-            <button onclick="restartGame()">Restart</button>
+
+        <div id="story-text">Loading your adventure...</div>
+
+        <div id="dice-result"></div>
+
+        <div id="choices"></div>
+
+        <div id="dice-roller" class="hidden">
+            <h3>Attack Roll (d20)</h3>
+            <button onclick="playerAttack()">Roll d20</button>
+        </div>
+
+        <!-- Shop overlay -->
+        <div id="shop-screen" class="hidden">
+            <h2>The Wandering Merchant / Tavern</h2>
+            <p id="shop-text">Welcome, traveler. What do you wish to purchase?</p>
+            <div id="shop-buttons"></div>
+            <button onclick="exitShop()">Leave</button>
         </div>
     </div>
 
-    <script>
-        let character = {};
-        let currentHP = 20;
-        let maxHP = 20;
-        let enemyHP = 15;
-        let enemyMaxHP = 15;
-        let gold = 0;
-        let silver = 0;
-        let copper = 0;
-        let storyState = 'start';
-        let currentEnemy = '';
-        let inCombat = false;
-        let playerTurn = true;
-        const backgrounds = {
-            forest: 'forest-bg',
-            dungeon: 'dungeon-bg',
-            mountain: 'mountain-bg',
-            tavern: 'tavern-bg'
-        };
-        // Pixel art models (simple SVG approximating pixel art)
-        const models = {
-            Human: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)', // Pixel textured human
-            Elf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            Dwarf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cmVjdCB4PSI4MCIgeT0iNTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmMDAwMCIvPjwvc3ZnPg==)',
-            Orc: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMDgwNDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            Halfling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjMwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            Tiefling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZjAwMDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            Dragonborn: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMDAwZmYiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
-        };
-        const enemyModels = {
-            goblin: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMDgwNDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjMwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            dragon: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZjAwMDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjUwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NjBoLTYwdjYwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            bandit: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiM4MDQwMDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
-        };
-        const shopItems = [
-            { name: 'Potion', rarity: 'common', price: { copper: 10 } },
-            { name: 'Sword', rarity: 'uncommon', price: { silver: 5 } },
-            { name: 'Magic Ring', rarity: 'rare', price: { gold: 2 } }
-        ];
+    <!-- DEATH SCREEN -->
+    <div id="death-screen" class="hidden">
+        <div>
+            <p>You and your companions have fallen...</p>
+            <p style="font-size: 28px; margin: 30px 0;">RISE UP</p>
+            <button onclick="location.reload()">New Adventure</button>
+        </div>
+    </div>
 
-        // Start with character creation visible
-        document.getElementById('character-creation').style.display = 'block';
+</div>
 
-        function startGame() {
-            character.race = document.getElementById('race').value;
-            character.class = document.getElementById('class').value;
-            character.level = document.getElementById('level').value;
-            character.weapons = document.getElementById('weapons').value.split(',').map(w => w.trim());
-            character.armor = document.getElementById('armor').value;
-            character.spells = document.getElementById('spells').value.split(',').map(s => s.trim());
-            character.inventory = document.getElementById('inventory').value.split(',').map(i => i.trim());
+<script>
+// ────────────────────────────────────────────────
+// Game State
+// ────────────────────────────────────────────────
+let player = {
+    race: "",
+    class: "",
+    hp: 20,
+    maxHp: 20,
+    weapons: [],
+    armor: "",
+    gold: 0
+};
 
-            maxHP = 10 + (parseInt(character.level) * 5) + (character.class === 'Fighter' ? 10 : 0);
-            currentHP = maxHP;
+let enemy = {
+    name: "",
+    hp: 0,
+    maxHp: 0
+};
 
-            updateCharacterInfo();
-            updateHealthBars();
+let inCombat = false;
+let playerTurn = true;
 
-            document.getElementById('character-model').style.backgroundImage = models[character.race] || models['Human'];
-            document.getElementById('player-stats-bar').textContent = `Race: ${character.race}, Class: ${character.class}, Level: ${character.level}`;
+// Simple placeholder images (you can replace later with your own)
+const playerImages = {
+    Human: "https://via.placeholder.com/180x180/ffd700/000000?text=Human",
+    Elf:   "https://via.placeholder.com/180x180/90ee90/006400?text=Elf",
+    Dwarf: "https://via.placeholder.com/180x180/cd853f/3c2f2f?text=Dwarf",
+    Orc:   "https://via.placeholder.com/180x180/228b22/000000?text=Orc"
+};
 
-            document.getElementById('character-creation').style.display = 'none';
-            document.getElementById('game-screen').style.display = 'block';
+const enemyImages = {
+    Goblin:  "https://via.placeholder.com/180x180/32cd32/006400?text=Goblin",
+    Bandit:  "https://via.placeholder.com/180x180/8b4513/3c2f2f?text=Bandit",
+    Skeleton:"https://via.placeholder.com/180x180/d3d3d3/333333?text=Skeleton",
+    Dragon:  "https://via.placeholder.com/180x180/ff4500/8b0000?text=Dragon"
+};
 
-            advanceStory();
-        }
+// ────────────────────────────────────────────────
+// Start Game
+// ────────────────────────────────────────────────
+function startGame() {
+    player.race   = document.getElementById("race").value;
+    player.class  = document.getElementById("class").value;
+    player.weapons = document.getElementById("weapons").value.split(",").map(s=>s.trim()).filter(Boolean);
+    player.armor  = document.getElementById("armor").value.trim() || "No armor";
 
-        function updateCharacterInfo() {
-            document.getElementById('char-race').textContent = 'Race: ' + character.race;
-            document.getElementById('char-class').textContent = 'Class: ' + character.class;
-            document.getElementById('char-level').textContent = 'Level: ' + character.level;
-            document.getElementById('char-currency').textContent = `Currency: ${gold} gold, ${silver} silver, ${copper} copper`;
-            document.getElementById('char-weapons').textContent = 'Weapons: ' + character.weapons.join(', ');
-            document.getElementById('char-armor').textContent = 'Armor: ' + character.armor;
-            document.getElementById('char-spells').textContent = 'Spells: ' + character.spells.join(', ');
-            document.getElementById('char-inventory').textContent = 'Inventory: ' + character.inventory.join(', ');
-        }
+    player.maxHp = player.class === "Fighter" ? 25 : 18;
+    player.hp = player.maxHp;
 
-        function updateHealthBars() {
-            document.getElementById('player-health-text').textContent = `HP: ${currentHP}/${maxHP}`;
-            document.getElementById('player-health-fill').style.width = `${(currentHP / maxHP) * 100}%`;
+    document.getElementById("player-name").textContent = `${player.race} ${player.class}`;
+    document.getElementById("player-model").style.backgroundImage = `url(${playerImages[player.race] || playerImages.Human})`;
+    updatePlayerHealth();
 
-            document.getElementById('enemy-health-text').textContent = `Enemy HP: ${enemyHP}/${enemyMaxHP}`;
-            document.getElementById('enemy-health-fill').style.width = `${(enemyHP / enemyMaxHP) * 100}%`;
-        }
+    document.getElementById("character-creation").classList.add("hidden");
+    document.getElementById("game-screen").style.display = "block";
 
-        function advanceStory() {
-            const locations = ['forest', 'dungeon', 'mountain'];
-            const randomLocation = locations[Math.floor(Math.random() * locations.length)];
-            setBackground(randomLocation);
+    nextScene();
+}
 
-            const events = ['encounter', 'shop', 'treasure'];
-            const randomEvent = events[Math.floor(Math.random() * events.length)];
+// ────────────────────────────────────────────────
+// Health Display
+// ────────────────────────────────────────────────
+function updatePlayerHealth() {
+    const percent = (player.hp / player.maxHp) * 100;
+    document.getElementById("player-health-fill").style.width = percent + "%";
+    document.getElementById("player-health-text").textContent = `HP: ${player.hp} / ${player.maxHp}`;
+}
 
-            if (randomEvent === 'encounter') {
-                startEncounter();
-            } else if (randomEvent === 'shop') {
-                enterShop(randomLocation === 'forest' ? 'Corner Store' : 'Tavern');
-            } else {
-                document.getElementById('story-text').textContent = `You find a treasure in the ${randomLocation}! You gain some coins.`;
-                awardCoins();
-                showChoices(['Continue'], [advanceStory]);
-            }
-        }
+function updateEnemyHealth() {
+    if (enemy.hp <= 0) return;
+    const percent = (enemy.hp / enemy.maxHp) * 100;
+    document.getElementById("enemy-health-fill").style.width = percent + "%";
+    document.getElementById("enemy-health-text").textContent = `${enemy.name} HP: ${enemy.hp} / ${enemy.maxHp}`;
+}
 
-        function startEncounter() {
-            const enemies = ['goblin', 'dragon', 'bandit'];
-            currentEnemy = enemies[Math.floor(Math.random() * enemies.length)];
-            enemyHP = currentEnemy === 'dragon' ? 30 : 15;
-            enemyMaxHP = enemyHP;
-            inCombat = true;
-            playerTurn = true;
+// ────────────────────────────────────────────────
+// Scene / Story Progression
+// ────────────────────────────────────────────────
+function nextScene() {
+    document.getElementById("dice-roller").classList.add("hidden");
+    document.getElementById("choices").innerHTML = "";
+    document.getElementById("dice-result").textContent = "";
 
-            document.getElementById('story-text').textContent = `You encounter a ${currentEnemy} in the ${document.getElementById('game-body').className.replace('-bg', '')}!`;
-            document.getElementById('enemy-model').style.backgroundImage = enemyModels[currentEnemy];
-            document.getElementById('enemy-stats-bar').textContent = `Enemy: ${currentEnemy}, HP: ${enemyHP}`;
-            document.getElementById('enemy-health').style.display = 'block';
-            updateHealthBars();
+    const roll = Math.random();
+    if (roll < 0.5) {
+        startCombat();
+    } else if (roll < 0.75) {
+        enterShop();
+    } else {
+        findTreasure();
+    }
+}
 
-            showChoices(['Fight', 'Run'], [startFight, runAway]);
-        }
+function startCombat() {
+    const enemies = ["Goblin","Bandit","Skeleton","Dragon"];
+    enemy.name = enemies[Math.floor(Math.random()*enemies.length)];
+    enemy.maxHp = enemy.name === "Dragon" ? 35 : 14;
+    enemy.hp = enemy.maxHp;
 
-        function startFight() {
-            document.getElementById('dice-roller').style.display = 'block';
-            document.getElementById('choices').innerHTML = '';
-            document.getElementById('story-text').textContent += ' Prepare to fight!';
-        }
+    document.getElementById("enemy-name").textContent = enemy.name;
+    document.getElementById("enemy-model").style.backgroundImage = `url(${enemyImages[enemy.name]})`;
+    document.getElementById("enemy-health-container").classList.remove("hidden");
+    updateEnemyHealth();
 
-        function runAway() {
-            document.getElementById('story-text').textContent = 'You run away to safety, but the adventure continues elsewhere.';
+    document.getElementById("story-text").textContent = `A ${enemy.name} appears before you! What do you do?`;
+
+    showChoices(["Fight", "Run"], [beginFight, tryToRun]);
+}
+
+function beginFight() {
+    inCombat = true;
+    playerTurn = true;
+    document.getElementById("story-text").textContent = "Combat begins! It's your turn.";
+    document.getElementById("dice-roller").classList.remove("hidden");
+}
+
+function tryToRun() {
+    if (Math.random() < 0.6) {
+        document.getElementById("story-text").textContent = "You escape safely... for now.";
+        endCombat();
+        setTimeout(nextScene, 1200);
+    } else {
+        document.getElementById("story-text").textContent = "You fail to escape! The enemy attacks!";
+        playerTurn = false;
+        setTimeout(enemyTurn, 800);
+    }
+}
+
+function playerAttack() {
+    if (!playerTurn || !inCombat) return;
+
+    const roll = Math.floor(Math.random() * 20) + 1;
+    document.getElementById("dice-result").textContent = `You rolled: ${roll}`;
+
+    if (roll >= 10) {
+        let dmg = Math.floor((roll - 9) / 2) + 1;   // 1–10 damage range
+        if (roll === 20) dmg *= 2;                  // crit
+        enemy.hp -= dmg;
+        document.getElementById("story-text").textContent = `Hit! You deal ${dmg} damage.`;
+        updateEnemyHealth();
+
+        if (enemy.hp <= 0) {
+            document.getElementById("story-text").textContent = `You defeated the ${enemy.name}!`;
+            player.gold += Math.floor(Math.random() * 8) + 3;
             endCombat();
-            setTimeout(advanceStory, 2000);
+            setTimeout(nextScene, 1800);
+            return;
         }
+    } else {
+        document.getElementById("story-text").textContent = "You miss...";
+    }
 
-        function playerRollDice() {
-            if (!playerTurn || !inCombat) return;
-            const dice = 20;
-            const roll = Math.floor(Math.random() * dice) + 1;
-            let result = '';
-            let damage = 0;
-            if (roll <= 9) {
-                result = 'Miss! (' + roll + ')';
-            } else if (roll >= 10 && roll <= 19) {
-                damage = roll - 9; // 10=1, 11=2, ...,19=10
-                result = 'Hit! (' + roll + ') Damage: ' + damage;
-                enemyHP -= damage;
-            } else if (roll === 20) {
-                damage = 20; // Crit
-                result = 'Critical Hit! (' + roll + ') Damage: ' + damage;
-                enemyHP -= damage;
-            }
-            document.getElementById('dice-result').textContent = result;
-            updateHealthBars();
+    playerTurn = false;
+    setTimeout(enemyTurn, 900);
+}
 
-            if (enemyHP <= 0) {
-                document.getElementById('story-text').textContent += ' You defeat the ' + currentEnemy + '!';
-                awardCoins();
-                endCombat();
-                setTimeout(advanceStory, 2000);
-                return;
-            }
+function enemyTurn() {
+    if (!inCombat) return;
 
-            playerTurn = false;
-            setTimeout(enemyAttack, 1000);
+    const roll = Math.floor(Math.random() * 20) + 1;
+    document.getElementById("dice-result").textContent = `Enemy rolled: ${roll}`;
+
+    if (roll >= 10) {
+        let dmg = Math.floor((roll - 9) / 2) + 1;
+        if (roll === 20) dmg *= 2;
+        player.hp -= dmg;
+        document.getElementById("story-text").textContent = `The ${enemy.name} hits for ${dmg} damage!`;
+        updatePlayerHealth();
+
+        if (player.hp <= 0) {
+            document.getElementById("game-screen").classList.add("hidden");
+            document.getElementById("death-screen").classList.remove("hidden");
+            return;
         }
+    } else {
+        document.getElementById("story-text").textContent = "The enemy misses!";
+    }
 
-        function enemyAttack() {
-            if (!inCombat) return;
-            const roll = Math.floor(Math.random() * 20) + 1;
-            let result = '';
-            let damage = 0;
-            if (roll <= 9) {
-                result = 'Enemy Miss! (' + roll + ')';
-            } else if (roll >= 10 && roll <= 19) {
-                damage = roll - 9;
-                result = 'Enemy Hit! (' + roll + ') Damage: ' + damage;
-                currentHP -= damage;
-            } else if (roll === 20) {
-                damage = 20;
-                result = 'Enemy Critical Hit! (' + roll + ') Damage: ' + damage;
-                currentHP -= damage;
-            }
-            document.getElementById('dice-result').textContent += '\n' + result;
-            updateHealthBars();
+    playerTurn = true;
+    document.getElementById("story-text").textContent += "\nYour turn again.";
+}
 
-            if (currentHP <= 0) {
-                die();
-                return;
-            }
+function endCombat() {
+    inCombat = false;
+    document.getElementById("dice-roller").classList.add("hidden");
+    document.getElementById("enemy-health-container").classList.add("hidden");
+    document.getElementById("enemy-model").style.backgroundImage = "";
+    document.getElementById("enemy-name").textContent = "—";
+}
 
-            playerTurn = true;
-        }
+function enterShop() {
+    document.getElementById("story-text").textContent = "You find a small roadside shop / tavern.";
+    document.getElementById("shop-screen").classList.remove("hidden");
 
-        function endCombat() {
-            inCombat = false;
-            document.getElementById('dice-roller').style.display = 'none';
-            document.getElementById('enemy-model').style.backgroundImage = '';
-            document.getElementById('enemy-health').style.display = 'none';
-        }
+    const shopDiv = document.getElementById("shop-buttons");
+    shopDiv.innerHTML = "";
 
-        function awardCoins() {
-            const coinTypes = ['gold', 'silver', 'copper'];
-            const type = coinTypes[Math.floor(Math.random() * coinTypes.length)];
-            if (type === 'gold') gold += 2;
-            else if (type === 'silver') silver += 2;
-            else copper += 2;
-            updateCharacterInfo();
-        }
+    const items = [
+        {name:"Health Potion", cost:5, effect:()=>{player.hp = Math.min(player.maxHp, player.hp+8);}},
+        {name:"Better Sword", cost:12, effect:()=>{player.weapons.push("Better Sword");}},
+        {name:"Leather Upgrade", cost:8, effect:()=>{player.armor = "Reinforced Leather";}}
+    ];
 
-        function enterShop(shopType) {
-            setBackground('tavern');
-            document.getElementById('story-text').textContent = `You enter a ${shopType}. What would you like to buy?`;
-            document.getElementById('game-screen').style.display = 'block';
-            document.getElementById('shop-screen').style.display = 'block';
-            const itemsDiv = document.getElementById('shop-items');
-            itemsDiv.innerHTML = '';
-            shopItems.forEach(item => {
-                const btn = document.createElement('button');
-                const priceStr = Object.entries(item.price).map(([type, amt]) => `${amt} ${type}`).join(', ');
-                btn.textContent = `${item.name} (${item.rarity}) - ${priceStr}`;
-                btn.onclick = () => buyItem(item);
-                itemsDiv.appendChild(btn);
-            });
-        }
-
-        function buyItem(item) {
-            const price = item.price;
-            let canAfford = true;
-            if (price.gold && gold < price.gold) canAfford = false;
-            if (price.silver && silver < price.silver) canAfford = false;
-            if (price.copper && copper < price.copper) canAfford = false;
-
-            if (canAfford) {
-                if (price.gold) gold -= price.gold;
-                if (price.silver) silver -= price.silver;
-                if (price.copper) copper -= price.copper;
-                character.inventory.push(item.name);
-                updateCharacterInfo();
-                alert('Purchased ' + item.name + '!');
+    items.forEach(item => {
+        const btn = document.createElement("button");
+        btn.textContent = `${item.name} (${item.cost} gold)`;
+        btn.onclick = () => {
+            if (player.gold >= item.cost) {
+                player.gold -= item.cost;
+                item.effect();
+                alert(`You bought ${item.name}!`);
+                updatePlayerHealth();
             } else {
-                alert('Not enough coins!');
+                alert("Not enough gold!");
             }
-        }
+        };
+        shopDiv.appendChild(btn);
+    });
+}
 
-        function exitShop() {
-            document.getElementById('shop-screen').style.display = 'none';
-            advanceStory();
-        }
+function exitShop() {
+    document.getElementById("shop-screen").classList.add("hidden");
+    nextScene();
+}
 
-        function showChoices(labels, callbacks) {
-            const choicesDiv = document.getElementById('choices');
-            choicesDiv.innerHTML = '';
-            labels.forEach((label, i) => {
-                const btn = document.createElement('button');
-                btn.textContent = label;
-                btn.onclick = callbacks[i];
-                choicesDiv.appendChild(btn);
-            });
-        }
+function findTreasure() {
+    const amount = Math.floor(Math.random() * 10) + 5;
+    player.gold += amount;
+    document.getElementById("story-text").textContent = `You discover a small cache of treasure! +${amount} gold.`;
+    setTimeout(nextScene, 1800);
+}
 
-        function setBackground
+// ────────────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────────────
+function showChoices(labels, actions) {
+    const container = document.getElementById("choices");
+    container.innerHTML = "";
+    labels.forEach((label, i) => {
+        const btn = document.createElement("button");
+        btn.textContent = label;
+        btn.onclick = actions[i];
+        container.appendChild(btn);
+    });
+}
+</script>
+
+</body>
+</html>
