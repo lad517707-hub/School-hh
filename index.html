@@ -1,243 +1,282 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D Adventure Game - Pixel Fixed</title>
-    <style>
-        body {
-            font-family: Arial, Helvetica, sans-serif;
-            margin: 0;
-            padding: 20px;
-            background-color: #1a1a2e;          /* Lighter dark blue-gray – visible now */
-            color: #e0e0ff;
-            min-height: 100vh;
-            text-align: center;
-        }
-        #game-container {
-            max-width: 900px;
-            margin: 0 auto;
-        }
-        h1, h2, h3 {
-            color: #ffd700;
-        }
-        button {
-            background: #4a148c;
-            color: white;
-            border: 2px solid #7e57c2;
-            padding: 10px 20px;
-            margin: 8px;
-            font-size: 16px;
-            cursor: pointer;
-            border-radius: 6px;
-        }
-        button:hover {
-            background: #7e57c2;
-        }
-        select, input {
-            padding: 8px;
-            margin: 8px;
-            font-size: 16px;
-            background: #0f081a;
-            color: white;
-            border: 1px solid #7e57c2;
-            border-radius: 4px;
-        }
-        #character-creation, #game-screen, #death-screen, #shop-screen {
-            display: none;
-        }
-        .combat-area {
-            display: flex;
-            justify-content: space-between;
-            margin: 40px 0;
-            position: relative;
-            min-height: 280px;
-        }
-        .character-side, .enemy-side {
-            width: 220px;
-            text-align: center;
-        }
-        .model {
-            width: 140px;
-            height: 140px;
-            margin: 0 auto 10px;
-            background-size: contain;
-            background-position: center;
-            background-repeat: no-repeat;
-            border: 3px solid #7e57c2;
-            border-radius: 12px;
-            background-color: #2a2a4a; /* fallback color if image fails */
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 14px;
-            color: #aaa;
-        }
-        .health-bar {
-            width: 160px;
-            height: 22px;
-            background: #333;
-            border: 2px solid #555;
-            margin: 10px auto;
-            border-radius: 6px;
-            overflow: hidden;
-            position: relative;
-        }
-        .health-fill {
-            height: 100%;
-            background: linear-gradient(to right, #00cc44, #88ff88);
-            transition: width 0.4s ease;
-        }
-        .health-text {
-            position: absolute;
-            inset: 0;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            color: white;
-            font-weight: bold;
-            font-size: 13px;
-            text-shadow: 1px 1px 2px black;
-        }
-        #story-text {
-            font-size: 18px;
-            line-height: 1.5;
-            margin: 20px 0;
-            padding: 15px;
-            background: rgba(0,0,0,0.5);
-            border-radius: 8px;
-            min-height: 80px;
-        }
-        #dice-result {
-            font-size: 20px;
-            font-weight: bold;
-            margin: 15px 0;
-            min-height: 30px;
-            color: #ffeb3b;
-        }
-        #death-screen {
-            position: fixed;
-            inset: 0;
-            background: black;
-            display: flex;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            font-size: 36px;
-            color: #ff4444;
-        }
-        .hidden { display: none !important; }
-    </style>
+<meta charset="UTF-8">
+<title>Simple D&D Adventure - Pixel Style</title>
+<style>
+    body {
+        margin: 0;
+        padding: 20px;
+        background: #1e1e2e;
+        color: #e0e0ff;
+        font-family: Arial, Helvetica, sans-serif;
+        text-align: center;
+        min-height: 100vh;
+    }
+    h1 { color: #ffdd57; margin-bottom: 10px; }
+    h2 { color: #a78bfa; }
+    button {
+        background: #6b46c1;
+        color: white;
+        border: none;
+        padding: 12px 24px;
+        margin: 10px 4px;
+        font-size: 17px;
+        cursor: pointer;
+        border-radius: 6px;
+    }
+    button:hover { background: #9f7aea; }
+    select, input {
+        padding: 10px;
+        font-size: 16px;
+        margin: 8px;
+        background: #2d2d44;
+        color: white;
+        border: 2px solid #805ad5;
+        border-radius: 6px;
+    }
+    #creation, #game, #death {
+        display: none;
+    }
+    .pixel-character {
+        width: 100px;
+        height: 140px;
+        margin: 20px auto;
+        position: relative;
+        background: #444;
+        border: 4px solid #777;
+        border-radius: 8px;
+        box-shadow: 0 0 10px rgba(100,100,255,0.3);
+    }
+    .head {
+        width: 50px;
+        height: 50px;
+        background: #ffd166;
+        border-radius: 50%;
+        position: absolute;
+        top: 10px;
+        left: 25px;
+        border: 3px solid #333;
+    }
+    .body {
+        width: 60px;
+        height: 70px;
+        background: #5a189a;
+        position: absolute;
+        top: 55px;
+        left: 20px;
+        border-radius: 12px;
+    }
+    .enemy .head { background: #ef476f; }
+    .enemy .body { background: #720026; }
+    #player-area, #enemy-area {
+        display: inline-block;
+        width: 45%;
+        vertical-align: top;
+    }
+    #story {
+        font-size: 19px;
+        line-height: 1.5;
+        margin: 25px auto;
+        padding: 20px;
+        background: rgba(0,0,0,0.5);
+        border-radius: 10px;
+        max-width: 700px;
+    }
+    #health {
+        width: 220px;
+        height: 28px;
+        background: #333;
+        border: 3px solid #555;
+        margin: 15px auto;
+        border-radius: 8px;
+        overflow: hidden;
+        position: relative;
+    }
+    #health-fill {
+        height: 100%;
+        background: #06d6a0;
+        width: 100%;
+        transition: width 0.4s;
+    }
+    #health-text {
+        position: absolute;
+        inset: 0;
+        color: white;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 16px;
+        text-shadow: 1px 1px 2px black;
+    }
+    #roll-result {
+        font-size: 28px;
+        margin: 20px 0;
+        min-height: 40px;
+        color: #ffd60a;
+    }
+    #death {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        color: #ff4d6d;
+        font-size: 50px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+</style>
 </head>
 <body>
 
-<div id="game-container">
+<div id="creation">
+    <h1>D&D Pixel Adventure</h1>
+    <h2>Create Your Character</h2>
 
-    <!-- CHARACTER CREATION -->
-    <div id="character-creation">
-        <h1>Create Your Hero</h1>
-        
-        <label>Race:</label><br>
-        <select id="race">
-            <option value="Human">Human</option>
-            <option value="Elf">Elf</option>
-            <option value="Dwarf">Dwarf</option>
-            <option value="Orc">Orc</option>
-        </select><br><br>
+    <label>Race</label><br>
+    <select id="race">
+        <option>Human</option>
+        <option>Elf</option>
+        <option>Dwarf</option>
+        <option>Orc</option>
+    </select><br><br>
 
-        <label>Class:</label><br>
-        <select id="class">
-            <option value="Fighter">Fighter</option>
-            <option value="Wizard">Wizard</option>
-            <option value="Rogue">Rogue</option>
-            <option value="Cleric">Cleric</option>
-        </select><br><br>
+    <label>Class</label><br>
+    <select id="class">
+        <option>Fighter</option>
+        <option>Wizard</option>
+        <option>Rogue</option>
+        <option>Cleric</option>
+    </select><br><br>
 
-        <label>Weapons (comma separated):</label><br>
-        <input type="text" id="weapons" value="Shortsword" placeholder="Shortsword, Bow"><br><br>
+    <label>Weapons (comma separated)</label><br>
+    <input type="text" id="weapons" value="Sword, Dagger"><br><br>
 
-        <label>Armor:</label><br>
-        <input type="text" id="armor" value="Leather Armor"><br><br>
+    <button onclick="start()">Start Adventure</button>
+</div>
 
-        <button onclick="startGame()">Begin Adventure</button>
+<div id="game">
+    <h1>Your Adventure</h1>
+
+    <div id="player-area">
+        <div class="pixel-character" id="player-model"></div>
+        <div id="health">
+            <div id="health-fill"></div>
+            <div id="health-text">HP: 20 / 20</div>
+        </div>
+        <h2 id="player-desc">Your Hero</h2>
     </div>
 
-    <!-- MAIN GAME SCREEN -->
-    <div id="game-screen">
-        <h1>D&D Pixel Adventure</h1>
-
-        <div class="combat-area">
-            <div class="character-side">
-                <div id="player-model" class="model">Your Hero</div>
-                <div class="health-bar">
-                    <div id="player-health-fill" class="health-fill" style="width:100%"></div>
-                    <div id="player-health-text" class="health-text">HP: 20 / 20</div>
-                </div>
-                <h3 id="player-name">Your Hero</h3>
-            </div>
-
-            <div class="enemy-side">
-                <div id="enemy-model" class="model">Enemy</div>
-                <div id="enemy-health-container" class="health-bar hidden">
-                    <div id="enemy-health-fill" class="health-fill" style="width:100%"></div>
-                    <div id="enemy-health-text" class="health-text">Enemy HP</div>
-                </div>
-                <h3 id="enemy-name">—</h3>
-            </div>
-        </div>
-
-        <div id="story-text">Loading your adventure...</div>
-
-        <div id="dice-result"></div>
-
-        <div id="choices"></div>
-
-        <div id="dice-roller" class="hidden">
-            <h3>Attack Roll (d20)</h3>
-            <button onclick="playerAttack()">Roll d20</button>
-        </div>
-
-        <div id="shop-screen" class="hidden">
-            <h2>Merchant / Tavern</h2>
-            <p id="shop-text">Welcome! What do you want?</p>
-            <div id="shop-buttons"></div>
-            <button onclick="exitShop()">Leave</button>
-        </div>
+    <div id="enemy-area" style="display:none;">
+        <div class="pixel-character enemy" id="enemy-model"></div>
+        <h2 id="enemy-name">Enemy</h2>
     </div>
 
-    <!-- DEATH SCREEN -->
-    <div id="death-screen" class="hidden">
-        <div>
-            <p>You have fallen...</p>
-            <p style="font-size: 28px; margin: 30px 0;">RISE UP</p>
-            <button onclick="location.reload()">New Adventure</button>
-        </div>
-    </div>
+    <div style="clear:both;"></div>
 
+    <div id="story">You awaken in a misty forest. Something stirs in the shadows...</div>
+
+    <div id="roll-result"></div>
+
+    <div id="actions"></div>
+
+    <div id="combat-controls" style="display:none;">
+        <h2>Combat!</h2>
+        <button onclick="attack()">Roll d20 to Attack</button>
+    </div>
+</div>
+
+<div id="death">
+    <div>
+        <p>You have fallen...</p>
+        <button onclick="location.reload()" style="font-size:36px; padding:25px 50px; margin-top:40px;">
+            Rise Again
+        </button>
+    </div>
 </div>
 
 <script>
-// Game State
-let player = {
-    race: "",
-    class: "",
-    hp: 20,
-    maxHp: 20,
-    weapons: [],
-    armor: "",
-    gold: 0
-};
-
-let enemy = {
-    name: "",
-    hp: 0,
-    maxHp: 0
-};
-
+let hp = 20;
+let maxHp = 20;
 let inCombat = false;
-let playerTurn = true;
 
-// Pixel art images (small/free assets – front facing/portrait style)
-const playerImages = {
-    Human:  "https://img.craftpix.net/2025/01/Anime-Warrior-Man-Character-Pixel-Sprite-Pack.gif",
-    Elf:    "https://img.craftpix.net/2021/10/Elf-Portrait-Icons-Pixel-Art-720x480.webp
+function start() {
+    const race = document.getElementById('race').value;
+    const cls = document.getElementById('class').value;
+    const weap = document.getElementById('weapons').value;
+
+    maxHp = (cls === 'Fighter') ? 28 : 18;
+    hp = maxHp;
+
+    document.getElementById('player-desc').textContent = `${race} ${cls} (${weap})`;
+    document.getElementById('creation').style.display = 'none';
+    document.getElementById('game').style.display = 'block';
+
+    updateHealth();
+    showChoices(['Explore deeper', 'Rest'], [fight, rest]);
+}
+
+function updateHealth() {
+    const perc = (hp / maxHp) * 100;
+    document.getElementById('health-fill').style.width = perc + '%';
+    document.getElementById('health-text').textContent = `HP: ${hp} / ${maxHp}`;
+}
+
+function fight() {
+    inCombat = true;
+    document.getElementById('enemy-area').style.display = 'inline-block';
+    document.getElementById('story').textContent = 'A snarling goblin leaps from the bushes!';
+    document.getElementById('enemy-name').textContent = 'Goblin';
+    document.getElementById('combat-controls').style.display = 'block';
+    document.getElementById('actions').innerHTML = '';
+}
+
+function rest() {
+    hp = Math.min(maxHp, hp + 5);
+    updateHealth();
+    document.getElementById('story').textContent = 'You rest and recover 5 HP.';
+    showChoices(['Continue'], [fight]);
+}
+
+function attack() {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    document.getElementById('roll-result').textContent = `You rolled: ${roll}`;
+
+    if (roll >= 10) {
+        document.getElementById('story').textContent = 'You strike the goblin! It falls defeated.';
+        setTimeout(() => {
+            document.getElementById('roll-result').textContent = '';
+            document.getElementById('combat-controls').style.display = 'none';
+            document.getElementById('enemy-area').style.display = 'none';
+            showChoices(['Search for more', 'Leave the forest'], [fight, win]);
+        }, 1800);
+    } else {
+        hp -= 4;
+        updateHealth();
+        document.getElementById('story').textContent = 'You miss! The goblin hits you for 4 damage.';
+        if (hp <= 0) {
+            document.getElementById('game').style.display = 'none';
+            document.getElementById('death').style.display = 'flex';
+        }
+    }
+}
+
+function win() {
+    document.getElementById('story').textContent = 'You escape the forest victorious! (Refresh to play again)';
+}
+
+function showChoices(labels, actions) {
+    const div = document.getElementById('actions');
+    div.innerHTML = '';
+    labels.forEach((txt, i) => {
+        let btn = document.createElement('button');
+        btn.textContent = txt;
+        btn.onclick = actions[i];
+        div.appendChild(btn);
+    });
+}
+</script>
+</body>
+</html>
