@@ -18,6 +18,7 @@
             max-width: 800px;
             margin: 0 auto;
             padding: 20px;
+            position: relative;
         }
         #character-creation, #game-screen, #death-screen {
             display: none;
@@ -49,21 +50,74 @@
             margin: 20px 0;
             font-size: 18px;
         }
-        #character-model, #enemy-model {
+        .model-container {
             width: 200px;
             height: 200px;
-            margin: 20px auto;
+            margin: 20px;
             background-size: cover;
             background-repeat: no-repeat;
+            position: absolute;
+            top: 100px;
+        }
+        #character-model {
+            left: 50px;
+        }
+        #enemy-model {
+            right: 50px;
+        }
+        .stats-bar {
+            display: none;
+            background-color: black;
+            color: white;
+            padding: 5px;
+            position: absolute;
+            bottom: -30px;
+            width: 100%;
+            text-align: center;
+        }
+        .model-container:hover .stats-bar {
+            display: block;
         }
         #dice-select {
             margin: 10px;
         }
-        /* Background classes */
-        .forest-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDBoMjAwdjIwMEgweiIgZmlsbD0iIzAwODA0MCIvPjwvc3ZnPg=='); } /* Green forest */
-        .dungeon-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDBoMjAwdjIwMEgweiIgZmlsbD0iIzQwNDA0MCIvPjwvc3ZnPg=='); } /* Gray dungeon */
-        .mountain-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDBoMjAwdjIwMEgweiIgZmlsbD0iIzgwODA4MCIvPjwvc3ZnPg=='); } /* Brown mountain */
-        /* Add more backgrounds as needed */
+        /* Health Bars */
+        .health-bar {
+            width: 200px;
+            height: 20px;
+            background-color: grey;
+            margin: 10px auto;
+            position: relative;
+        }
+        .health-fill {
+            height: 100%;
+            background-color: green;
+            transition: width 0.5s;
+        }
+        .health-text {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            text-align: center;
+            color: white;
+        }
+        #player-health {
+            position: absolute;
+            top: 320px;
+            left: 50px;
+        }
+        #enemy-health {
+            position: absolute;
+            top: 320px;
+            right: 50px;
+            display: none;
+        }
+        /* Background classes with texture (simple patterns) */
+        .forest-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJncmVlbi1wYXR0ZXJuIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiMwMDgwNDAiLz48Y2lyY2xlIGN4PSI1MCIgY3k9IjUwIiByPSIxMCIgZmlsbD0iIzAwNTAyMCIvPjwvcGF0dGVybj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI2dyZWVuLXBhdHRlcm4pIi8+PC9zdmc+'); } /* Textured forest */
+        .dungeon-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJncmF5LXBhdHRlcm4iIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iIzQwNDA0MCIvPjxyZWN0IHg9IjIwIiB5PSIyMCIgd2lkdGg9IjYwIiBoZWlnaHQ9IjYwIiBmaWxsPSIjMzAzMDMwIi8+PC9wYXR0ZXJuPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjZ3JheS1wYXR0ZXJuKSIvPjwvc3ZnPg=='); } /* Textured dungeon */
+        .mountain-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJicm93bi1wYXR0ZXJuIiB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgcGF0dGVyblVuaXRzPSJ1c2VyU3BhY2VPblVzZSI+PHJlY3Qgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMDAiIGZpbGw9IiM4MDgwODAiLz48bGluZSB4MT0iMCIgeTE9IjAiIHgyPSIxMDAiIHkyPSIxMDAiIHN0cm9rZT0iIzYwNjA2MCIgc3Ryb2tlLXdpZHRoPSIzIi8+PC9wYXR0ZXJuPjxyZWN0IHdpZHRoPSIxMDAlIiBoZWlnaHQ9IjEwMCUiIGZpbGw9InVybCgjYnJvd24tcGF0dGVybikiLz48L3N2Zz4='); } /* Textured mountain */
+        .tavern-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJ3b29kLXBhdHRlcm4iIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI2ZmYTUwMCIvPjxyZWN0IHg9IjAiIHk9IjAiIHdpZHRoPSIxMDAiIGhlaWdodD0iMTAiIGZpbGw9IiNkZDg4MDAiLz48cmVjdCB4PSIwIiB5PSIyMCIgd2lkdGg9IjEwMCIgaGVpZ2h0PSIxMCIgZmlsbD0iI2RkODgwMCIvPjwvcGF0dGVybj48cmVjdCB3aWR0aD0iMTAwJSIgaGVpZ2h0PSIxMDAlIiBmaWxsPSJ1cmwoI3dvb2QtcGF0dGVybikiLz48L3N2Zz4='); } /* Wood texture for tavern */
     </style>
 </head>
 <body id="game-body">
@@ -104,7 +158,7 @@
             <input type="text" id="spells" placeholder="e.g., Fireball, Heal"><br><br>
             
             <label for="inventory">Inventory (comma-separated):</label>
-            <input type="text" id="inventory" placeholder="e.g., Potion, Gold"><br><br>
+            <input type="text" id="inventory" placeholder="e.g., Potion"><br><br>
             
             <button onclick="startGame()">Start Adventure</button>
         </div>
@@ -117,24 +171,40 @@
                 <p id="char-race"></p>
                 <p id="char-class"></p>
                 <p id="char-level"></p>
-                <p id="char-hp">HP: 20/20</p> <!-- Starting HP, adjustable -->
+                <p id="char-currency">Currency: 0 gold, 0 silver, 0 copper</p>
                 <p id="char-weapons"></p>
                 <p id="char-armor"></p>
                 <p id="char-spells"></p>
                 <p id="char-inventory"></p>
             </div>
-            <div id="character-model"></div>
+            <div class="model-container" id="character-model">
+                <div class="stats-bar" id="player-stats-bar"></div>
+            </div>
+            <div class="model-container" id="enemy-model">
+                <div class="stats-bar" id="enemy-stats-bar"></div>
+            </div>
+            <div id="player-health" class="health-bar">
+                <div class="health-fill" id="player-health-fill"></div>
+                <div class="health-text" id="player-health-text">HP: 20/20</div>
+            </div>
+            <div id="enemy-health" class="health-bar">
+                <div class="health-fill" id="enemy-health-fill"></div>
+                <div class="health-text" id="enemy-health-text">Enemy HP: 15/15</div>
+            </div>
             <div id="story-text"></div>
-            <div id="enemy-model"></div>
             <div id="choices"></div>
             <div id="dice-roller" style="display:none;">
                 <h3>Roll Dice for Attack</h3>
                 <select id="dice-select">
                     <option value="20">d20 (Standard Attack)</option>
-                    <!-- Add more dice if needed -->
                 </select>
-                <button onclick="rollDice()">Roll</button>
+                <button onclick="playerRollDice()">Roll</button>
                 <p id="dice-result"></p>
+            </div>
+            <div id="shop-screen" style="display:none;">
+                <h2>Shop</h2>
+                <div id="shop-items"></div>
+                <button onclick="exitShop()">Exit Shop</button>
             </div>
         </div>
         
@@ -149,28 +219,41 @@
         let character = {};
         let currentHP = 20;
         let maxHP = 20;
+        let enemyHP = 15;
+        let enemyMaxHP = 15;
+        let gold = 0;
+        let silver = 0;
+        let copper = 0;
         let storyState = 'start';
+        let currentEnemy = '';
+        let inCombat = false;
+        let playerTurn = true;
         const backgrounds = {
             forest: 'forest-bg',
             dungeon: 'dungeon-bg',
-            mountain: 'mountain-bg'
-            // Add more as needed
+            mountain: 'mountain-bg',
+            tavern: 'tavern-bg'
         };
+        // Pixel art models (simple SVG approximating pixel art)
         const models = {
-            Human: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)', // Simple human stick figure
-            Elf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)', // With ears
-            // Add simple SVG models for others
-            Dwarf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cmVjdCB4PSI4MCIgeT0iNTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmMDAwMCIvPjwvc3ZnPg==)', // With beard
-            Orc: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzAwODA0MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            Halfling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSIzMCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            Tiefling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmMDAwMCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            Dragonborn: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzAwMDBmZiIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
+            Human: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)', // Pixel textured human
+            Elf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            Dwarf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cmVjdCB4PSI4MCIgeT0iNTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmMDAwMCIvPjwvc3ZnPg==)',
+            Orc: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMDgwNDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            Halfling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZmQwODAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjMwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            Tiefling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZjAwMDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            Dragonborn: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMDAwZmYiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
         };
         const enemyModels = {
-            goblin: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSIzMCIgZmlsbD0iIzAwODA0MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
-            dragon: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI1MCIgZmlsbD0iI2ZmMDAwMCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NjBoLTYwdjYwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
-            // Add more
+            goblin: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiMwMDgwNDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjMwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            dragon: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiNmZjAwMDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjUwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NjBoLTYwdjYwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            bandit: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXR0ZXJuIGlkPSJwaXhlbCIgd2lkdGg9IjEwIiBoZWlnaHQ9IjEwIiBwYXR0ZXJuVW5pdHM9InVzZXJTcGFjZU9uVXNlIj48cmVjdCB3aWR0aD0iMTAiIGhlaWdodD0iMTAiIGZpbGw9IiM4MDQwMDAiLz48L3BhdHRlcm4+PGNpcmNsZSBjeD0iMTAwIiBjeT0iNTAiIHI9IjQwIiBmaWxsPSJ1cmwoI3BpeGVsKSIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
         };
+        const shopItems = [
+            { name: 'Potion', rarity: 'common', price: { copper: 10 } },
+            { name: 'Sword', rarity: 'uncommon', price: { silver: 5 } },
+            { name: 'Magic Ring', rarity: 'rare', price: { gold: 2 } }
+        ];
 
         // Start with character creation visible
         document.getElementById('character-creation').style.display = 'block';
@@ -184,118 +267,212 @@
             character.spells = document.getElementById('spells').value.split(',').map(s => s.trim());
             character.inventory = document.getElementById('inventory').value.split(',').map(i => i.trim());
 
-            // Set max HP based on level/class (simple formula)
             maxHP = 10 + (parseInt(character.level) * 5) + (character.class === 'Fighter' ? 10 : 0);
             currentHP = maxHP;
 
-            document.getElementById('char-race').textContent = 'Race: ' + character.race;
-            document.getElementById('char-class').textContent = 'Class: ' + character.class;
-            document.getElementById('char-level').textContent = 'Level: ' + character.level;
-            document.getElementById('char-hp').textContent = 'HP: ' + currentHP + '/' + maxHP;
-            document.getElementById('char-weapons').textContent = 'Weapons: ' + character.weapons.join(', ');
-            document.getElementById('char-armor').textContent = 'Armor: ' + character.armor;
-            document.getElementById('char-spells').textContent = 'Spells: ' + character.spells.join(', ');
-            document.getElementById('char-inventory').textContent = 'Inventory: ' + character.inventory.join(', ');
+            updateCharacterInfo();
+            updateHealthBars();
 
-            document.getElementById('character-model').style.backgroundImage = models[character.race] || 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)';
+            document.getElementById('character-model').style.backgroundImage = models[character.race] || models['Human'];
+            document.getElementById('player-stats-bar').textContent = `Race: ${character.race}, Class: ${character.class}, Level: ${character.level}`;
 
             document.getElementById('character-creation').style.display = 'none';
             document.getElementById('game-screen').style.display = 'block';
 
-            generateStory();
+            advanceStory();
         }
 
-        function generateStory() {
-            // Simple random story generator - new each time
+        function updateCharacterInfo() {
+            document.getElementById('char-race').textContent = 'Race: ' + character.race;
+            document.getElementById('char-class').textContent = 'Class: ' + character.class;
+            document.getElementById('char-level').textContent = 'Level: ' + character.level;
+            document.getElementById('char-currency').textContent = `Currency: ${gold} gold, ${silver} silver, ${copper} copper`;
+            document.getElementById('char-weapons').textContent = 'Weapons: ' + character.weapons.join(', ');
+            document.getElementById('char-armor').textContent = 'Armor: ' + character.armor;
+            document.getElementById('char-spells').textContent = 'Spells: ' + character.spells.join(', ');
+            document.getElementById('char-inventory').textContent = 'Inventory: ' + character.inventory.join(', ');
+        }
+
+        function updateHealthBars() {
+            document.getElementById('player-health-text').textContent = `HP: ${currentHP}/${maxHP}`;
+            document.getElementById('player-health-fill').style.width = `${(currentHP / maxHP) * 100}%`;
+
+            document.getElementById('enemy-health-text').textContent = `Enemy HP: ${enemyHP}/${enemyMaxHP}`;
+            document.getElementById('enemy-health-fill').style.width = `${(enemyHP / enemyMaxHP) * 100}%`;
+        }
+
+        function advanceStory() {
             const locations = ['forest', 'dungeon', 'mountain'];
             const randomLocation = locations[Math.floor(Math.random() * locations.length)];
             setBackground(randomLocation);
 
-            const stories = [
-                `You enter a mysterious ${randomLocation}. A goblin appears!`,
-                `In the depths of the ${randomLocation}, you face a dragon boss!`,
-                `Exploring the ${randomLocation}, you find a treasure but it's guarded.`
-            ];
-            const randomStory = stories[Math.floor(Math.random() * stories.length)];
-            document.getElementById('story-text').textContent = randomStory;
+            const events = ['encounter', 'shop', 'treasure'];
+            const randomEvent = events[Math.floor(Math.random() * events.length)];
 
-            // Set enemy model based on story
-            let enemy = randomStory.includes('goblin') ? 'goblin' : 'dragon';
-            document.getElementById('enemy-model').style.backgroundImage = enemyModels[enemy] || '';
+            if (randomEvent === 'encounter') {
+                startEncounter();
+            } else if (randomEvent === 'shop') {
+                enterShop(randomLocation === 'forest' ? 'Corner Store' : 'Tavern');
+            } else {
+                document.getElementById('story-text').textContent = `You find a treasure in the ${randomLocation}! You gain some coins.`;
+                awardCoins();
+                showChoices(['Continue'], [advanceStory]);
+            }
+        }
 
-            // Show dice for combat
+        function startEncounter() {
+            const enemies = ['goblin', 'dragon', 'bandit'];
+            currentEnemy = enemies[Math.floor(Math.random() * enemies.length)];
+            enemyHP = currentEnemy === 'dragon' ? 30 : 15;
+            enemyMaxHP = enemyHP;
+            inCombat = true;
+            playerTurn = true;
+
+            document.getElementById('story-text').textContent = `You encounter a ${currentEnemy} in the ${document.getElementById('game-body').className.replace('-bg', '')}!`;
+            document.getElementById('enemy-model').style.backgroundImage = enemyModels[currentEnemy];
+            document.getElementById('enemy-stats-bar').textContent = `Enemy: ${currentEnemy}, HP: ${enemyHP}`;
+            document.getElementById('enemy-health').style.display = 'block';
+            updateHealthBars();
+
+            showChoices(['Fight', 'Run'], [startFight, runAway]);
+        }
+
+        function startFight() {
             document.getElementById('dice-roller').style.display = 'block';
-
-            // Simple choices
-            const choicesDiv = document.getElementById('choices');
-            choicesDiv.innerHTML = '';
-            const choiceBtn1 = document.createElement('button');
-            choiceBtn1.textContent = 'Fight';
-            choiceBtn1.onclick = () => { /* Already handled by dice */ };
-            choicesDiv.appendChild(choiceBtn1);
-
-            const choiceBtn2 = document.createElement('button');
-            choiceBtn2.textContent = 'Run';
-            choiceBtn2.onclick = () => {
-                document.getElementById('story-text').textContent = 'You run away safely.';
-                setTimeout(generateStory, 2000); // New mission
-            };
-            choicesDiv.appendChild(choiceBtn2);
+            document.getElementById('choices').innerHTML = '';
+            document.getElementById('story-text').textContent += ' Prepare to fight!';
         }
 
-        function setBackground(location) {
-            document.getElementById('game-body').className = backgrounds[location] || '';
+        function runAway() {
+            document.getElementById('story-text').textContent = 'You run away to safety, but the adventure continues elsewhere.';
+            endCombat();
+            setTimeout(advanceStory, 2000);
         }
 
-        function rollDice() {
-            const dice = parseInt(document.getElementById('dice-select').value);
+        function playerRollDice() {
+            if (!playerTurn || !inCombat) return;
+            const dice = 20;
             const roll = Math.floor(Math.random() * dice) + 1;
             let result = '';
+            let damage = 0;
             if (roll <= 9) {
                 result = 'Miss! (' + roll + ')';
-                takeDamage(5); // Enemy hits back
             } else if (roll >= 10 && roll <= 19) {
-                result = 'Hit! (' + roll + ')';
-                // Enemy takes damage, but simple: proceed
+                damage = roll - 9; // 10=1, 11=2, ...,19=10
+                result = 'Hit! (' + roll + ') Damage: ' + damage;
+                enemyHP -= damage;
             } else if (roll === 20) {
-                result = 'Critical Hit! (' + roll + ')';
-                // Instant win combat
-                document.getElementById('story-text').textContent += ' You defeat the enemy!';
-                setTimeout(generateStory, 2000); // Next story
-                return;
+                damage = 20; // Crit
+                result = 'Critical Hit! (' + roll + ') Damage: ' + damage;
+                enemyHP -= damage;
             }
             document.getElementById('dice-result').textContent = result;
+            updateHealthBars();
 
-            if (roll >= 10) {
-                document.getElementById('story-text').textContent += ' You hit the enemy!';
-                setTimeout(generateStory, 2000); // Next
+            if (enemyHP <= 0) {
+                document.getElementById('story-text').textContent += ' You defeat the ' + currentEnemy + '!';
+                awardCoins();
+                endCombat();
+                setTimeout(advanceStory, 2000);
+                return;
             }
+
+            playerTurn = false;
+            setTimeout(enemyAttack, 1000);
         }
 
-        function takeDamage(amount) {
-            currentHP -= amount;
-            document.getElementById('char-hp').textContent = 'HP: ' + currentHP + '/' + maxHP;
+        function enemyAttack() {
+            if (!inCombat) return;
+            const roll = Math.floor(Math.random() * 20) + 1;
+            let result = '';
+            let damage = 0;
+            if (roll <= 9) {
+                result = 'Enemy Miss! (' + roll + ')';
+            } else if (roll >= 10 && roll <= 19) {
+                damage = roll - 9;
+                result = 'Enemy Hit! (' + roll + ') Damage: ' + damage;
+                currentHP -= damage;
+            } else if (roll === 20) {
+                damage = 20;
+                result = 'Enemy Critical Hit! (' + roll + ') Damage: ' + damage;
+                currentHP -= damage;
+            }
+            document.getElementById('dice-result').textContent += '\n' + result;
+            updateHealthBars();
+
             if (currentHP <= 0) {
                 die();
+                return;
+            }
+
+            playerTurn = true;
+        }
+
+        function endCombat() {
+            inCombat = false;
+            document.getElementById('dice-roller').style.display = 'none';
+            document.getElementById('enemy-model').style.backgroundImage = '';
+            document.getElementById('enemy-health').style.display = 'none';
+        }
+
+        function awardCoins() {
+            const coinTypes = ['gold', 'silver', 'copper'];
+            const type = coinTypes[Math.floor(Math.random() * coinTypes.length)];
+            if (type === 'gold') gold += 2;
+            else if (type === 'silver') silver += 2;
+            else copper += 2;
+            updateCharacterInfo();
+        }
+
+        function enterShop(shopType) {
+            setBackground('tavern');
+            document.getElementById('story-text').textContent = `You enter a ${shopType}. What would you like to buy?`;
+            document.getElementById('game-screen').style.display = 'block';
+            document.getElementById('shop-screen').style.display = 'block';
+            const itemsDiv = document.getElementById('shop-items');
+            itemsDiv.innerHTML = '';
+            shopItems.forEach(item => {
+                const btn = document.createElement('button');
+                const priceStr = Object.entries(item.price).map(([type, amt]) => `${amt} ${type}`).join(', ');
+                btn.textContent = `${item.name} (${item.rarity}) - ${priceStr}`;
+                btn.onclick = () => buyItem(item);
+                itemsDiv.appendChild(btn);
+            });
+        }
+
+        function buyItem(item) {
+            const price = item.price;
+            let canAfford = true;
+            if (price.gold && gold < price.gold) canAfford = false;
+            if (price.silver && silver < price.silver) canAfford = false;
+            if (price.copper && copper < price.copper) canAfford = false;
+
+            if (canAfford) {
+                if (price.gold) gold -= price.gold;
+                if (price.silver) silver -= price.silver;
+                if (price.copper) copper -= price.copper;
+                character.inventory.push(item.name);
+                updateCharacterInfo();
+                alert('Purchased ' + item.name + '!');
+            } else {
+                alert('Not enough coins!');
             }
         }
 
-        function die() {
-            document.getElementById('game-screen').style.display = 'none';
-            document.getElementById('death-screen').style.display = 'flex';
+        function exitShop() {
+            document.getElementById('shop-screen').style.display = 'none';
+            advanceStory();
         }
 
-        function restartGame() {
-            // Reset everything
-            character = {};
-            currentHP = 20;
-            maxHP = 20;
-            storyState = 'start';
-            document.getElementById('death-screen').style.display = 'none';
-            document.getElementById('character-creation').style.display = 'block';
-            document.getElementById('game-body').className = '';
-            // Items and damage reset automatically on new character
+        function showChoices(labels, callbacks) {
+            const choicesDiv = document.getElementById('choices');
+            choicesDiv.innerHTML = '';
+            labels.forEach((label, i) => {
+                const btn = document.createElement('button');
+                btn.textContent = label;
+                btn.onclick = callbacks[i];
+                choicesDiv.appendChild(btn);
+            });
         }
-    </script>
-</body>
-</html>
+
+        function setBackground
