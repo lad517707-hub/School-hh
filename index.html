@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>D&D Adventure Game - Fixed Version</title>
+    <title>D&D Adventure Game - Pixel Fixed</title>
     <style>
         body {
             font-family: Arial, Helvetica, sans-serif;
             margin: 0;
             padding: 20px;
-            background-color: #0d001a;
+            background-color: #1a1a2e;          /* Lighter dark blue-gray – visible now */
             color: #e0e0ff;
             min-height: 100vh;
             text-align: center;
@@ -38,7 +38,7 @@
             padding: 8px;
             margin: 8px;
             font-size: 16px;
-            background: #1a0033;
+            background: #0f081a;
             color: white;
             border: 1px solid #7e57c2;
             border-radius: 4px;
@@ -51,30 +51,37 @@
             justify-content: space-between;
             margin: 40px 0;
             position: relative;
-            min-height: 300px;
+            min-height: 280px;
         }
         .character-side, .enemy-side {
             width: 220px;
             text-align: center;
         }
         .model {
-            width: 180px;
-            height: 180px;
+            width: 140px;
+            height: 140px;
             margin: 0 auto 10px;
-            background-size: cover;
+            background-size: contain;
             background-position: center;
+            background-repeat: no-repeat;
             border: 3px solid #7e57c2;
             border-radius: 12px;
-            position: relative;
+            background-color: #2a2a4a; /* fallback color if image fails */
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            color: #aaa;
         }
         .health-bar {
-            width: 180px;
-            height: 24px;
+            width: 160px;
+            height: 22px;
             background: #333;
             border: 2px solid #555;
             margin: 10px auto;
             border-radius: 6px;
             overflow: hidden;
+            position: relative;
         }
         .health-fill {
             height: 100%;
@@ -83,10 +90,13 @@
         }
         .health-text {
             position: absolute;
-            width: 180px;
-            text-align: center;
+            inset: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
             color: white;
             font-weight: bold;
+            font-size: 13px;
             text-shadow: 1px 1px 2px black;
         }
         #story-text {
@@ -94,7 +104,7 @@
             line-height: 1.5;
             margin: 20px 0;
             padding: 15px;
-            background: rgba(0,0,0,0.4);
+            background: rgba(0,0,0,0.5);
             border-radius: 8px;
             min-height: 80px;
         }
@@ -103,6 +113,7 @@
             font-weight: bold;
             margin: 15px 0;
             min-height: 30px;
+            color: #ffeb3b;
         }
         #death-screen {
             position: fixed;
@@ -142,10 +153,10 @@
             <option value="Cleric">Cleric</option>
         </select><br><br>
 
-        <label>Starting Weapons (comma separated):</label><br>
+        <label>Weapons (comma separated):</label><br>
         <input type="text" id="weapons" value="Shortsword" placeholder="Shortsword, Bow"><br><br>
 
-        <label>Starting Armor:</label><br>
+        <label>Armor:</label><br>
         <input type="text" id="armor" value="Leather Armor"><br><br>
 
         <button onclick="startGame()">Begin Adventure</button>
@@ -153,11 +164,11 @@
 
     <!-- MAIN GAME SCREEN -->
     <div id="game-screen">
-        <h1>D&D Adventure</h1>
+        <h1>D&D Pixel Adventure</h1>
 
         <div class="combat-area">
             <div class="character-side">
-                <div id="player-model" class="model"></div>
+                <div id="player-model" class="model">Your Hero</div>
                 <div class="health-bar">
                     <div id="player-health-fill" class="health-fill" style="width:100%"></div>
                     <div id="player-health-text" class="health-text">HP: 20 / 20</div>
@@ -166,7 +177,7 @@
             </div>
 
             <div class="enemy-side">
-                <div id="enemy-model" class="model"></div>
+                <div id="enemy-model" class="model">Enemy</div>
                 <div id="enemy-health-container" class="health-bar hidden">
                     <div id="enemy-health-fill" class="health-fill" style="width:100%"></div>
                     <div id="enemy-health-text" class="health-text">Enemy HP</div>
@@ -186,10 +197,9 @@
             <button onclick="playerAttack()">Roll d20</button>
         </div>
 
-        <!-- Shop overlay -->
         <div id="shop-screen" class="hidden">
-            <h2>The Wandering Merchant / Tavern</h2>
-            <p id="shop-text">Welcome, traveler. What do you wish to purchase?</p>
+            <h2>Merchant / Tavern</h2>
+            <p id="shop-text">Welcome! What do you want?</p>
             <div id="shop-buttons"></div>
             <button onclick="exitShop()">Leave</button>
         </div>
@@ -198,7 +208,7 @@
     <!-- DEATH SCREEN -->
     <div id="death-screen" class="hidden">
         <div>
-            <p>You and your companions have fallen...</p>
+            <p>You have fallen...</p>
             <p style="font-size: 28px; margin: 30px 0;">RISE UP</p>
             <button onclick="location.reload()">New Adventure</button>
         </div>
@@ -207,9 +217,7 @@
 </div>
 
 <script>
-// ────────────────────────────────────────────────
 // Game State
-// ────────────────────────────────────────────────
 let player = {
     race: "",
     class: "",
@@ -229,230 +237,7 @@ let enemy = {
 let inCombat = false;
 let playerTurn = true;
 
-// Simple placeholder images (you can replace later with your own)
+// Pixel art images (small/free assets – front facing/portrait style)
 const playerImages = {
-    Human: "https://via.placeholder.com/180x180/ffd700/000000?text=Human",
-    Elf:   "https://via.placeholder.com/180x180/90ee90/006400?text=Elf",
-    Dwarf: "https://via.placeholder.com/180x180/cd853f/3c2f2f?text=Dwarf",
-    Orc:   "https://via.placeholder.com/180x180/228b22/000000?text=Orc"
-};
-
-const enemyImages = {
-    Goblin:  "https://via.placeholder.com/180x180/32cd32/006400?text=Goblin",
-    Bandit:  "https://via.placeholder.com/180x180/8b4513/3c2f2f?text=Bandit",
-    Skeleton:"https://via.placeholder.com/180x180/d3d3d3/333333?text=Skeleton",
-    Dragon:  "https://via.placeholder.com/180x180/ff4500/8b0000?text=Dragon"
-};
-
-// ────────────────────────────────────────────────
-// Start Game
-// ────────────────────────────────────────────────
-function startGame() {
-    player.race   = document.getElementById("race").value;
-    player.class  = document.getElementById("class").value;
-    player.weapons = document.getElementById("weapons").value.split(",").map(s=>s.trim()).filter(Boolean);
-    player.armor  = document.getElementById("armor").value.trim() || "No armor";
-
-    player.maxHp = player.class === "Fighter" ? 25 : 18;
-    player.hp = player.maxHp;
-
-    document.getElementById("player-name").textContent = `${player.race} ${player.class}`;
-    document.getElementById("player-model").style.backgroundImage = `url(${playerImages[player.race] || playerImages.Human})`;
-    updatePlayerHealth();
-
-    document.getElementById("character-creation").classList.add("hidden");
-    document.getElementById("game-screen").style.display = "block";
-
-    nextScene();
-}
-
-// ────────────────────────────────────────────────
-// Health Display
-// ────────────────────────────────────────────────
-function updatePlayerHealth() {
-    const percent = (player.hp / player.maxHp) * 100;
-    document.getElementById("player-health-fill").style.width = percent + "%";
-    document.getElementById("player-health-text").textContent = `HP: ${player.hp} / ${player.maxHp}`;
-}
-
-function updateEnemyHealth() {
-    if (enemy.hp <= 0) return;
-    const percent = (enemy.hp / enemy.maxHp) * 100;
-    document.getElementById("enemy-health-fill").style.width = percent + "%";
-    document.getElementById("enemy-health-text").textContent = `${enemy.name} HP: ${enemy.hp} / ${enemy.maxHp}`;
-}
-
-// ────────────────────────────────────────────────
-// Scene / Story Progression
-// ────────────────────────────────────────────────
-function nextScene() {
-    document.getElementById("dice-roller").classList.add("hidden");
-    document.getElementById("choices").innerHTML = "";
-    document.getElementById("dice-result").textContent = "";
-
-    const roll = Math.random();
-    if (roll < 0.5) {
-        startCombat();
-    } else if (roll < 0.75) {
-        enterShop();
-    } else {
-        findTreasure();
-    }
-}
-
-function startCombat() {
-    const enemies = ["Goblin","Bandit","Skeleton","Dragon"];
-    enemy.name = enemies[Math.floor(Math.random()*enemies.length)];
-    enemy.maxHp = enemy.name === "Dragon" ? 35 : 14;
-    enemy.hp = enemy.maxHp;
-
-    document.getElementById("enemy-name").textContent = enemy.name;
-    document.getElementById("enemy-model").style.backgroundImage = `url(${enemyImages[enemy.name]})`;
-    document.getElementById("enemy-health-container").classList.remove("hidden");
-    updateEnemyHealth();
-
-    document.getElementById("story-text").textContent = `A ${enemy.name} appears before you! What do you do?`;
-
-    showChoices(["Fight", "Run"], [beginFight, tryToRun]);
-}
-
-function beginFight() {
-    inCombat = true;
-    playerTurn = true;
-    document.getElementById("story-text").textContent = "Combat begins! It's your turn.";
-    document.getElementById("dice-roller").classList.remove("hidden");
-}
-
-function tryToRun() {
-    if (Math.random() < 0.6) {
-        document.getElementById("story-text").textContent = "You escape safely... for now.";
-        endCombat();
-        setTimeout(nextScene, 1200);
-    } else {
-        document.getElementById("story-text").textContent = "You fail to escape! The enemy attacks!";
-        playerTurn = false;
-        setTimeout(enemyTurn, 800);
-    }
-}
-
-function playerAttack() {
-    if (!playerTurn || !inCombat) return;
-
-    const roll = Math.floor(Math.random() * 20) + 1;
-    document.getElementById("dice-result").textContent = `You rolled: ${roll}`;
-
-    if (roll >= 10) {
-        let dmg = Math.floor((roll - 9) / 2) + 1;   // 1–10 damage range
-        if (roll === 20) dmg *= 2;                  // crit
-        enemy.hp -= dmg;
-        document.getElementById("story-text").textContent = `Hit! You deal ${dmg} damage.`;
-        updateEnemyHealth();
-
-        if (enemy.hp <= 0) {
-            document.getElementById("story-text").textContent = `You defeated the ${enemy.name}!`;
-            player.gold += Math.floor(Math.random() * 8) + 3;
-            endCombat();
-            setTimeout(nextScene, 1800);
-            return;
-        }
-    } else {
-        document.getElementById("story-text").textContent = "You miss...";
-    }
-
-    playerTurn = false;
-    setTimeout(enemyTurn, 900);
-}
-
-function enemyTurn() {
-    if (!inCombat) return;
-
-    const roll = Math.floor(Math.random() * 20) + 1;
-    document.getElementById("dice-result").textContent = `Enemy rolled: ${roll}`;
-
-    if (roll >= 10) {
-        let dmg = Math.floor((roll - 9) / 2) + 1;
-        if (roll === 20) dmg *= 2;
-        player.hp -= dmg;
-        document.getElementById("story-text").textContent = `The ${enemy.name} hits for ${dmg} damage!`;
-        updatePlayerHealth();
-
-        if (player.hp <= 0) {
-            document.getElementById("game-screen").classList.add("hidden");
-            document.getElementById("death-screen").classList.remove("hidden");
-            return;
-        }
-    } else {
-        document.getElementById("story-text").textContent = "The enemy misses!";
-    }
-
-    playerTurn = true;
-    document.getElementById("story-text").textContent += "\nYour turn again.";
-}
-
-function endCombat() {
-    inCombat = false;
-    document.getElementById("dice-roller").classList.add("hidden");
-    document.getElementById("enemy-health-container").classList.add("hidden");
-    document.getElementById("enemy-model").style.backgroundImage = "";
-    document.getElementById("enemy-name").textContent = "—";
-}
-
-function enterShop() {
-    document.getElementById("story-text").textContent = "You find a small roadside shop / tavern.";
-    document.getElementById("shop-screen").classList.remove("hidden");
-
-    const shopDiv = document.getElementById("shop-buttons");
-    shopDiv.innerHTML = "";
-
-    const items = [
-        {name:"Health Potion", cost:5, effect:()=>{player.hp = Math.min(player.maxHp, player.hp+8);}},
-        {name:"Better Sword", cost:12, effect:()=>{player.weapons.push("Better Sword");}},
-        {name:"Leather Upgrade", cost:8, effect:()=>{player.armor = "Reinforced Leather";}}
-    ];
-
-    items.forEach(item => {
-        const btn = document.createElement("button");
-        btn.textContent = `${item.name} (${item.cost} gold)`;
-        btn.onclick = () => {
-            if (player.gold >= item.cost) {
-                player.gold -= item.cost;
-                item.effect();
-                alert(`You bought ${item.name}!`);
-                updatePlayerHealth();
-            } else {
-                alert("Not enough gold!");
-            }
-        };
-        shopDiv.appendChild(btn);
-    });
-}
-
-function exitShop() {
-    document.getElementById("shop-screen").classList.add("hidden");
-    nextScene();
-}
-
-function findTreasure() {
-    const amount = Math.floor(Math.random() * 10) + 5;
-    player.gold += amount;
-    document.getElementById("story-text").textContent = `You discover a small cache of treasure! +${amount} gold.`;
-    setTimeout(nextScene, 1800);
-}
-
-// ────────────────────────────────────────────────
-// Helpers
-// ────────────────────────────────────────────────
-function showChoices(labels, actions) {
-    const container = document.getElementById("choices");
-    container.innerHTML = "";
-    labels.forEach((label, i) => {
-        const btn = document.createElement("button");
-        btn.textContent = label;
-        btn.onclick = actions[i];
-        container.appendChild(btn);
-    });
-}
-</script>
-
-</body>
-</html>
+    Human:  "https://img.craftpix.net/2025/01/Anime-Warrior-Man-Character-Pixel-Sprite-Pack.gif",
+    Elf:    "https://img.craftpix.net/2021/10/Elf-Portrait-Icons-Pixel-Art-720x480.webp
