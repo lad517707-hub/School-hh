@@ -1,282 +1,450 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Simple D&D Adventure - Pixel Style</title>
-<style>
-    body {
-        margin: 0;
-        padding: 20px;
-        background: #1e1e2e;
-        color: #e0e0ff;
-        font-family: Arial, Helvetica, sans-serif;
-        text-align: center;
-        min-height: 100vh;
-    }
-    h1 { color: #ffdd57; margin-bottom: 10px; }
-    h2 { color: #a78bfa; }
-    button {
-        background: #6b46c1;
-        color: white;
-        border: none;
-        padding: 12px 24px;
-        margin: 10px 4px;
-        font-size: 17px;
-        cursor: pointer;
-        border-radius: 6px;
-    }
-    button:hover { background: #9f7aea; }
-    select, input {
-        padding: 10px;
-        font-size: 16px;
-        margin: 8px;
-        background: #2d2d44;
-        color: white;
-        border: 2px solid #805ad5;
-        border-radius: 6px;
-    }
-    #creation, #game, #death {
-        display: none;
-    }
-    .pixel-character {
-        width: 100px;
-        height: 140px;
-        margin: 20px auto;
-        position: relative;
-        background: #444;
-        border: 4px solid #777;
-        border-radius: 8px;
-        box-shadow: 0 0 10px rgba(100,100,255,0.3);
-    }
-    .head {
-        width: 50px;
-        height: 50px;
-        background: #ffd166;
-        border-radius: 50%;
-        position: absolute;
-        top: 10px;
-        left: 25px;
-        border: 3px solid #333;
-    }
-    .body {
-        width: 60px;
-        height: 70px;
-        background: #5a189a;
-        position: absolute;
-        top: 55px;
-        left: 20px;
-        border-radius: 12px;
-    }
-    .enemy .head { background: #ef476f; }
-    .enemy .body { background: #720026; }
-    #player-area, #enemy-area {
-        display: inline-block;
-        width: 45%;
-        vertical-align: top;
-    }
-    #story {
-        font-size: 19px;
-        line-height: 1.5;
-        margin: 25px auto;
-        padding: 20px;
-        background: rgba(0,0,0,0.5);
-        border-radius: 10px;
-        max-width: 700px;
-    }
-    #health {
-        width: 220px;
-        height: 28px;
-        background: #333;
-        border: 3px solid #555;
-        margin: 15px auto;
-        border-radius: 8px;
-        overflow: hidden;
-        position: relative;
-    }
-    #health-fill {
-        height: 100%;
-        background: #06d6a0;
-        width: 100%;
-        transition: width 0.4s;
-    }
-    #health-text {
-        position: absolute;
-        inset: 0;
-        color: white;
-        font-weight: bold;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        font-size: 16px;
-        text-shadow: 1px 1px 2px black;
-    }
-    #roll-result {
-        font-size: 28px;
-        margin: 20px 0;
-        min-height: 40px;
-        color: #ffd60a;
-    }
-    #death {
-        position: fixed;
-        inset: 0;
-        background: #000;
-        color: #ff4d6d;
-        font-size: 50px;
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        justify-content: center;
-    }
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D&D Pixel Adventure - Full Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            background-color: #111;
+            color: white;
+            text-align: center;
+            transition: all 1s;
+        }
+        #container {
+            max-width: 900px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #creation, #game, #death {
+            display: none;
+        }
+        button {
+            background: #4a0;
+            color: white;
+            border: none;
+            padding: 12px 24px;
+            margin: 10px;
+            font-size: 16px;
+            cursor: pointer;
+            border-radius: 5px;
+        }
+        button:hover {
+            background: #6a2;
+        }
+        select, input {
+            padding: 10px;
+            margin: 5px;
+            background: #333;
+            color: white;
+            border: 1px solid #666;
+        }
+        .combat-area {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            margin: 20px 0;
+            height: 250px;
+        }
+        .model-container {
+            position: relative;
+            width: 150px;
+            height: 150px;
+        }
+        .pixel-model {
+            width: 120px;
+            height: 160px;
+            margin: auto;
+            position: relative;
+            background: #555;
+            border: 3px solid #888;
+            border-radius: 10px;
+        }
+        .head {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: 35px;
+            border: 2px solid #000;
+        }
+        .body {
+            width: 60px;
+            height: 80px;
+            position: absolute;
+            top: 55px;
+            left: 30px;
+            border-radius: 20px 20px 10px 10px;
+        }
+        .legs {
+            width: 40px;
+            height: 30px;
+            background: #777;
+            position: absolute;
+            top: 130px;
+            left: 40px;
+            border-radius: 0 0 20px 20px;
+        }
+        /* Race variations */
+        .human .head { background: #ffd; }
+        .elf .head { background: #afa; }
+        .dwarf .head { background: #daa520; }
+        .orc .head { background: #8b4513; }
+        /* Enemy */
+        .enemy .head { background: #f00; }
+        .enemy .body { background: #800; }
+        .dragon .head { background: #ff0; }
+        .dragon .body { background: #f80; }
+        .stats-bar {
+            display: none;
+            background: rgba(0,0,0,0.8);
+            padding: 5px;
+            position: absolute;
+            bottom: -40px;
+            left: 0;
+            right: 0;
+            border-radius: 5px;
+            font-size: 12px;
+        }
+        .model-container:hover .stats-bar {
+            display: block;
+        }
+        .health-bar {
+            width: 150px;
+            height: 20px;
+            background: #333;
+            border: 2px solid #666;
+            margin: 10px auto;
+            border-radius: 10px;
+            overflow: hidden;
+        }
+        .health-fill {
+            height: 100%;
+            background: linear-gradient(#0f0, #4a0);
+            transition: width 0.3s;
+        }
+        #story {
+            font-size: 18px;
+            margin: 20px;
+            padding: 20px;
+            background: rgba(0,0,0,0.5);
+            border-radius: 10px;
+        }
+        #dice {
+            display: none;
+            margin: 20px;
+        }
+        #death {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: black;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            font-size: 32px;
+        }
+        /* Backgrounds */
+        .forest { background: linear-gradient(#228b22, #006400); }
+        .dungeon { background: linear-gradient(#444, #222); }
+        .tavern { background: linear-gradient(#8b4513, #a0522d); }
+    </style>
 </head>
 <body>
-
-<div id="creation">
-    <h1>D&D Pixel Adventure</h1>
-    <h2>Create Your Character</h2>
-
-    <label>Race</label><br>
-    <select id="race">
-        <option>Human</option>
-        <option>Elf</option>
-        <option>Dwarf</option>
-        <option>Orc</option>
-    </select><br><br>
-
-    <label>Class</label><br>
-    <select id="class">
-        <option>Fighter</option>
-        <option>Wizard</option>
-        <option>Rogue</option>
-        <option>Cleric</option>
-    </select><br><br>
-
-    <label>Weapons (comma separated)</label><br>
-    <input type="text" id="weapons" value="Sword, Dagger"><br><br>
-
-    <button onclick="start()">Start Adventure</button>
-</div>
-
-<div id="game">
-    <h1>Your Adventure</h1>
-
-    <div id="player-area">
-        <div class="pixel-character" id="player-model"></div>
-        <div id="health">
-            <div id="health-fill"></div>
-            <div id="health-text">HP: 20 / 20</div>
+    <div id="container">
+        <div id="creation">
+            <h1>Character Creation</h1>
+            <label>Race:</label>
+            <select id="race">
+                <option value="human">Human</option>
+                <option value="elf">Elf</option>
+                <option value="dwarf">Dwarf</option>
+                <option value="orc">Orc</option>
+            </select><br>
+            <label>Class:</label>
+            <select id="class">
+                <option value="fighter">Fighter</option>
+                <option value="wizard">Wizard</option>
+                <option value="rogue">Rogue</option>
+            </select><br>
+            <label>Level (1-5):</label>
+            <input type="number" id="level" value="1" min="1" max="5"><br>
+            <label>Weapons:</label>
+            <input type="text" id="weapons" value="Sword"><br>
+            <label>Armor:</label>
+            <input type="text" id="armor" value="Leather"><br>
+            <label>Spells:</label>
+            <input type="text" id="spells" placeholder="Fireball"><br>
+            <label>Inventory:</label>
+            <input type="text" id="inventory" value="Potion"><br>
+            <button onclick="startGame()">Begin Quest</button>
+            <p>Share with friends: DNDfriends.com</p>
         </div>
-        <h2 id="player-desc">Your Hero</h2>
+
+        <div id="game">
+            <div class="combat-area">
+                <div class="model-container">
+                    <div class="pixel-model human" id="player-model">
+                        <div class="head"></div>
+                        <div class="body"></div>
+                        <div class="legs"></div>
+                    </div>
+                    <div class="stats-bar" id="player-stats">Hover for stats</div>
+                    <div class="health-bar">
+                        <div class="health-fill" id="player-hp-fill"></div>
+                    </div>
+                </div>
+                <div class="model-container">
+                    <div class="pixel-model enemy" id="enemy-model" style="display:none;">
+                        <div class="head"></div>
+                        <div class="body"></div>
+                        <div class="legs"></div>
+                    </div>
+                    <div class="stats-bar" id="enemy-stats">Enemy</div>
+                    <div class="health-bar" id="enemy-hp-bar" style="display:none;">
+                        <div class="health-fill" id="enemy-hp-fill"></div>
+                    </div>
+                </div>
+            </div>
+            <div id="story">Welcome, hero!</div>
+            <div id="choices"></div>
+            <div id="dice">
+                <button onclick="rollAttack()">Roll d20 Attack</button>
+                <p id="roll-result"></p>
+            </div>
+            <div id="shop" style="display:none;">
+                <h2>Shop</h2>
+                <div id="shop-items"></div>
+                <button onclick="exitShop()">Leave</button>
+            </div>
+        </div>
+
+        <div id="death">
+            You and your fellow warriors have fallen, Rise up
+            <br><br>
+            <button onclick="restartGame()">Rise Up</button>
+        </div>
     </div>
 
-    <div id="enemy-area" style="display:none;">
-        <div class="pixel-character enemy" id="enemy-model"></div>
-        <h2 id="enemy-name">Enemy</h2>
-    </div>
+    <script>
+        let char = { hp: 20, maxHp: 20, gold: 0, silver: 0, copper: 0, race: '', class: '', level: 1, weapons: [], armor: '', spells: [], inventory: [] };
+        let enemyHp = 0, enemyMaxHp = 0, enemyName = '';
+        let inCombat = false;
+        let playerTurn = true;
+        const locations = ['forest', 'dungeon', 'tavern'];
 
-    <div style="clear:both;"></div>
+        function startGame() {
+            char.race = document.getElementById('race').value;
+            char.class = document.getElementById('class').value;
+            char.level = parseInt(document.getElementById('level').value);
+            char.weapons = document.getElementById('weapons').value.split(',').map(s=>s.trim());
+            char.armor = document.getElementById('armor').value;
+            char.spells = document.getElementById('spells').value.split(',').map(s=>s.trim());
+            char.inventory = document.getElementById('inventory').value.split(',').map(s=>s.trim());
+            char.maxHp = 10 + char.level * 10 + (char.class === 'fighter' ? 10 : 0);
+            char.hp = char.maxHp;
+            document.getElementById('player-model').className = `pixel-model ${char.race}`;
+            document.getElementById('creation').style.display = 'none';
+            document.getElementById('game').style.display = 'block';
+            document.body.className = locations[0];
+            updateStats();
+            nextEvent();
+        }
 
-    <div id="story">You awaken in a misty forest. Something stirs in the shadows...</div>
+        function updateStats() {
+            document.getElementById('player-stats').textContent = `${char.race} ${char.class} L${char.level} HP:${char.hp}/${char.maxHp}`;
+            updateHpBars();
+        }
 
-    <div id="roll-result"></div>
+        function updateHpBars() {
+            const pPercent = (char.hp / char.maxHp) * 100;
+            document.getElementById('player-hp-fill').style.width = pPercent + '%';
+            if (inCombat) {
+                const ePercent = (enemyHp / enemyMaxHp) * 100;
+                document.getElementById('enemy-hp-fill').style.width = ePercent + '%';
+                document.getElementById('enemy-stats').textContent = `${enemyName} HP:${enemyHp}/${enemyMaxHp}`;
+            }
+        }
 
-    <div id="actions"></div>
+        function nextEvent() {
+            const loc = locations[Math.floor(Math.random()*locations.length)];
+            document.body.className = loc;
+            const rand = Math.random();
+            if (rand < 0.5) startCombat();
+            else if (rand < 0.8) enterShop();
+            else treasure();
+        }
 
-    <div id="combat-controls" style="display:none;">
-        <h2>Combat!</h2>
-        <button onclick="attack()">Roll d20 to Attack</button>
-    </div>
-</div>
+        function startCombat() {
+            const enemies = ['goblin', 'bandit', 'dragon'];
+            enemyName = enemies[Math.floor(Math.random()*enemies.length)];
+            enemyMaxHp = enemyName === 'dragon' ? 40 : 15;
+            enemyHp = enemyMaxHp;
+            document.getElementById('enemy-model').style.display = 'block';
+            document.getElementById('enemy-model').className = `pixel-model enemy ${enemyName}`;
+            document.getElementById('enemy-hp-bar').style.display = 'block';
+            inCombat = true;
+            playerTurn = true;
+            document.getElementById('story').textContent = `A ${enemyName} attacks in the ${document.body.className}! Fight or Run?`;
+            showChoices(['Fight', 'Run'], [startTurn, run]);
+            updateHpBars();
+        }
 
-<div id="death">
-    <div>
-        <p>You have fallen...</p>
-        <button onclick="location.reload()" style="font-size:36px; padding:25px 50px; margin-top:40px;">
-            Rise Again
-        </button>
-    </div>
-</div>
+        function startTurn() {
+            document.getElementById('dice').style.display = 'block';
+            document.getElementById('choices').innerHTML = '';
+            document.getElementById('story').textContent += ' Your turn!';
+        }
 
-<script>
-let hp = 20;
-let maxHp = 20;
-let inCombat = false;
+        function run() {
+            if (Math.random() < 0.7) {
+                document.getElementById('story').textContent = 'You flee safely.';
+                endCombat();
+                setTimeout(nextEvent, 1500);
+            } else {
+                document.getElementById('story').textContent = 'Run failed! Enemy turn.';
+                playerTurn = false;
+                enemyAttack();
+            }
+        }
 
-function start() {
-    const race = document.getElementById('race').value;
-    const cls = document.getElementById('class').value;
-    const weap = document.getElementById('weapons').value;
+        function rollAttack() {
+            if (!playerTurn) return;
+            const roll = Math.floor(Math.random() * 20) + 1;
+            let dmg = 0;
+            if (roll <= 9) {
+                document.getElementById('roll-result').textContent = `Miss! Rolled ${roll}`;
+            } else if (roll < 20) {
+                dmg = roll - 9;
+                enemyHp -= dmg;
+                document.getElementById('roll-result').textContent = `Hit! Rolled ${roll} (${dmg} dmg)`;
+            } else {
+                dmg = 20;
+                enemyHp -= dmg;
+                document.getElementById('roll-result').textContent = `CRIT! Rolled 20 (${dmg} dmg)`;
+            }
+            updateHpBars();
+            if (enemyHp <= 0) {
+                document.getElementById('story').textContent = `Defeated ${enemyName}! +2 coins`;
+                awardCoin();
+                endCombat();
+                setTimeout(nextEvent, 2000);
+                return;
+            }
+            playerTurn = false;
+            setTimeout(enemyAttack, 1000);
+        }
 
-    maxHp = (cls === 'Fighter') ? 28 : 18;
-    hp = maxHp;
+        function enemyAttack() {
+            const roll = Math.floor(Math.random() * 20) + 1;
+            let dmg = 0;
+            if (roll <= 9) {
+                document.getElementById('roll-result').textContent += `\nEnemy misses (${roll})`;
+            } else if (roll < 20) {
+                dmg = roll - 9;
+                char.hp -= dmg;
+                document.getElementById('roll-result').textContent += `\nEnemy hits (${roll}, ${dmg} dmg)`;
+            } else {
+                dmg = 20;
+                char.hp -= dmg;
+                document.getElementById('roll-result').textContent += `\nEnemy CRIT (${roll}, ${dmg} dmg)`;
+            }
+            updateHpBars();
+            if (char.hp <= 0) {
+                showDeath();
+                return;
+            }
+            playerTurn = true;
+            document.getElementById('story').textContent += ' Your turn!';
+        }
 
-    document.getElementById('player-desc').textContent = `${race} ${cls} (${weap})`;
-    document.getElementById('creation').style.display = 'none';
-    document.getElementById('game').style.display = 'block';
-
-    updateHealth();
-    showChoices(['Explore deeper', 'Rest'], [fight, rest]);
-}
-
-function updateHealth() {
-    const perc = (hp / maxHp) * 100;
-    document.getElementById('health-fill').style.width = perc + '%';
-    document.getElementById('health-text').textContent = `HP: ${hp} / ${maxHp}`;
-}
-
-function fight() {
-    inCombat = true;
-    document.getElementById('enemy-area').style.display = 'inline-block';
-    document.getElementById('story').textContent = 'A snarling goblin leaps from the bushes!';
-    document.getElementById('enemy-name').textContent = 'Goblin';
-    document.getElementById('combat-controls').style.display = 'block';
-    document.getElementById('actions').innerHTML = '';
-}
-
-function rest() {
-    hp = Math.min(maxHp, hp + 5);
-    updateHealth();
-    document.getElementById('story').textContent = 'You rest and recover 5 HP.';
-    showChoices(['Continue'], [fight]);
-}
-
-function attack() {
-    const roll = Math.floor(Math.random() * 20) + 1;
-    document.getElementById('roll-result').textContent = `You rolled: ${roll}`;
-
-    if (roll >= 10) {
-        document.getElementById('story').textContent = 'You strike the goblin! It falls defeated.';
-        setTimeout(() => {
+        function endCombat() {
+            inCombat = false;
+            document.getElementById('enemy-model').style.display = 'none';
+            document.getElementById('enemy-hp-bar').style.display = 'none';
+            document.getElementById('dice').style.display = 'none';
             document.getElementById('roll-result').textContent = '';
-            document.getElementById('combat-controls').style.display = 'none';
-            document.getElementById('enemy-area').style.display = 'none';
-            showChoices(['Search for more', 'Leave the forest'], [fight, win]);
-        }, 1800);
-    } else {
-        hp -= 4;
-        updateHealth();
-        document.getElementById('story').textContent = 'You miss! The goblin hits you for 4 damage.';
-        if (hp <= 0) {
+        }
+
+        function awardCoin() {
+            const coins = ['gold', 'silver', 'copper'];
+            const type = coins[Math.floor(Math.random()*3)];
+            char[type] += 2;
+            updateStats();
+        }
+
+        function enterShop() {
+            document.getElementById('story').textContent = `You find a shop in the ${document.body.className}.`;
+            document.getElementById('shop').style.display = 'block';
+            const itemsDiv = document.getElementById('shop-items');
+            itemsDiv.innerHTML = '';
+            const shopItems = [
+                {name: 'Potion', rarity: 'common', price: {copper: 15}},
+                {name: 'Iron Sword', rarity: 'uncommon', price: {silver: 10}},
+                {name: 'Magic Amulet', rarity: 'rare', price: {gold: 3}}
+            ];
+            shopItems.forEach(item => {
+                const btn = document.createElement('button');
+                const price = Object.entries(item.price).map(([k,v]) => `${v} ${k}`).join('/');
+                btn.textContent = `${item.name} (${item.rarity}) - ${price}`;
+                btn.onclick = () => buyItem(item);
+                itemsDiv.appendChild(btn);
+            });
+            showChoices(['Buy something'], [() => {}]); // Dummy
+        }
+
+        function buyItem(item) {
+            // Simple check for gold/silver/copper
+            for (let [type, amt] of Object.entries(item.price)) {
+                if (char[type] < amt) return alert('Not enough!');
+                char[type] -= amt;
+            }
+            char.inventory.push(item.name);
+            alert(`Bought ${item.name}!`);
+            updateStats();
+        }
+
+        function exitShop() {
+            document.getElementById('shop').style.display = 'none';
+            nextEvent();
+        }
+
+        function treasure() {
+            awardCoin();
+            document.getElementById('story').textContent = 'Found treasure! +2 coins.';
+            setTimeout(nextEvent, 1500);
+        }
+
+        function showChoices(btns, funcs) {
+            const div = document.getElementById('choices');
+            div.innerHTML = '';
+            btns.forEach((txt, i) => {
+                const btn = document.createElement('button');
+                btn.textContent = txt;
+                btn.onclick = funcs[i];
+                div.appendChild(btn);
+            });
+        }
+
+        function showDeath() {
             document.getElementById('game').style.display = 'none';
             document.getElementById('death').style.display = 'flex';
         }
-    }
-}
 
-function win() {
-    document.getElementById('story').textContent = 'You escape the forest victorious! (Refresh to play again)';
-}
-
-function showChoices(labels, actions) {
-    const div = document.getElementById('actions');
-    div.innerHTML = '';
-    labels.forEach((txt, i) => {
-        let btn = document.createElement('button');
-        btn.textContent = txt;
-        btn.onclick = actions[i];
-        div.appendChild(btn);
-    });
-}
-</script>
+        function restartGame() {
+            char = { hp: 20, maxHp: 20, gold: 0, silver: 0, copper: 0, race: '', class: '', level: 1, weapons: [], armor: '', spells: [], inventory: [] };
+            document.getElementById('death').style.display = 'none';
+            document.getElementById('creation').style.display = 'block';
+            document.body.className = '';
+            endCombat();
+        }
+    </script>
 </body>
 </html>
