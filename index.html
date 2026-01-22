@@ -1,225 +1,301 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>Cuphead-Style Game (WASD Controls)</title>
-<style>
-body {
-  margin: 0;
-  background: #1b1b1b;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh;
-}
-canvas {
-  background: #2a2a2a;
-  border: 4px solid #f5f5f5;
-}
-</style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>D&D Adventure Game</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 0;
+            color: white;
+            text-align: center;
+            background-color: black;
+            transition: background-image 1s ease-in-out;
+        }
+        #game-container {
+            max-width: 800px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        #character-creation, #game-screen, #death-screen {
+            display: none;
+        }
+        #death-screen {
+            background-color: black;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+            animation: fadeIn 2s;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+        button {
+            margin: 10px;
+            padding: 10px 20px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        #story-text {
+            margin: 20px 0;
+            font-size: 18px;
+        }
+        #character-model, #enemy-model {
+            width: 200px;
+            height: 200px;
+            margin: 20px auto;
+            background-size: cover;
+            background-repeat: no-repeat;
+        }
+        #dice-select {
+            margin: 10px;
+        }
+        /* Background classes */
+        .forest-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDBoMjAwdjIwMEgweiIgZmlsbD0iIzAwODA0MCIvPjwvc3ZnPg=='); } /* Green forest */
+        .dungeon-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDBoMjAwdjIwMEgweiIgZmlsbD0iIzQwNDA0MCIvPjwvc3ZnPg=='); } /* Gray dungeon */
+        .mountain-bg { background-image: url('data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxwYXRoIGQ9Ik0wIDBoMjAwdjIwMEgweiIgZmlsbD0iIzgwODA4MCIvPjwvc3ZnPg=='); } /* Brown mountain */
+        /* Add more backgrounds as needed */
+    </style>
 </head>
-<body>
+<body id="game-body">
+    <div id="game-container">
+        <!-- Character Creation Menu -->
+        <div id="character-creation">
+            <h1>Create Your Character</h1>
+            <label for="race">Race/Species:</label>
+            <select id="race">
+                <option value="Human">Human</option>
+                <option value="Elf">Elf</option>
+                <option value="Dwarf">Dwarf</option>
+                <option value="Orc">Orc</option>
+                <option value="Halfling">Halfling</option>
+                <option value="Tiefling">Tiefling</option>
+                <option value="Dragonborn">Dragonborn</option>
+            </select><br><br>
+            
+            <label for="class">Class:</label>
+            <select id="class">
+                <option value="Fighter">Fighter</option>
+                <option value="Wizard">Wizard</option>
+                <option value="Rogue">Rogue</option>
+                <option value="Cleric">Cleric</option>
+                <option value="Barbarian">Barbarian</option>
+            </select><br><br>
+            
+            <label for="level">Starting Level:</label>
+            <input type="number" id="level" value="1" min="1"><br><br>
+            
+            <label for="weapons">Weapons (comma-separated):</label>
+            <input type="text" id="weapons" placeholder="e.g., Sword, Bow"><br><br>
+            
+            <label for="armor">Armor:</label>
+            <input type="text" id="armor" placeholder="e.g., Leather Armor"><br><br>
+            
+            <label for="spells">Spells (comma-separated, if applicable):</label>
+            <input type="text" id="spells" placeholder="e.g., Fireball, Heal"><br><br>
+            
+            <label for="inventory">Inventory (comma-separated):</label>
+            <input type="text" id="inventory" placeholder="e.g., Potion, Gold"><br><br>
+            
+            <button onclick="startGame()">Start Adventure</button>
+        </div>
+        
+        <!-- Game Screen -->
+        <div id="game-screen">
+            <h1>Your Adventure</h1>
+            <div id="character-info">
+                <h2>Character Stats</h2>
+                <p id="char-race"></p>
+                <p id="char-class"></p>
+                <p id="char-level"></p>
+                <p id="char-hp">HP: 20/20</p> <!-- Starting HP, adjustable -->
+                <p id="char-weapons"></p>
+                <p id="char-armor"></p>
+                <p id="char-spells"></p>
+                <p id="char-inventory"></p>
+            </div>
+            <div id="character-model"></div>
+            <div id="story-text"></div>
+            <div id="enemy-model"></div>
+            <div id="choices"></div>
+            <div id="dice-roller" style="display:none;">
+                <h3>Roll Dice for Attack</h3>
+                <select id="dice-select">
+                    <option value="20">d20 (Standard Attack)</option>
+                    <!-- Add more dice if needed -->
+                </select>
+                <button onclick="rollDice()">Roll</button>
+                <p id="dice-result"></p>
+            </div>
+        </div>
+        
+        <!-- Death Screen -->
+        <div id="death-screen" style="display:none;">
+            You and your fellow warriors have fallen, Rise up
+            <button onclick="restartGame()">Restart</button>
+        </div>
+    </div>
 
-<canvas id="game" width="800" height="450"></canvas>
+    <script>
+        let character = {};
+        let currentHP = 20;
+        let maxHP = 20;
+        let storyState = 'start';
+        const backgrounds = {
+            forest: 'forest-bg',
+            dungeon: 'dungeon-bg',
+            mountain: 'mountain-bg'
+            // Add more as needed
+        };
+        const models = {
+            Human: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)', // Simple human stick figure
+            Elf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)', // With ears
+            // Add simple SVG models for others
+            Dwarf: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cmVjdCB4PSI4MCIgeT0iNTAiIHdpZHRoPSI0MCIgaGVpZ2h0PSIyMCIgZmlsbD0iI2ZmMDAwMCIvPjwvc3ZnPg==)', // With beard
+            Orc: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzAwODA0MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            Halfling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSIzMCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            Tiefling: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmMDAwMCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48cG9seWdvbiBwb2ludHM9IjEwMCwzMCAxMTAsMjAgOTAsMjAiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            Dragonborn: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iIzAwMDBmZiIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
+        };
+        const enemyModels = {
+            goblin: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSIzMCIgZmlsbD0iIzAwODA0MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NDBoLTQwdjQwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)',
+            dragon: 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI1MCIgZmlsbD0iI2ZmMDAwMCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NjBoLTYwdjYwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)'
+            // Add more
+        };
 
-<script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
+        // Start with character creation visible
+        document.getElementById('character-creation').style.display = 'block';
 
-/* =====================
-   INPUT
-===================== */
-const keys = {};
-window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+        function startGame() {
+            character.race = document.getElementById('race').value;
+            character.class = document.getElementById('class').value;
+            character.level = document.getElementById('level').value;
+            character.weapons = document.getElementById('weapons').value.split(',').map(w => w.trim());
+            character.armor = document.getElementById('armor').value;
+            character.spells = document.getElementById('spells').value.split(',').map(s => s.trim());
+            character.inventory = document.getElementById('inventory').value.split(',').map(i => i.trim());
 
-/* =====================
-   PLAYER
-===================== */
-const player = {
-  x: 100,
-  y: 300,
-  w: 30,
-  h: 40,
-  vx: 0,
-  vy: 0,
-  speed: 4,
-  facing: 1,
-  onGround: false,
-  dashTimer: 0,
-  hp: 3,
-  super: 0
-};
+            // Set max HP based on level/class (simple formula)
+            maxHP = 10 + (parseInt(character.level) * 5) + (character.class === 'Fighter' ? 10 : 0);
+            currentHP = maxHP;
 
-const gravity = 0.6;
-const groundY = 360;
+            document.getElementById('char-race').textContent = 'Race: ' + character.race;
+            document.getElementById('char-class').textContent = 'Class: ' + character.class;
+            document.getElementById('char-level').textContent = 'Level: ' + character.level;
+            document.getElementById('char-hp').textContent = 'HP: ' + currentHP + '/' + maxHP;
+            document.getElementById('char-weapons').textContent = 'Weapons: ' + character.weapons.join(', ');
+            document.getElementById('char-armor').textContent = 'Armor: ' + character.armor;
+            document.getElementById('char-spells').textContent = 'Spells: ' + character.spells.join(', ');
+            document.getElementById('char-inventory').textContent = 'Inventory: ' + character.inventory.join(', ');
 
-/* =====================
-   BULLETS
-===================== */
-const bullets = [];
-function shoot() {
-  bullets.push({
-    x: player.x + (player.facing > 0 ? player.w : 0),
-    y: player.y + 18,
-    vx: player.facing * 8
-  });
-}
+            document.getElementById('character-model').style.backgroundImage = models[character.race] || 'url(data:image/svg+xml;base64,PD94bWwgdmVyc2lvbj0iMS4wIiBlbmNvZGluZz0iVVRGLTgiPz48c3ZnIHdpZHRoPSIyMDAiIGhlaWdodD0iMjAwIiB4bWxucz0iaHR0cDovL3d3dy53My5vcmcvMjAwMC9zdmciPjxjaXJjbGUgY3g9IjEwMCIgY3k9IjUwIiByPSI0MCIgZmlsbD0iI2ZmZDA4MCIvPjxwYXRoIGQ9Ik05MCAxMDBoMjB2NTBoLTUwdjUwaC0yMHoiIGZpbGw9IiMwMDAiLz48L3N2Zz4=)';
 
-/* =====================
-   BOSS
-===================== */
-const boss = {
-  x: 560,
-  y: 260,
-  w: 120,
-  h: 120,
-  hp: 300,
-  timer: 0
-};
+            document.getElementById('character-creation').style.display = 'none';
+            document.getElementById('game-screen').style.display = 'block';
 
-const bossBullets = [];
+            generateStory();
+        }
 
-/* =====================
-   COLLISION
-===================== */
-function hit(a,b){
-  return a.x < b.x+b.w && a.x+a.w > b.x &&
-         a.y < b.y+b.h && a.y+a.h > b.y;
-}
+        function generateStory() {
+            // Simple random story generator - new each time
+            const locations = ['forest', 'dungeon', 'mountain'];
+            const randomLocation = locations[Math.floor(Math.random() * locations.length)];
+            setBackground(randomLocation);
 
-/* =====================
-   UPDATE
-===================== */
-function update() {
+            const stories = [
+                `You enter a mysterious ${randomLocation}. A goblin appears!`,
+                `In the depths of the ${randomLocation}, you face a dragon boss!`,
+                `Exploring the ${randomLocation}, you find a treasure but it's guarded.`
+            ];
+            const randomStory = stories[Math.floor(Math.random() * stories.length)];
+            document.getElementById('story-text').textContent = randomStory;
 
-  // Move
-  if (keys.a) {
-    player.vx = -player.speed;
-    player.facing = -1;
-  } else if (keys.d) {
-    player.vx = player.speed;
-    player.facing = 1;
-  } else {
-    player.vx *= 0.8;
-  }
+            // Set enemy model based on story
+            let enemy = randomStory.includes('goblin') ? 'goblin' : 'dragon';
+            document.getElementById('enemy-model').style.backgroundImage = enemyModels[enemy] || '';
 
-  // Jump
-  if (keys.w && player.onGround) {
-    player.vy = -12;
-    player.onGround = false;
-  }
+            // Show dice for combat
+            document.getElementById('dice-roller').style.display = 'block';
 
-  // Dash
-  if (keys.shift && player.dashTimer <= 0) {
-    player.vx = player.facing * 12;
-    player.dashTimer = 20;
-  }
-  if (player.dashTimer > 0) player.dashTimer--;
+            // Simple choices
+            const choicesDiv = document.getElementById('choices');
+            choicesDiv.innerHTML = '';
+            const choiceBtn1 = document.createElement('button');
+            choiceBtn1.textContent = 'Fight';
+            choiceBtn1.onclick = () => { /* Already handled by dice */ };
+            choicesDiv.appendChild(choiceBtn1);
 
-  // Shoot
-  if (keys.r && Math.random() < 0.3) shoot();
+            const choiceBtn2 = document.createElement('button');
+            choiceBtn2.textContent = 'Run';
+            choiceBtn2.onclick = () => {
+                document.getElementById('story-text').textContent = 'You run away safely.';
+                setTimeout(generateStory, 2000); // New mission
+            };
+            choicesDiv.appendChild(choiceBtn2);
+        }
 
-  // Super
-  if (keys.q && player.super >= 100) {
-    for (let i = 0; i < 20; i++) {
-      bullets.push({
-        x: player.x + player.w / 2,
-        y: player.y + 20,
-        vx: Math.random() * 10 - 5
-      });
-    }
-    player.super = 0;
-  }
+        function setBackground(location) {
+            document.getElementById('game-body').className = backgrounds[location] || '';
+        }
 
-  // Physics
-  player.vy += gravity;
-  player.x += player.vx;
-  player.y += player.vy;
+        function rollDice() {
+            const dice = parseInt(document.getElementById('dice-select').value);
+            const roll = Math.floor(Math.random() * dice) + 1;
+            let result = '';
+            if (roll <= 9) {
+                result = 'Miss! (' + roll + ')';
+                takeDamage(5); // Enemy hits back
+            } else if (roll >= 10 && roll <= 19) {
+                result = 'Hit! (' + roll + ')';
+                // Enemy takes damage, but simple: proceed
+            } else if (roll === 20) {
+                result = 'Critical Hit! (' + roll + ')';
+                // Instant win combat
+                document.getElementById('story-text').textContent += ' You defeat the enemy!';
+                setTimeout(generateStory, 2000); // Next story
+                return;
+            }
+            document.getElementById('dice-result').textContent = result;
 
-  if (player.y + player.h >= groundY) {
-    player.y = groundY - player.h;
-    player.vy = 0;
-    player.onGround = true;
-  }
+            if (roll >= 10) {
+                document.getElementById('story-text').textContent += ' You hit the enemy!';
+                setTimeout(generateStory, 2000); // Next
+            }
+        }
 
-  // Player bullets
-  bullets.forEach(b => b.x += b.vx);
-  for (let i = bullets.length - 1; i >= 0; i--) {
-    if (hit({x:bullets[i].x,y:bullets[i].y,w:6,h:6}, boss)) {
-      boss.hp--;
-      player.super = Math.min(100, player.super + 1);
-      bullets.splice(i,1);
-    }
-  }
+        function takeDamage(amount) {
+            currentHP -= amount;
+            document.getElementById('char-hp').textContent = 'HP: ' + currentHP + '/' + maxHP;
+            if (currentHP <= 0) {
+                die();
+            }
+        }
 
-  // Boss behavior
-  boss.timer++;
-  if (boss.timer % 60 === 0) {
-    bossBullets.push({
-      x: boss.x,
-      y: boss.y + 60,
-      vx: -5,
-      vy: Math.random() * 4 - 2
-    });
-  }
+        function die() {
+            document.getElementById('game-screen').style.display = 'none';
+            document.getElementById('death-screen').style.display = 'flex';
+        }
 
-  bossBullets.forEach(b => {
-    b.x += b.vx;
-    b.y += b.vy;
-    if (hit({x:b.x,y:b.y,w:10,h:10}, player)) {
-      player.hp--;
-      b.x = -999;
-    }
-  });
-}
-
-/* =====================
-   DRAW
-===================== */
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  // Ground
-  ctx.fillStyle = "#444";
-  ctx.fillRect(0, groundY, canvas.width, 10);
-
-  // Player
-  ctx.fillStyle = "white";
-  ctx.fillRect(player.x, player.y, player.w, player.h);
-  ctx.fillStyle = "black";
-  ctx.fillRect(player.x + (player.facing > 0 ? 18 : 6), player.y + 10, 6, 6);
-
-  // Boss
-  ctx.fillStyle = "#b22222";
-  ctx.beginPath();
-  ctx.arc(boss.x + 60, boss.y + 60, 60, 0, Math.PI * 2);
-  ctx.fill();
-
-  // Bullets
-  ctx.fillStyle = "yellow";
-  bullets.forEach(b => ctx.fillRect(b.x, b.y, 6, 6));
-
-  ctx.fillStyle = "pink";
-  bossBullets.forEach(b => ctx.fillRect(b.x, b.y, 10, 10));
-
-  // UI
-  ctx.fillStyle = "white";
-  ctx.fillText("HP: " + player.hp, 20, 20);
-  ctx.fillText("SUPER", 20, 40);
-  ctx.fillRect(80, 32, player.super, 6);
-}
-
-/* =====================
-   LOOP
-===================== */
-function loop(){
-  update();
-  draw();
-  requestAnimationFrame(loop);
-}
-loop();
-</script>
-
+        function restartGame() {
+            // Reset everything
+            character = {};
+            currentHP = 20;
+            maxHP = 20;
+            storyState = 'start';
+            document.getElementById('death-screen').style.display = 'none';
+            document.getElementById('character-creation').style.display = 'block';
+            document.getElementById('game-body').className = '';
+            // Items and damage reset automatically on new character
+        }
+    </script>
 </body>
 </html>
