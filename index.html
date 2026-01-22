@@ -1,117 +1,504 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <title>TEST - D&D Game</title>
-    <style>
-        body { 
-            font-family: Arial, sans-serif;
-            background: #0a1f0a;
-            color: #d4ffcc;
-            margin: 0;
-            padding: 40px;
-            text-align: center;
-        }
-        button {
-            background: #4CAF50;
-            color: white;
-            border: none;
-            padding: 15px 40px;
-            font-size: 20px;
-            margin: 20px;
-            cursor: pointer;
-            border-radius: 8px;
-        }
-        #hp-bar {
-            width: 300px;
-            height: 30px;
-            background: #333;
-            margin: 30px auto;
-            border: 3px solid #555;
-            border-radius: 8px;
-            overflow: hidden;
-            position: relative;
-        }
-        #hp-fill {
-            height: 100%;
-            background: #4CAF50;
-            width: 100%;
-            transition: width 0.5s;
-        }
-        #hp-text {
-            position: absolute;
-            inset: 0;
-            color: white;
-            font-size: 18px;
-            font-weight: bold;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-        }
-        #death {
-            position: fixed;
-            inset: 0;
-            background: black;
-            color: #ff4444;
-            font-size: 48px;
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>D&D - AI Dungeon Master (Fixed Health)</title>
+<style>
+    @import url('https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap');
+
+    body {
+        font-family: 'Press Start 2P', monospace;
+        margin: 0;
+        padding: 0;
+        background: #0f380f;
+        color: #e0f8d0;
+        text-align: center;
+    }
+
+    #container { max-width: 960px; margin: 0 auto; padding: 20px; }
+
+    h1 { color: #8bac0f; text-shadow: 3px 3px #0f574f; margin-bottom: 10px; }
+
+    button {
+        background: linear-gradient(#306230, #38b554);
+        color: #0f380f;
+        border: 3px solid #8bac0f;
+        padding: 14px 28px;
+        margin: 12px 6px;
+        font-size: 13px;
+        cursor: pointer;
+        box-shadow: 3px 3px 0 #0f574f;
+        text-transform: uppercase;
+    }
+
+    button:hover { background: linear-gradient(#38b554, #8bac0f); transform: translateY(-2px); }
+
+    select, input {
+        padding: 10px 14px;
+        margin: 6px;
+        background: #0f574f;
+        color: #e0f8d0;
+        border: 2px solid #306230;
+        font-size: 12px;
+    }
+
+    #creation, #game, #death { display: none; }
+
+    .combat-zone {
+        display: flex;
+        justify-content: space-around;
+        align-items: flex-start;
+        margin: 30px 0;
+        gap: 80px;
+    }
+
+    .character-box {
+        position: relative;
+        width: 160px;
+    }
+
+    .pixel-sprite {
+        width: 96px;
+        height: 128px;
+        margin: 0 auto 12px;
+        border: 4px solid #8bac0f;
+        box-shadow: 0 0 12px #8bac0f;
+        image-rendering: pixelated;
+        background: #0f380f;
+        display: grid;
+        grid-template-columns: repeat(12, 8px);
+        grid-template-rows: repeat(16, 8px);
+        gap: 0;
+    }
+
+    .px { background: #0f380f; }
+
+    /* Basic character pixel fill */
+    .head { grid-area: 3/4 / 7/9; background: #c0c0c0; }
+    .hair { grid-area: 2/4 / 4/9; background: #8bac0f; }
+    .body { grid-area: 7/3 / 12/10; background: #306230; }
+    .legs { grid-area: 12/4 / 16/9; background: #0f574f; }
+
+    /* Race color overrides */
+    .elf    .head { background: #a8e6cf; }
+    .elf    .hair { background: #90ee90; }
+    .dwarf  .head { background: #daa520; }
+    .dwarf  .hair { background: #cd853f; }
+    .orc    .head { background: #228b22; }
+    .orc    .hair { background: #006400; }
+
+    .enemy .head { background: #ff6b6b; }
+    .enemy .body { background: #c0392b; }
+
+    .stats-tooltip {
+        position: absolute;
+        bottom: -50px;
+        left: 50%;
+        transform: translateX(-50%);
+        background: rgba(15,87,79,0.95);
+        border: 2px solid #8bac0f;
+        padding: 8px 12px;
+        font-size: 9px;
+        white-space: nowrap;
+        opacity: 0;
+        transition: opacity 0.3s;
+    }
+
+    .character-box:hover .stats-tooltip { opacity: 1; }
+
+    .health-bar {
+        width: 140px;
+        height: 18px;
+        background: #0f380f;
+        border: 3px solid #306230;
+        margin: 10px auto;
+        overflow: hidden;
+        position: relative;
+    }
+
+    .health-fill {
+        height: 100%;
+        background: linear-gradient(to right, #38b554, #8bac0f);
+        width: 100%;
+        transition: width 0.6s ease;
+        box-shadow: inset 0 2px 4px rgba(0,0,0,0.5);
+    }
+
+    .health-label {
+        position: absolute;
+        inset: 0;
+        font-size: 9px;
+        color: #0f380f;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        text-shadow: 1px 1px 0 #e0f8d0;
+    }
+
+    #dm-narration {
+        background: rgba(15,87,79,0.85);
+        border: 4px solid #8bac0f;
+        padding: 18px;
+        margin: 20px 0;
+        font-size: 11px;
+        line-height: 1.6;
+        max-height: 180px;
+        overflow-y: auto;
+        text-align: left;
+    }
+
+    #story {
+        font-size: 12px;
+        padding: 20px;
+        background: rgba(15,56,15,0.7);
+        border: 3px solid #306230;
+        margin: 20px 0;
+        min-height: 80px;
+    }
+
+    #action-buttons { margin: 25px 0; }
+
+    #death {
+        position: fixed;
+        inset: 0;
+        background: #000;
+        color: #ff5252;
+        font-size: 32px;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+    }
+
+    .bg-forest { background: linear-gradient(to bottom, #0f574f 0%, #0f380f 60%, #306230 100%); }
+</style>
 </head>
-<body>
+<body class="bg-forest">
 
-<div id="main">
-    <h1 style="color:#8bc34a">TEST D&D GAME</h1>
-    <p style="font-size:22px">If you see this text and the green bar below → the game loaded correctly</p>
+<div id="container">
 
-    <div id="hp-bar">
-        <div id="hp-fill"></div>
-        <div id="hp-text">HP: 30 / 30</div>
+    <!-- Creation Screen -->
+    <div id="creation">
+        <h1>Begin Your Quest</h1>
+
+        <label>Race</label><br>
+        <select id="race">
+            <option value="human">Human</option>
+            <option value="elf">Elf</option>
+            <option value="dwarf">Dwarf</option>
+            <option value="orc">Orc</option>
+        </select><br><br>
+
+        <label>Class</label><br>
+        <select id="class">
+            <option value="fighter">Fighter</option>
+            <option value="wizard">Wizard</option>
+            <option value="rogue">Rogue</option>
+            <option value="cleric">Cleric</option>
+        </select><br><br>
+
+        <label>Level (1–5)</label><br>
+        <input type="number" id="level" value="1" min="1" max="5"><br><br>
+
+        <label>Weapons (comma separated)</label><br>
+        <input type="text" id="weapons" value="Shortsword"><br><br>
+
+        <label>Armor</label><br>
+        <input type="text" id="armor" value="Leather"><br><br>
+
+        <label>Spells (comma separated)</label><br>
+        <input type="text" id="spells" value="Firebolt"><br><br>
+
+        <label>Inventory (comma separated)</label><br>
+        <input type="text" id="inventory" value="Healing Potion, Healing Potion"><br><br>
+
+        <button onclick="startGame()">Enter the Realm</button>
     </div>
 
-    <button onclick="takeDamage(8)">Take 8 damage (test)</button>
-    <button onclick="heal(10)">Heal 10 HP (test)</button>
-    <button onclick="alert('You attacked!')">Attack (test)</button>
-</div>
+    <!-- Main Game -->
+    <div id="game">
+        <h1 id="quest-title">The Adventure Begins</h1>
 
-<div id="death">
-    YOU HAVE FALLEN...<br>RISE UP
-    <br><br>
-    <button onclick="location.reload()" style="font-size:32px; padding:20px 60px; background:#444; color:#fff;">Restart</button>
+        <div class="combat-zone">
+            <div class="character-box">
+                <div class="pixel-sprite" id="player-sprite">
+                    <div class="head"></div>
+                    <div class="hair"></div>
+                    <div class="body"></div>
+                    <div class="legs"></div>
+                </div>
+                <div class="stats-tooltip" id="player-tooltip"></div>
+                <div class="health-bar">
+                    <div class="health-fill" id="player-hp-bar"></div>
+                    <div class="health-label" id="player-hp-text">HP: 30 / 30</div>
+                </div>
+            </div>
+
+            <div class="character-box">
+                <div class="pixel-sprite enemy" id="enemy-sprite" style="display:none;"></div>
+                <div class="stats-tooltip" id="enemy-tooltip"></div>
+                <div class="health-bar" id="enemy-hp-container" style="display:none;">
+                    <div class="health-fill" id="enemy-hp-bar"></div>
+                    <div class="health-label" id="enemy-hp-text"></div>
+                </div>
+            </div>
+        </div>
+
+        <div id="dm-narration">
+            <strong>DM:</strong> Elias... the veil between worlds thins. Your legend begins now.
+        </div>
+
+        <div id="story">The forest whispers your name...</div>
+
+        <div id="action-buttons"></div>
+
+        <div id="roll-area" style="display:none; margin:20px 0;">
+            <button onclick="rollD20()">Roll d20</button>
+            <p id="roll-result" style="font-size:14px; margin-top:12px;"></p>
+        </div>
+    </div>
+
+    <!-- Death Screen -->
+    <div id="death">
+        You and your fellow warriors have fallen.<br>
+        <span style="font-size:28px; margin:20px 0; display:block;">Rise up.</span>
+        <button onclick="location.reload()">New Journey</button>
+    </div>
+
 </div>
 
 <script>
-let hp = 30;
-let maxHp = 30;
+// ────────────────────────────────────────
+// Core variables
+// ────────────────────────────────────────
+let player = {
+    race: "",
+    class: "",
+    level: 1,
+    hp: 30,
+    maxHp: 30,
+    weapons: [],
+    armor: "",
+    spells: [],
+    inventory: []
+};
 
-function updateHP() {
-    if (hp < 0) hp = 0;
-    const percent = (hp / maxHp) * 100;
-    document.getElementById("hp-fill").style.width = percent + "%";
-    document.getElementById("hp-text").textContent = `HP: ${hp} / ${maxHp}`;
+let enemy = { name: "", hp: 0, maxHp: 0 };
 
-    if (hp <= 0) {
-        document.getElementById("main").style.display = "none";
-        document.getElementById("death").style.display = "flex";
+let inCombat = false;
+let currentAction = null;
+
+// ────────────────────────────────────────
+// Start the game
+// ────────────────────────────────────────
+function startGame() {
+    player.race     = document.getElementById("race").value;
+    player.class    = document.getElementById("class").value;
+    player.level    = parseInt(document.getElementById("level").value) || 1;
+    player.weapons  = document.getElementById("weapons").value.split(",").map(s=>s.trim()).filter(Boolean);
+    player.armor    = document.getElementById("armor").value.trim() || "None";
+    player.spells   = document.getElementById("spells").value.split(",").map(s=>s.trim()).filter(Boolean);
+    player.inventory = document.getElementById("inventory").value.split(",").map(s=>s.trim()).filter(Boolean);
+
+    // Calculate HP safely
+    player.maxHp = 18 + player.level * 6 + (player.class === "fighter" ? 10 : 0);
+    player.hp    = player.maxHp;
+
+    // Safety check
+    if (player.hp < 1 || isNaN(player.hp)) {
+        player.hp = player.maxHp = 30;
+    }
+
+    // Update UI
+    document.getElementById("player-tooltip").textContent =
+        `${player.race} ${player.class} Lv${player.level}\nHP: ${player.hp}/${player.maxHp}`;
+
+    updateHealthBar("player", player.hp, player.maxHp);
+
+    // Hide creation, show game
+    document.getElementById("creation").style.display = "none";
+    document.getElementById("game").style.display = "block";
+
+    dmSay(`Elias, ${player.race} ${player.class}, the mists of fate part before you. Your saga begins...`);
+
+    // Start first encounter
+    setTimeout(firstEncounter, 1200);
+}
+
+function firstEncounter() {
+    dmSay("A lone goblin scout steps from the undergrowth, blade drawn.");
+    startCombat("goblin", 18);
+}
+
+// ────────────────────────────────────────
+// Combat flow
+// ────────────────────────────────────────
+function startCombat(name, maxHpVal) {
+    enemy.name   = name;
+    enemy.maxHp  = maxHpVal;
+    enemy.hp     = maxHpVal;
+
+    document.getElementById("enemy-sprite").style.display = "block";
+    document.getElementById("enemy-hp-container").style.display = "block";
+    updateHealthBar("enemy", enemy.hp, enemy.maxHp);
+
+    inCombat = true;
+
+    dmSay(`The ${name} snarls and attacks! Choose your action.`);
+
+    showActions([
+        { text: "Attack with Weapon", fn: () => beginAction("attack") },
+        { text: "Cast Spell",         fn: () => beginAction("spell")  },
+        { text: "Use Potion",         fn: () => usePotion()           },
+        { text: "Run",                fn: () => attemptRun()          }
+    ]);
+}
+
+function beginAction(type) {
+    currentAction = type;
+    document.getElementById("roll-area").style.display = "block";
+    document.getElementById("action-buttons").innerHTML = "";
+    document.getElementById("roll-result").textContent = `Roll d20 for ${type}...`;
+}
+
+function rollD20() {
+    if (!inCombat || !currentAction) return;
+
+    const roll = Math.floor(Math.random() * 20) + 1;
+    let outcome = "";
+
+    if (roll <= 9) {
+        outcome = `Miss! (${roll})`;
+    } else {
+        let dmg = roll - 9;
+        if (roll === 20) {
+            dmg *= 2;
+            outcome = `Critical Hit! (${dmg} damage)`;
+        } else {
+            outcome = `Hit! (${dmg} damage)`;
+        }
+
+        enemy.hp -= dmg;
+        if (enemy.hp < 0) enemy.hp = 0;
+        updateHealthBar("enemy", enemy.hp, enemy.maxHp);
+
+        if (enemy.hp <= 0) {
+            dmSay(`The ${enemy.name} collapses! Victory.`);
+            endCombat();
+            setTimeout(() => dmSay("You catch your breath..."), 1800);
+            return;
+        }
+    }
+
+    document.getElementById("roll-result").textContent = outcome;
+    document.getElementById("roll-area").style.display = "none";
+
+    setTimeout(enemyAttack, 1000);
+}
+
+function enemyAttack() {
+    const roll = Math.floor(Math.random() * 20) + 1;
+    let msg = `Enemy rolls ${roll} → `;
+
+    if (roll <= 9) {
+        msg += "misses!";
+    } else {
+        let dmg = roll - 9;
+        if (roll === 20) dmg *= 2;
+        player.hp -= dmg;
+        if (player.hp < 0) player.hp = 0;
+        msg += `hits for ${dmg} damage!`;
+        updateHealthBar("player", player.hp, player.maxHp);
+
+        if (player.hp <= 0) {
+            document.getElementById("game").style.display = "none";
+            document.getElementById("death").style.display = "flex";
+            return;
+        }
+    }
+
+    dmSay(msg);
+    showActions(); // Show action buttons again
+}
+
+function usePotion() {
+    const potionIdx = player.inventory.findIndex(i => i.toLowerCase().includes("potion"));
+    if (potionIdx === -1) {
+        dmSay("You have no potions left.");
+        return;
+    }
+
+    player.inventory.splice(potionIdx, 1);
+    const heal = 10;
+    player.hp = Math.min(player.maxHp, player.hp + heal);
+    updateHealthBar("player", player.hp, player.maxHp);
+    dmSay(`You drink a healing potion and recover ${heal} HP.`);
+
+    // Enemy turn after potion use
+    playerTurn = false;
+    setTimeout(enemyAttack, 900);
+}
+
+function attemptRun() {
+    if (Math.random() < 0.6) {
+        dmSay("You slip away into the shadows!");
+        endCombat();
+    } else {
+        dmSay("The enemy blocks your escape!");
+        enemyAttack();
     }
 }
 
-function takeDamage(dmg) {
-    hp -= dmg;
-    updateHP();
+function endCombat() {
+    inCombat = false;
+    currentAction = null;
+    document.getElementById("enemy-sprite").style.display = "none";
+    document.getElementById("enemy-hp-container").style.display = "none";
+    document.getElementById("roll-area").style.display = "none";
+    document.getElementById("action-buttons").innerHTML = "";
 }
 
-function heal(amount) {
-    hp = Math.min(maxHp, hp + amount);
-    updateHP();
+// ────────────────────────────────────────
+// Helpers
+// ────────────────────────────────────────
+function updateHealthBar(side, hp, max) {
+    const perc = Math.max(0, Math.min(100, (hp / max) * 100));
+    const fill = document.getElementById(`${side}-hp-bar`);
+    const text = document.getElementById(`${side}-hp-text`);
+    fill.style.width = perc + "%";
+    text.textContent = `HP: ${hp} / ${max}`;
 }
 
-// Make sure it starts visible
-document.getElementById("main").style.display = "block";
-updateHP();
+function dmSay(text) {
+    const box = document.getElementById("dm-narration");
+    box.innerHTML += `<br><strong>DM:</strong> ${text}`;
+    box.scrollTop = box.scrollHeight;
+}
+
+function showActions(actions = null) {
+    const container = document.getElementById("action-buttons");
+    container.innerHTML = "";
+
+    if (!actions) {
+        actions = [
+            { text: "Attack with Weapon", fn: () => beginAction("attack") },
+            { text: "Cast Spell",         fn: () => beginAction("spell")  },
+            { text: "Use Potion",         fn: () => usePotion()           },
+            { text: "Run",                fn: () => attemptRun()          }
+        ];
+    }
+
+    actions.forEach(a => {
+        const btn = document.createElement("button");
+        btn.textContent = a.text;
+        btn.onclick = a.fn;
+        container.appendChild(btn);
+    });
+}
+
+// Init
+document.getElementById("creation").style.display = "block";
 </script>
 </body>
 </html>
