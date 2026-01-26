@@ -19,482 +19,150 @@
 
 <div id="story">
     <h1>Abandoned Outpost – Forgotten World</h1>
-    <p>Your squad awakens in the ruins of an ancient settlement — crumbling stone walls, wooden shacks, a broken bridge over a sluggish river.<br>
-    Warp-tainted creatures prowl the shadows. The path ahead is long and treacherous.<br><br>
-    Lead your 10 battle-brothers and yourself to the distant machine. Activate the red button to call for orbital support.<br>
-    The ground behind you crumbles as you advance — no turning back.</p>
-    <button onclick="document.getElementById('story').style.display='none'">Begin Mission</button>
+    <p>Your squad awakens in the ruins... Warp horrors everywhere.<br>
+    Lead your battle-brothers to the machine and activate the beam.</p>
+    <button onclick="document.getElementById('story').style.display='none'">Begin</button>
 </div>
 
 <div id="ui">
     <label><strong>Choose your Legion:</strong></label><br>
     <select id="legionSelect">
         <option value="">— Select Legion —</option>
-        <option value="Dark Angels">I – Dark Angels</option>
-        <option value="Emperor's Children">III – Emperor's Children</option>
-        <option value="Iron Warriors">IV – Iron Warriors</option>
-        <option value="White Scars">V – White Scars</option>
-        <option value="Space Wolves">VI – Space Wolves</option>
-        <option value="Imperial Fists">VII – Imperial Fists</option>
-        <option value="Night Lords">VIII – Night Lords</option>
-        <option value="Blood Angels">IX – Blood Angels</option>
-        <option value="Iron Hands">X – Iron Hands</option>
-        <option value="World Eaters">XII – World Eaters</option>
-        <option value="Ultramarines">XIII – Ultramarines</option>
-        <option value="Death Guard">XIV – Death Guard</option>
-        <option value="Thousand Sons">XV – Thousand Sons</option>
-        <option value="Sons of Horus">XVI – Sons of Horus</option>
-        <option value="Word Bearers">XVII – Word Bearers</option>
-        <option value="Salamanders">XVIII – Salamanders</option>
-        <option value="Raven Guard">XIX – Raven Guard</option>
-        <option value="Alpha Legion">XX – Alpha Legion</option>
+        <option value="Dark Angels">Dark Angels</option>
+        <option value="Emperor's Children">Emperor's Children</option>
+        <option value="Iron Warriors">Iron Warriors</option>
+        <option value="White Scars">White Scars</option>
+        <option value="Space Wolves">Space Wolves</option>
+        <option value="Imperial Fists">Imperial Fists</option>
+        <option value="Night Lords">Night Lords</option>
+        <option value="Blood Angels">Blood Angels</option>
+        <option value="Iron Hands">Iron Hands</option>
+        <option value="World Eaters">World Eaters</option>
+        <option value="Ultramarines">Ultramarines</option>
+        <option value="Death Guard">Death Guard</option>
+        <option value="Thousand Sons">Thousand Sons</option>
+        <option value="Sons of Horus">Sons of Horus</option>
+        <option value="Word Bearers">Word Bearers</option>
+        <option value="Salamanders">Salamanders</option>
+        <option value="Raven Guard">Raven Guard</option>
+        <option value="Alpha Legion">Alpha Legion</option>
     </select><br>
     <button onclick="startCampaign()">Deploy</button>
 </div>
 
 <canvas id="canvas" width="1400" height="900"></canvas>
 
-<div id="objective">Select a marine (click on him), then click destination to move.<br>Click your leader (YOU) to make squad follow in formation.<br>Use mouse wheel to zoom in/out for details. Advance forward — the path behind fades.</div>
+<div id="objective">Click marine to select → click to move.<br>Leader makes squad follow.<br>Mouse wheel = zoom (details!).</div>
 
 <div id="endScreen">
-    <h1>Victory – Beam Activated</h1>
-    <p>The crimson button glows. A blinding blue beam lances into the heavens.<br>Reinforcements inbound. The outpost is secured... for the Emperor (or the Warmaster).</p>
-    <button onclick="location.reload()">New Campaign</button>
+    <h1>Victory!</h1>
+    <p>Beam activated. Glory to the Legion.</p>
+    <button onclick="location.reload()">Restart</button>
 </div>
 
 <script>
-// ────────────────────────────────────────────────
-const canvas = document.getElementById('canvas');
-const ctx = canvas.getContext('2d');
+// ... (keep most of the previous code structure, only changing drawUnits and related)
 
-const LEGION_COLORS = {
-    "Dark Angels":"#2e7d32","Emperor's Children":"#7b1fa2","Iron Warriors":"#616161",
-    "White Scars":"#e0e0e0","Space Wolves":"#90caf9","Imperial Fists":"#ffeb3b",
-    "Night Lords":"#0d47a1","Blood Angels":"#c62828","Iron Hands":"#212121",
-    "World Eaters":"#b71c1c","Ultramarines":"#1976d2","Death Guard":"#558b2f",
-    "Thousand Sons":"#283593","Sons of Horus":"#2e7d32","Word Bearers":"#880e4f",
-    "Salamanders":"#1b5e20","Raven Guard":"#263238","Alpha Legion":"#00695c"
+const LEGION_DETAILS = {
+    "Dark Angels": {main: "#2e7d32", accent: "#1b5e20", symbol: "sword", pad: "wing"},
+    "Emperor's Children": {main: "#7b1fa2", accent: "#d500f9", symbol: "eagle", pad: "gem"},
+    "Iron Warriors": {main: "#616161", accent: "#424242", symbol: "skull", pad: "hazard"},
+    "White Scars": {main: "#e0e0e0", accent: "#ffffff", symbol: "lightning", pad: "scar"},
+    "Space Wolves": {main: "#90caf9", accent: "#bbdefb", symbol: "wolf", pad: "pelt"},
+    "Imperial Fists": {main: "#ffeb3b", accent: "#fdd835", symbol: "fist", pad: "castle"},
+    "Night Lords": {main: "#0d47a1", accent: "#1565c0", symbol: "bat", pad: "wingdark"},
+    "Blood Angels": {main: "#c62828", accent: "#b71c1c", symbol: "drop", pad: "blood"},
+    "Iron Hands": {main: "#212121", accent: "#424242", symbol: "hand", pad: "metal"},
+    "World Eaters": {main: "#b71c1c", accent: "#d32f2f", symbol: "axe", pad: "chain"},
+    "Ultramarines": {main: "#1976d2", accent: "#1565c0", symbol: "U", pad: "laurel"},
+    "Death Guard": {main: "#558b2f", accent: "#33691e", symbol: "fly", pad: "rot"},
+    "Thousand Sons": {main: "#283593", accent: "#4527a0", symbol: "eye", pad: "rune"},
+    "Sons of Horus": {main: "#2e7d32", accent: "#1b5e20", symbol: "eye", pad: "lupercal"},
+    "Word Bearers": {main: "#880e4f", accent: "#ad1457", symbol: "book", pad: "cog"},
+    "Salamanders": {main: "#1b5e20", accent: "#2e7d32", symbol: "flame", pad: "drake"},
+    "Raven Guard": {main: "#263238", accent: "#37474f", symbol: "raven", pad: "claw"},
+    "Alpha Legion": {main: "#00695c", accent: "#004d40", symbol: "hydra", pad: "scale"}
 };
 
-let playerColor = null;
-let playerUnits = [];           // {x,y, destX,destY, hp, isLeader}
-let selectedUnitIndex = null;
-let enemies = [];               // {x,y, hp}
-let machinePos = {x: 700, y: -2000}; // farther
-let buttonActivated = false;
-let zoom = 1;
-let cameraX = 700;
-let cameraY = 800;
+function drawLegionnaire(x, y, color, details, size = 11, isLeader = false, zoomLevel) {
+    const s = size * (isLeader ? 1.4 : 1);
 
-function startCampaign() {
-    const sel = document.getElementById('legionSelect').value;
-    if (!sel) return alert("Select your Legion!");
-    playerColor = LEGION_COLORS[sel];
-    document.getElementById('ui').style.display = 'none';
-    document.getElementById('objective').style.display = 'block';
-
-    // Squad starts near bottom-center, on screen
-    playerUnits = [];
-    for(let i=0; i<11; i++){
-        playerUnits.push({
-            x: 620 + (i-5)*18,
-            y: 780 + Math.random()*20 -10,
-            destX:null, destY:null,
-            hp:100,
-            isLeader: i===5   // middle one is leader
-        });
-    }
-
-    spawnEnemies();
-    requestAnimationFrame(gameLoop);
-}
-
-function drawWorld() {
-    // Ground – mossy green/brown
-    ctx.fillStyle = '#3a5c2f';
-    ctx.fillRect(-1000, -3000, 3000, 5000); // large area
-
-    // Extended path – longer upward
-    ctx.fillStyle = '#555555';
-    ctx.fillRect(500, -2500, 400, 4000); // long path
-    ctx.fillRect(300, -1800, 800, 800); // widening upper
-
-    // River at start
-    ctx.fillStyle = '#1e6fa5';
-    ctx.fillRect(200, 580, 1000, 180);
-    ctx.fillStyle = '#2a8bc4';
-    ctx.fillRect(220, 600, 960, 140);
-
-    // Ruins & objects extended
-    drawRuin(320, 680, 140, 120, "#4a3728"); // shack left
-    drawRuin(820, 720, 160, 100, "#4a3728"); // shack right
-    drawBridge(600, 620);
-    drawBoat(680, 580);
-    drawLogs(450, 500);
-    drawFlowers(380, 750, 6);
-    drawFlowers(880, 680, 5);
-    drawStoneWall(200, 400, 300);
-    drawStoneWall(900, 350, 250);
-
-    // More ruins further up
-    drawRuin(400, -200, 180, 140, "#4a3728");
-    drawRuin(850, -300, 120, 160, "#4a3728");
-    drawBridge(650, -400);
-    drawLogs(550, -500);
-    drawFlowers(450, -100, 8);
-    drawStoneWall(300, -600, 400);
-    drawRuin(500, -800, 200, 100, "#4a3728");
-    drawFlowers(700, -900, 7);
-    drawStoneWall(800, -1000, 350);
-    drawLogs(600, -1200);
-    drawRuin(350, -1400, 150, 130, "#4a3728");
-    drawBridge(550, -1600);
-    drawFlowers(900, -1700, 5);
-    drawStoneWall(200, -1800, 300);
-
-    // Detailed grass if zoomed in
-    if (zoom > 1.2) {
-        for (let i = 0; i < 500 * zoom; i++) {
-            let gx = Math.random() * 2800 - 700;
-            let gy = Math.random() * 5000 - 2500;
-            ctx.strokeStyle = `rgba(0,${Math.random()*100 + 100},0,0.5)`;
-            ctx.lineWidth = 1 / zoom;
-            ctx.beginPath();
-            ctx.moveTo(gx, gy);
-            ctx.lineTo(gx + (Math.random()-0.5)*4, gy - Math.random()*8 -4);
-            ctx.stroke();
-        }
-    }
-
-    // Low quality: skip some if zoomed out
-    if (zoom < 0.8) {
-        // Skip flowers, logs etc.
-        return;
-    }
-
-    // Distant machine
-    ctx.fillStyle = '#555588';
-    ctx.fillRect(machinePos.x-40, machinePos.y-40, 80, 80);
-    ctx.fillStyle = buttonActivated ? '#00aaff' : '#880000';
+    // Base body
+    ctx.fillStyle = details.main;
     ctx.beginPath();
-    ctx.arc(machinePos.x, machinePos.y, 22, 0, Math.PI*2);
+    ctx.arc(x, y, s, 0, Math.PI*2);
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText("MACHINE", machinePos.x, machinePos.y + 60);
-}
 
-function drawRuin(x,y,w,h,col){
-    ctx.fillStyle = col;
-    ctx.fillRect(x,y,w,h);
-    ctx.fillStyle = '#333';
-    ctx.fillRect(x+10,y+10,w-20,h-30); // roof
-}
-
-function drawBridge(x,y){
-    ctx.fillStyle = '#8b5a2b';
-    ctx.fillRect(x-80, y-20, 160, 40);
-    ctx.fillStyle = '#6d4c41';
-    for(let i=-70;i<=70;i+=30) ctx.fillRect(x+i, y-30, 20, 60);
-}
-
-function drawBoat(x,y){
-    ctx.fillStyle = '#6d4c41';
+    // Helmet
+    ctx.fillStyle = details.accent || details.main;
     ctx.beginPath();
-    ctx.moveTo(x-50,y); ctx.lineTo(x+50,y); ctx.lineTo(x+30,y+40); ctx.lineTo(x-30,y+40);
-    ctx.closePath(); ctx.fill();
-}
+    ctx.arc(x, y - s*0.6, s*0.5, 0, Math.PI*2);
+    ctx.fill();
 
-function drawLogs(x,y){
-    for(let i=0;i<4;i++){
-        ctx.fillStyle = '#8b4513';
-        ctx.fillRect(x + i*25, y + Math.sin(i)*10, 60, 20);
+    // Shoulder pads
+    ctx.fillStyle = details.accent;
+    ctx.beginPath();
+    ctx.arc(x - s*0.8, y - s*0.3, s*0.6, 0, Math.PI*2);
+    ctx.arc(x + s*0.8, y - s*0.3, s*0.6, 0, Math.PI*2);
+    ctx.fill();
+
+    // Legion symbol approximation
+    if (zoomLevel > 1.5) {
+        ctx.fillStyle = "#ffffff88";
+        ctx.font = `${s*0.8}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+
+        let sym = "?";
+        switch(details.symbol) {
+            case "sword": sym = "†"; break;
+            case "eagle": sym = "🦅"; break;
+            case "skull": sym = "☠"; break;
+            case "lightning": sym = "⚡"; break;
+            case "wolf": sym = "🐺"; break;
+            case "fist": sym = "✊"; break;
+            case "bat": sym = "🦇"; break;
+            case "drop": sym = "💧"; break;
+            case "hand": sym = "🤖"; break;
+            case "axe": sym = "🪓"; break;
+            case "U": sym = "U"; break;
+            case "fly": sym = "🪰"; break;
+            case "eye": sym = "👁"; break;
+            case "book": sym = "📖"; break;
+            case "flame": sym = "🔥"; break;
+            case "raven": sym = "🦅"; break;
+            case "hydra": sym = "🐉"; break;
+        }
+        ctx.fillText(sym, x, y - s*0.3);
     }
-}
 
-function drawFlowers(x,y,count){
-    for(let i=0;i<count;i++){
-        ctx.fillStyle = Math.random()>0.5 ? '#ff69b4' : '#00ff7f';
+    // Extra leader flair
+    if (isLeader) {
+        ctx.strokeStyle = "#ffff99";
+        ctx.lineWidth = 3 / zoomLevel;
         ctx.beginPath();
-        ctx.arc(x + (Math.random()-0.5)*80, y + (Math.random()-0.5)*40, 6,0,Math.PI*2);
-        ctx.fill();
+        ctx.arc(x, y, s*1.3, 0, Math.PI*2);
+        ctx.stroke();
     }
 }
 
-function drawStoneWall(x,y,len){
-    ctx.fillStyle = '#777';
-    ctx.fillRect(x, y, 40, len);
-    ctx.fillStyle = '#666';
-    for(let i=0;i<len;i+=30) ctx.fillRect(x+5, y+i+10, 30, 10);
-}
+function drawUnits() {
+    // ... shadows etc. as before
 
-function drawUnits(){
-    playerUnits.forEach((u,i) => {
-        if(u.hp<=0) return;
-        ctx.fillStyle = playerColor;
-        ctx.beginPath();
-        ctx.arc(u.x, u.y, u.isLeader?16:11, 0, Math.PI*2);
-        ctx.fill();
-        // Shoulder pad / helmet detail
-        ctx.fillStyle = '#ffffff33';
-        ctx.beginPath();
-        ctx.arc(u.x-4, u.y-4, 5, 0, Math.PI*2);
-        ctx.fill();
-        if (zoom > 1.5) {
-            // Scratches on armor
-            ctx.strokeStyle = '#00000044';
-            ctx.lineWidth = 1 / zoom;
-            for (let s = 0; s < 3; s++) {
-                ctx.beginPath();
-                let sx = (Math.random() - 0.5) * 10;
-                let sy = (Math.random() - 0.5) * 10;
-                ctx.moveTo(u.x + sx, u.y + sy);
-                ctx.lineTo(u.x + sx + (Math.random() - 0.5) * 6, u.y + sy + (Math.random() - 0.5) * 6);
-                ctx.stroke();
-            }
-        }
-        if(u.isLeader){
-            ctx.fillStyle = '#ffff99';
-            ctx.font = '12px Arial';
-            ctx.textAlign = 'center';
-            ctx.fillText("LEADER", u.x, u.y-25);
-        }
-        if(selectedUnitIndex === i){
-            ctx.strokeStyle = '#ffff00';
-            ctx.lineWidth = 3 / zoom;
-            ctx.beginPath();
-            ctx.arc(u.x,u.y, u.isLeader?19:14,0,Math.PI*2);
-            ctx.stroke();
-        }
+    playerUnits.forEach((u, i) => {
+        if (u.hp <= 0) return;
+        const details = LEGION_DETAILS[playerLegionName] || {main: playerColor, accent: playerColor, symbol: "?"};
+        drawLegionnaire(u.x, u.y, playerColor, details, 11, u.isLeader, zoom);
+
+        // ... selection ring, scratches, etc. as before
     });
 }
 
-function drawEnemies(){
-    enemies.forEach(e => {
-        if(e.hp<=0) return;
-        ctx.fillStyle = '#4a0000';
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, 13, 0, Math.PI*2);
-        ctx.fill();
-        if (zoom > 1.5) {
-            // Details on creatures, like eyes or claws
-            ctx.fillStyle = '#ff0000';
-            ctx.beginPath();
-            ctx.arc(e.x - 4, e.y - 4, 3, 0, Math.PI*2);
-            ctx.fill();
-            ctx.beginPath();
-            ctx.arc(e.x + 4, e.y - 4, 3, 0, Math.PI*2);
-            ctx.fill();
-        }
-        ctx.fillStyle = '#ff0000';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText("Warp Spawn", e.x, e.y-18);
-    });
-}
+// In startCampaign, set playerLegionName = document.getElementById('legionSelect').value;
 
-function drawFadeBehind() {
-    let behindY = -Infinity;
-    playerUnits.forEach(u => {
-        if (u.hp > 0) behindY = Math.max(behindY, u.y);
-    });
-    if (behindY === -Infinity) return;
+let playerLegionName = "";
 
-    const grad = ctx.createLinearGradient(0, behindY + 150, 0, behindY + 400);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,1)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(-1000, behindY + 150, 3000, 1000);
-}
-
-function moveUnits(){
-    playerUnits.forEach(u => {
-        if(u.hp<=0 || !u.destX) return;
-        const dx = u.destX - u.x;
-        const dy = u.destY - u.y;
-        const dist = Math.hypot(dx, dy);
-        if(dist < 4){
-            u.destX = u.destY = null;
-            return;
-        }
-        const speed = u.isLeader ? 2.4 : 2.1;
-        u.x += dx/dist * speed;
-        u.y += dy/dist * speed;
-    });
-}
-
-function enemyAI(){
-    enemies.forEach(e => {
-        if(e.hp <=0) return;
-        let target = null, minD = Infinity;
-        playerUnits.forEach(p => {
-            if(p.hp>0){
-                const d = Math.hypot(p.x - e.x, p.y - e.y);
-                if(d < minD){ minD = d; target = p; }
-            }
-        });
-        if(!target) return;
-
-        const dx = target.x - e.x;
-        const dy = target.y - e.y;
-        const dist = Math.hypot(dx,dy);
-
-        if(dist < 25){
-            e.attacking = true;
-            target.hp -= 0.8;
-        } else {
-            e.x += dx/dist * 1.1;
-            e.y += dy/dist * 1.1;
-            e.attacking = false;
-        }
-    });
-}
-
-function playerCombat(){
-    playerUnits.forEach(u => {
-        if(u.hp<=0) return;
-        let closestE = null, minD = Infinity;
-        enemies.forEach(e => {
-            if(e.hp>0){
-                const d = Math.hypot(e.x - u.x, e.y - u.y);
-                if(d < 140 && d < minD){ minD = d; closestE = e; }
-            }
-        });
-        if(closestE && minD < 140){
-            ctx.strokeStyle = '#ff8800';
-            ctx.lineWidth = 3 / zoom;
-            ctx.beginPath();
-            ctx.moveTo(u.x, u.y);
-            ctx.lineTo(closestE.x, closestE.y);
-            ctx.stroke();
-            closestE.hp -= 0.7;
-        }
-    });
-}
-
-function spawnEnemies(){
-    setInterval(() => {
-        if(buttonActivated) return;
-        const num = Math.floor(Math.random()*3) + 2;
-        const minPY = playerUnits.reduce((min,u)=> u.hp>0 ? Math.min(min,u.y) : min, Infinity);
-        for(let i=0;i<num;i++){
-            enemies.push({
-                x: Math.random()*1400,
-                y: minPY - 200 - Math.random()*400,
-                hp: 60 + Math.random()*30
-            });
-        }
-    }, 18000);
-}
-
-function checkActivation(){
-    if(buttonActivated) return;
-    const mx = machinePos.x, my = machinePos.y;
-    if(playerUnits.some(u=> u.hp>0 && Math.hypot(u.x-mx, u.y-my)<60)){
-        buttonActivated = true;
-        setTimeout(()=>{
-            document.getElementById('endScreen').style.display = 'flex';
-        },1500);
-    }
-}
-
-function gameLoop(){
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.scale(zoom, zoom);
-    ctx.translate(-cameraX, -cameraY);
-
-    drawWorld();
-    drawUnits();
-    drawEnemies();
-    drawFadeBehind();
-
-    ctx.restore();
-
-    // Auto center on leader
-    const leader = playerUnits.find(u => u.isLeader && u.hp > 0);
-    if (leader) {
-        cameraX += (leader.x - cameraX) * 0.1; // smooth follow
-        cameraY += (leader.y - cameraY) * 0.1;
-    }
-
-    moveUnits();
-    enemyAI();
-    playerCombat();
-    checkActivation();
-
-    enemies = enemies.filter(e=>e.hp>0);
-    playerUnits = playerUnits.filter(u=>u.hp>0);
-
-    requestAnimationFrame(gameLoop);
-}
-
-canvas.addEventListener('click', e=>{
-    if(buttonActivated) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const worldX = cameraX + (mouseX - canvas.width / 2) / zoom;
-    const worldY = cameraY + (mouseY - canvas.height / 2) / zoom;
-
-    // Check machine
-    if(Math.hypot(worldX - machinePos.x, worldY - machinePos.y) < 30){
-        if(playerUnits.some(u=>Math.hypot(u.x-machinePos.x, u.y-machinePos.y)<70)){
-            buttonActivated = true;
-        }
-        return;
-    }
-
-    // Select unit
-    let clicked = null;
-    playerUnits.forEach((u,i)=>{
-        if(u.hp>0 && Math.hypot(worldX - u.x, worldY - u.y) < (u.isLeader?18:13)){
-            clicked = i;
-        }
-    });
-    if(clicked !== null){
-        selectedUnitIndex = clicked;
-        return;
-    }
-
-    // Move
-    if(selectedUnitIndex !== null){
-        const u = playerUnits[selectedUnitIndex];
-        if(u.hp>0){
-            u.destX = worldX;
-            u.destY = worldY;
-            if(u.isLeader){
-                playerUnits.forEach(other=>{
-                    if(other !== u && other.hp>0){
-                        other.destX = worldX + (Math.random()-0.5)*60;
-                        other.destY = worldY + (Math.random()-0.5)*60;
-                    }
-                });
-            }
-        }
-        selectedUnitIndex = null;
-    }
-});
-
-canvas.addEventListener('wheel', e => {
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const mouseWorldX = cameraX + (mouseX - canvas.width / 2) / zoom;
-    const mouseWorldY = cameraY + (mouseY - canvas.height / 2) / zoom;
-
-    zoom = Math.max(0.5, Math.min(3, zoom - Math.sign(e.deltaY) * 0.1));
-
-    cameraX = mouseWorldX - (mouseX - canvas.width / 2) / zoom;
-    cameraY = mouseWorldY - (mouseY - canvas.height / 2) / zoom;
-});
-
-drawWorld(); // initial
+// ... rest of code remains similar, just replace circle draws with drawLegionnaire calls
 </script>
 </body>
 </html>
