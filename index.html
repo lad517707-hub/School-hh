@@ -2,259 +2,90 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Horus Heresy – Legion Survival</title>
+<title>Test - Legion Squad Visible</title>
 <style>
-    body { margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden; }
-    #ui { position:absolute; top:15px; left:15px; background:rgba(10,10,30,0.85); padding:20px; border:1px solid #444; border-radius:10px; z-index:10; max-width:340px; }
-    #canvas { display:block; cursor:crosshair; image-rendering:pixelated; }
-    button, select { padding:10px 16px; margin:8px 6px 8px 0; font-size:15px; background:#1a1a3a; color:#eee; border:1px solid #555; border-radius:6px; cursor:pointer; }
-    button:hover { background:#2a2a5a; }
-    #story { position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:50px; text-align:center; font-size:19px; line-height:1.6; }
-    #story button { font-size:22px; padding:15px 40px; margin-top:40px; }
-    #objective { position:absolute; bottom:20px; left:20px; background:rgba(0,0,0,0.7); padding:12px 20px; border-radius:8px; font-size:16px; max-width:600px; z-index:5; display:none; }
-    #endScreen { position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20; display:none; flex-direction:column; justify-content:center; align-items:center; padding:50px; text-align:center; font-size:28px; line-height:1.6; }
+    body { margin:0; padding:0; background:#000; overflow:hidden; }
+    #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:15px; border:1px solid #fff; z-index:10; }
+    #canvas { display:block; }
+    button, select { margin:5px; padding:8px; font-size:16px; }
 </style>
 </head>
 <body>
 
-<div id="story">
-    <h1>Abandoned Outpost – Forgotten World</h1>
-    <p>Your squad awakens in the ruins of an ancient settlement — crumbling stone walls, wooden shacks, a broken bridge over a sluggish river.<br>
-    Warp-tainted creatures prowl the shadows. The path ahead is long and treacherous.<br><br>
-    Lead your 10 battle-brothers and yourself to the distant machine. Activate the red button to call for orbital support.<br>
-    The ground behind you crumbles as you advance — no turning back.</p>
-    <button onclick="document.getElementById('story').style.display='none'">Begin Mission</button>
-</div>
-
 <div id="ui">
-    <label><strong>Choose your Legion:</strong></label><br>
+    <label>Choose Legion:</label><br>
     <select id="legionSelect">
-        <option value="">— Select Legion —</option>
-        <option value="Dark Angels">I – Dark Angels</option>
-        <option value="Emperor's Children">III – Emperor's Children</option>
-        <option value="Iron Warriors">IV – Iron Warriors</option>
-        <option value="White Scars">V – White Scars</option>
-        <option value="Space Wolves">VI – Space Wolves</option>
-        <option value="Imperial Fists">VII – Imperial Fists</option>
-        <option value="Night Lords">VIII – Night Lords</option>
-        <option value="Blood Angels">IX – Blood Angels</option>
-        <option value="Iron Hands">X – Iron Hands</option>
-        <option value="World Eaters">XII – World Eaters</option>
-        <option value="Ultramarines">XIII – Ultramarines</option>
-        <option value="Death Guard">XIV – Death Guard</option>
-        <option value="Thousand Sons">XV – Thousand Sons</option>
-        <option value="Sons of Horus">XVI – Sons of Horus</option>
-        <option value="Word Bearers">XVII – Word Bearers</option>
-        <option value="Salamanders">XVIII – Salamanders</option>
-        <option value="Raven Guard">XIX – Raven Guard</option>
-        <option value="Alpha Legion">XX – Alpha Legion</option>
+        <option value="">Pick one</option>
+        <option value="Dark Angels">Dark Angels</option>
+        <option value="Ultramarines">Ultramarines</option>
+        <option value="Space Wolves">Space Wolves</option>
+        <!-- add more if you want -->
     </select><br>
-    <button onclick="startCampaign()">Deploy</button>
+    <button onclick="startGame()">Deploy</button>
 </div>
 
 <canvas id="canvas" width="1400" height="900"></canvas>
-
-<div id="objective">Select a marine (click on him), then click destination to move.<br>Click your leader (YOU) to make squad follow.<br>Mouse wheel = zoom (more detail when zoomed in).</div>
-
-<div id="endScreen">
-    <h1>Victory – Beam Activated</h1>
-    <p>The crimson button glows. A blinding blue beam lances into the heavens.<br>Reinforcements inbound. The outpost is secured.</p>
-    <button onclick="location.reload()">New Campaign</button>
-</div>
 
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-let playerColor = null;
-let playerLegionName = "";
-let playerUnits = [];
-let selectedUnitIndex = null;
-let enemies = [];
-let machinePos = {x: 700, y: -3000};
-let buttonActivated = false;
-let zoom = 1;
-let cameraX = 700;
-let cameraY = 450; // better starting view - squad near center
-let worldObjects = [];
+let squad = [];
 
-const LEGION_DETAILS = {
-    "Dark Angels":       {main:"#2e7d32", accent:"#1b5e20", symbol:"sword"},
-    "Emperor's Children":{main:"#7b1fa2", accent:"#d500f9", symbol:"eagle"},
-    "Iron Warriors":     {main:"#616161", accent:"#424242", symbol:"skull"},
-    "White Scars":       {main:"#e0e0e0", accent:"#ffffff", symbol:"lightning"},
-    "Space Wolves":      {main:"#90caf9", accent:"#bbdefb", symbol:"wolf"},
-    "Imperial Fists":    {main:"#ffeb3b", accent:"#fdd835", symbol:"fist"},
-    "Night Lords":       {main:"#0d47a1", accent:"#1565c0", symbol:"bat"},
-    "Blood Angels":      {main:"#c62828", accent:"#b71c1c", symbol:"drop"},
-    "Iron Hands":        {main:"#212121", accent:"#424242", symbol:"hand"},
-    "World Eaters":      {main:"#b71c1c", accent:"#d32f2f", symbol:"axe"},
-    "Ultramarines":      {main:"#1976d2", accent:"#1565c0", symbol:"U"},
-    "Death Guard":       {main:"#558b2f", accent:"#33691e", symbol:"fly"},
-    "Thousand Sons":     {main:"#283593", accent:"#4527a0", symbol:"eye"},
-    "Sons of Horus":     {main:"#2e7d32", accent:"#1b5e20", symbol:"eye"},
-    "Word Bearers":      {main:"#880e4f", accent:"#ad1457", symbol:"book"},
-    "Salamanders":       {main:"#1b5e20", accent:"#2e7d32", symbol:"flame"},
-    "Raven Guard":       {main:"#263238", accent:"#37474f", symbol:"raven"},
-    "Alpha Legion":      {main:"#00695c", accent:"#004d40", symbol:"hydra"}
-};
-
-function generateMap() {
-    worldObjects = [];
-    let pathY = 900;
-    while (pathY > machinePos.y - 200) {
-        worldObjects.push({type:'path', x:500 + Math.sin(pathY/200)*200, y:pathY, w:400, h:100});
-        pathY -= 100;
-    }
-    for (let i = 0; i < 6; i++) { // reduced for faster load
-        let ry = Math.random()*6000 - 3000;
-        worldObjects.push({type:'river', x:200 + Math.random()*800, y:ry, w:1000, h:180});
-        if (Math.random() > 0.5) worldObjects.push({type:'bridge', x:600 + Math.random()*200, y:ry + 50});
-        if (Math.random() > 0.7) worldObjects.push({type:'boat', x:680 + Math.random()*200, y:ry + 80});
-    }
-    for (let i = 0; i < 50; i++) { // reduced count for performance
-        let objY = Math.random()*6000 - 3000;
-        let objX = Math.random()*1400;
-        let r = Math.random();
-        if (r < 0.2) worldObjects.push({type:'ruin', x:objX, y:objY, w:100+Math.random()*80, h:80+Math.random()*60, col:"#4a3728"});
-        else if (r < 0.35) worldObjects.push({type:'tree', x:objX, y:objY, size:30+Math.random()*30});
-        else if (r < 0.5) worldObjects.push({type:'rock', x:objX, y:objY, size:20+Math.random()*25});
-        else if (r < 0.65) worldObjects.push({type:'flower', x:objX, y:objY, count:3+Math.floor(Math.random()*5)});
-        else if (r < 0.8) worldObjects.push({type:'log', x:objX, y:objY});
-        else worldObjects.push({type:'stoneWall', x:objX, y:objY, len:150+Math.random()*150});
-    }
-}
-
-function startCampaign() {
-    const sel = document.getElementById('legionSelect').value;
-    if (!sel) {
-        alert("Select your Legion first!");
+function startGame() {
+    const legion = document.getElementById('legionSelect').value;
+    if (!legion) {
+        alert("Pick a legion first!");
         return;
     }
 
-    try {
-        playerLegionName = sel;
-        playerColor = LEGION_DETAILS[sel]?.main || "#888888";
-        console.log("Campaign started - Legion:", playerLegionName, "Color:", playerColor);
+    // Hide UI
+    document.getElementById('ui').style.display = 'none';
 
-        document.getElementById('ui').style.display = 'none';
-        document.getElementById('objective').style.display = 'block';
-
-        generateMap();
-        console.log("Map generated - objects:", worldObjects.length);
-
-        playerUnits = [];
-        for(let i = 0; i < 11; i++){
-            playerUnits.push({
-                x: 620 + (i-5)*18,
-                y: 780 + Math.random()*20 -10,
-                destX: null, destY: null,
-                hp: 100,
-                isLeader: i === 5
-            });
-        }
-        console.log("Squad spawned");
-
-        spawnEnemies();
-        drawWorld(); // immediate draw so screen isn't black
-        requestAnimationFrame(gameLoop);
-    } catch (err) {
-        console.error("Error in startCampaign:", err);
-        alert("Something went wrong starting the game - check console (F12)");
+    // Create squad in center of screen
+    squad = [];
+    for (let i = 0; i < 11; i++) {
+        squad.push({
+            x: 700 + (i - 5) * 30,
+            y: 450 + (i % 3 - 1) * 30,
+            color: legion === "Ultramarines" ? "#1976d2" : legion === "Space Wolves" ? "#90caf9" : "#2e7d32"
+        });
     }
+
+    // Draw once right now
+    draw();
 }
 
-// ────────────────────────────────────────────────
-// drawLegionnaire, drawUnits, drawWorld, drawEnemies, drawFadeBehind,
-// moveUnits, enemyAI, playerCombat, spawnEnemies, checkActivation,
-// gameLoop, click listener, wheel listener — same as previous version
+function draw() {
+    ctx.fillStyle = '#2e4d1a'; // dark green ground
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-function drawLegionnaire(x, y, details, size = 11, isLeader = false, zoomLevel) {
-    const s = size * (isLeader ? 1.45 : 1);
+    // Debug text
+    ctx.fillStyle = 'white';
+    ctx.font = '24px Arial';
+    ctx.fillText("Squad should be visible here", 500, 100);
 
-    ctx.fillStyle = details.main;
-    ctx.beginPath();
-    ctx.ellipse(x, y, s*0.9, s*1.1, 0, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle = details.accent || details.main;
-    ctx.beginPath();
-    ctx.arc(x, y - s*0.65, s*0.55, 0, Math.PI*2);
-    ctx.fill();
-
-    ctx.fillStyle = details.accent;
-    ctx.beginPath();
-    ctx.arc(x - s*0.9, y - s*0.35, s*0.65, 0, Math.PI*2);
-    ctx.arc(x + s*0.9, y - s*0.35, s*0.65, 0, Math.PI*2);
-    ctx.fill();
-
-    if (zoomLevel > 1.4) {
-        ctx.fillStyle = "#ffffffaa";
-        ctx.font = `${s*1.1}px Arial`;
-        ctx.textAlign = "center";
-        ctx.textBaseline = "middle";
-
-        let sym = "⚔";
-        switch(details.symbol) {
-            case "sword": sym = "†"; break;
-            case "eagle": sym = "🦅"; break;
-            case "skull": sym = "☠"; break;
-            case "lightning": sym = "⚡"; break;
-            case "wolf": sym = "🐺"; break;
-            case "fist": sym = "✊"; break;
-            case "bat": sym = "🦇"; break;
-            case "drop": sym = "💧"; break;
-            case "hand": sym = "🤖"; break;
-            case "axe": sym = "🪓"; break;
-            case "U": sym = "U"; break;
-            case "fly": sym = "🪰"; break;
-            case "eye": sym = "👁"; break;
-            case "book": sym = "📖"; break;
-            case "flame": sym = "🔥"; break;
-            case "raven": sym = "🦅"; break;
-            case "hydra": sym = "🐉"; break;
-        }
-        ctx.fillText(sym, x, y);
-    }
-
-    if (isLeader) {
-        ctx.strokeStyle = "#ffff99";
-        ctx.lineWidth = 4 / zoomLevel;
+    // Draw squad circles
+    squad.forEach((marine, i) => {
+        ctx.fillStyle = marine.color;
         ctx.beginPath();
-        ctx.arc(x, y, s*1.35, 0, Math.PI*2);
-        ctx.stroke();
-    }
-}
+        ctx.arc(marine.x, marine.y, i === 5 ? 18 : 12, 0, Math.PI * 2);
+        ctx.fill();
 
-function drawUnits() {
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 8 / zoom;
-    ctx.shadowOffsetX = 6 / zoom;
-    ctx.shadowOffsetY = 6 / zoom;
-
-    playerUnits.forEach((u, i) => {
-        if (u.hp <= 0) return;
-        const details = LEGION_DETAILS[playerLegionName] || {main: playerColor, accent: playerColor, symbol: "?"};
-        drawLegionnaire(u.x, u.y, details, 11, u.isLeader, zoom);
-
-        if (selectedUnitIndex === i) {
-            ctx.strokeStyle = '#ffff00';
-            ctx.lineWidth = 3 / zoom;
-            ctx.beginPath();
-            ctx.arc(u.x, u.y, u.isLeader ? 22 : 16, 0, Math.PI*2);
-            ctx.stroke();
-        }
+        // White helmet
+        ctx.fillStyle = 'white';
+        ctx.beginPath();
+        ctx.arc(marine.x, marine.y - 8, 8, 0, Math.PI * 2);
+        ctx.fill();
     });
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
 }
 
-// Paste the rest of your functions here: drawWorld, drawEnemies, drawFadeBehind, moveUnits, enemyAI, playerCombat, spawnEnemies, checkActivation, gameLoop, event listeners
-// (they are identical to the last working version you had – if you lost them, let me know and I'll include the full block)
-
-drawWorld(); // show something on load
+// Redraw every frame (even if nothing moves yet)
+function loop() {
+    draw();
+    requestAnimationFrame(loop);
+}
+loop();
 </script>
 </body>
 </html>
