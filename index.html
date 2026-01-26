@@ -2,47 +2,49 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Horus Heresy - Tabletop Skirmish</title>
+<title>Horus Heresy – Legion Skirmish</title>
 <style>
-    body {
-        margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden;
-    }
+    body { margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden; }
     #ui {
-        position: absolute; top:10px; left:10px; background:rgba(0,0,0,0.75);
-        padding:15px; border:1px solid #444; border-radius:8px; z-index:10; max-width:320px;
+        position: absolute; top:15px; left:15px; background:rgba(10,10,30,0.85);
+        padding:20px; border:1px solid #444; border-radius:10px; z-index:10; max-width:340px;
     }
-    #canvas {
-        display:block; background:#000;
-    }
+    #canvas { display:block; }
     button, select {
-        padding:8px 12px; margin:6px 4px 6px 0; font-size:14px; background:#222; color:#eee;
-        border:1px solid #555; border-radius:4px; cursor:pointer;
+        padding:10px 16px; margin:8px 6px 8px 0; font-size:15px; background:#1a1a3a; color:#eee;
+        border:1px solid #555; border-radius:6px; cursor:pointer;
     }
-    button:hover { background:#444; }
+    button:hover { background:#2a2a5a; }
     #story {
-        position:absolute; inset:0; background:rgba(0,0,0,0.9); z-index:20;
+        position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20;
         display:flex; flex-direction:column; justify-content:center; align-items:center;
-        padding:40px; text-align:center; font-size:18px; line-height:1.5;
+        padding:50px; text-align:center; font-size:19px; line-height:1.6;
     }
-    #story button { font-size:20px; padding:12px 30px; margin-top:30px; }
+    #story button { font-size:22px; padding:15px 40px; margin-top:40px; }
+    #objective {
+        position:absolute; bottom:20px; left:20px; background:rgba(0,0,0,0.7);
+        padding:12px 20px; border-radius:8px; font-size:16px; max-width:500px; z-index:5;
+        display:none;
+    }
 </style>
 </head>
 <body>
 
 <div id="story">
-    <h1>The Horus Heresy – 31st Millennium</h1>
-    <p>The Emperor's dream is shattered.<br>
-    Half the Legions have turned traitor.<br>
-    Brother fights brother across the galaxy.<br><br>
-    You command one of the Space Marine Legions.<br>
-    Will you defend the Imperium… or tear it apart?</p>
-    <button onclick="document.getElementById('story').style.display='none'">Begin Campaign</button>
+    <h1>The Horus Heresy – 005-014.M31</h1>
+    <p>The Warmaster has fallen to Chaos.<br>
+    Half the Space Marine Legions have betrayed the Emperor.<br>
+    Worlds burn. Brothers slaughter brothers.<br><br>
+    You are the commander of one loyal or traitor Legion.<br>
+    The galaxy is your battlefield. Your choice will shape the Imperium's fate.<br><br>
+    <small>Objective: Maneuver your Legion across key worlds. Reach Terra... or stop those who would.</small></p>
+    <button onclick="document.getElementById('story').style.display='none'">Enter the Galaxy</button>
 </div>
 
 <div id="ui">
-    <label>Choose your Legion:</label><br>
+    <label><strong>Choose your Legion:</strong></label><br>
     <select id="legionSelect">
-        <option value="">— Select Legion —</option>
+        <option value="">— Select Your Legion —</option>
         <option value="Dark Angels">I – Dark Angels</option>
         <option value="Emperor's Children">III – Emperor's Children</option>
         <option value="Iron Warriors">IV – Iron Warriors</option>
@@ -56,194 +58,195 @@
         <option value="Ultramarines">XIII – Ultramarines</option>
         <option value="Death Guard">XIV – Death Guard</option>
         <option value="Thousand Sons">XV – Thousand Sons</option>
-        <option value="Luna Wolves">XVI – Sons of Horus</option>
+        <option value="Sons of Horus">XVI – Sons of Horus</option>
         <option value="Word Bearers">XVII – Word Bearers</option>
         <option value="Salamanders">XVIII – Salamanders</option>
         <option value="Raven Guard">XIX – Raven Guard</option>
         <option value="Alpha Legion">XX – Alpha Legion</option>
     </select><br>
-    <button onclick="startGame()">Start Campaign</button>
+    <button onclick="startCampaign()">Launch Campaign</button>
 </div>
 
-<canvas id="canvas" width="1200" height="700"></canvas>
+<canvas id="canvas" width="1280" height="720"></canvas>
+
+<div id="objective">Click anywhere to move YOUR Legion.<br>Navigate the galaxy. Reach key worlds or confront traitors.</div>
 
 <script>
 // ────────────────────────────────────────────────
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-// LEGIONS – color + Roman numeral
 const legions = [
-    {name:"Dark Angels", roman:"I", color:"#2e7d32"},
-    {name:"Emperor's Children", roman:"III", color:"#7b1fa2"},
-    {name:"Iron Warriors", roman:"IV", color:"#616161"},
-    {name:"White Scars", roman:"V", color:"#e0e0e0"},
-    {name:"Space Wolves", roman:"VI", color:"#90caf9"},
-    {name:"Imperial Fists", roman:"VII", color:"#ffeb3b"},
-    {name:"Night Lords", roman:"VIII", color:"#0d47a1"},
-    {name:"Blood Angels", roman:"IX", color:"#c62828"},
-    {name:"Iron Hands", roman:"X", color:"#212121"},
-    {name:"World Eaters", roman:"XII", color:"#b71c1c"},
-    {name:"Ultramarines", roman:"XIII", color:"#1976d2"},
-    {name:"Death Guard", roman:"XIV", color:"#558b2f"},
-    {name:"Thousand Sons", roman:"XV", color:"#283593"},
-    {name:"Sons of Horus", roman:"XVI", color:"#2e7d32"},
-    {name:"Word Bearers", roman:"XVII", color:"#880e4f"},
-    {name:"Salamanders", roman:"XVIII", color:"#1b5e20"},
-    {name:"Raven Guard", roman:"XIX", color:"#263238"},
-    {name:"Alpha Legion", roman:"XX", color:"#00695c"}
+    {name:"Dark Angels", roman:"I", color:"#2e7d32", loyal:true},
+    {name:"Emperor's Children", roman:"III", color:"#7b1fa2", loyal:false},
+    {name:"Iron Warriors", roman:"IV", color:"#616161", loyal:false},
+    {name:"White Scars", roman:"V", color:"#e0e0e0", loyal:true},
+    {name:"Space Wolves", roman:"VI", color:"#90caf9", loyal:true},
+    {name:"Imperial Fists", roman:"VII", color:"#ffeb3b", loyal:true},
+    {name:"Night Lords", roman:"VIII", color:"#0d47a1", loyal:false},
+    {name:"Blood Angels", roman:"IX", color:"#c62828", loyal:true},
+    {name:"Iron Hands", roman:"X", color:"#212121", loyal:true},
+    {name:"World Eaters", roman:"XII", color:"#b71c1c", loyal:false},
+    {name:"Ultramarines", roman:"XIII", color:"#1976d2", loyal:true},
+    {name:"Death Guard", roman:"XIV", color:"#558b2f", loyal:false},
+    {name:"Thousand Sons", roman:"XV", color:"#283593", loyal:false},
+    {name:"Sons of Horus", roman:"XVI", color:"#2e7d32", loyal:false},
+    {name:"Word Bearers", roman:"XVII", color:"#880e4f", loyal:false},
+    {name:"Salamanders", roman:"XVIII", color:"#1b5e20", loyal:true},
+    {name:"Raven Guard", roman:"XIX", color:"#263238", loyal:true},
+    {name:"Alpha Legion", roman:"XX", color:"#00695c", loyal:false}
 ];
 
-// TRAITORS / VILLAINS
 const villains = [
-    {name:"Horus", color:"#000", type:"primarch"},
+    {name:"Horus Lupercal", color:"#000000", type:"primarch"},
     {name:"Fulgrim", color:"#d500f9", type:"primarch"},
     {name:"Perturabo", color:"#424242", type:"primarch"},
     {name:"Konrad Curze", color:"#0d47a1", type:"primarch"},
     {name:"Angron", color:"#d32f2f", type:"primarch"},
-    {name:"Magnus", color:"#6200ea", type:"primarch"},
+    {name:"Magnus the Red", color:"#6200ea", type:"primarch"},
     {name:"Mortarion", color:"#33691e", type:"primarch"},
-    {name:"Lorgar", color:"#880e4f", type:"primarch"},
-    {name:"Alpharius Omegon", color:"#004d40", type:"primarch"},
-    {name:"Abaddon", color:"#212121", type:"champion"},
-    {name:"Khârn", color:"#b71c1c", type:"champion"},
-    {name:"Lucius", color:"#d81b60", type:"champion"},
-    {name:"Ahriman", color:"#4527a0", type:"champion"},
-    {name:"Typhus", color:"#33691e", type:"champion"}
+    {name:"Lorgar Aurelian", color:"#880e4f", type:"primarch"},
+    {name:"Alpharius/Omegon", color:"#004d40", type:"primarch"}
 ];
 
-// CITIES / WORLDS
-const locations = [
-    {name:"Terra", x:150, y:120},
-    {name:"Mars", x:220, y:180},
-    {name:"Macragge", x:380, y:320},
-    {name:"Calth", x:460, y:200},
-    {name:"Fenris", x:280, y:520},
-    {name:"Baal", x:680, y:180},
-    {name:"Nocturne", x:820, y:480},
-    {name:"Deliverance", x:900, y:140},
-    {name:"Olympia", x:180, y:420},
-    {name:"Prospero", x:520, y:280},
-    {name:"Istvaan V", x:640, y:360}
+const keyWorlds = [
+    {name:"Terra", x:640, y:100, type:"loyal"},
+    {name:"Mars", x:680, y:140, type:"loyal"},
+    {name:"Istvaan V", x:480, y:380, type:"massacre"},
+    {name:"Calth", x:380, y:320, type:"betrayal"},
+    {name:"Prospero", x:520, y:280, type:"burning"},
+    {name:"Signus Prime", x:720, y:300, type:"daemonic"},
+    {name:"Macragge", x:360, y:420, type:"loyal"},
+    {name:"Fenris", x:280, y:520, type:"loyal"},
+    {name:"Baal", x:780, y:180, type:"loyal"},
+    {name:"Nocturne", x:860, y:460, type:"loyal"}
 ];
 
 let playerLegion = null;
-let playerPos = {x:600, y:350}; // starting position of YOUR legion
+let playerPos = {x: 640, y: 360}; // start near center / Terra area
 
-function startGame() {
-    const select = document.getElementById('legionSelect');
-    if (!select.value) {
-        alert("Select your Legion first!");
-        return;
-    }
-    playerLegion = legions.find(l => l.name === select.value);
+function startCampaign() {
+    const sel = document.getElementById('legionSelect').value;
+    if (!sel) { alert("Choose your Legion first!"); return; }
+    playerLegion = legions.find(l => l.name === sel);
     document.getElementById('ui').style.display = 'none';
-    drawAll();
+    document.getElementById('objective').style.display = 'block';
+    drawGalaxy();
 }
 
-function drawAll() {
-    ctx.fillStyle = "#0a0a1f";
+function drawGalaxy() {
+    // space bg
+    const grad = ctx.createLinearGradient(0,0,0,canvas.height);
+    grad.addColorStop(0, "#0a001f");
+    grad.addColorStop(1, "#000814");
+    ctx.fillStyle = grad;
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // starry background
+    // stars
     ctx.fillStyle = "#fff";
-    for(let i=0;i<300;i++){
+    for(let i=0; i<600; i++){
         let x = Math.random()*canvas.width;
         let y = Math.random()*canvas.height;
-        let size = Math.random()*1.5+0.5;
-        ctx.fillRect(x,y,size,size);
+        let sz = Math.random()*1.8 + 0.4;
+        ctx.globalAlpha = Math.random()*0.7 + 0.3;
+        ctx.fillRect(x,y,sz,sz);
     }
+    ctx.globalAlpha = 1;
 
-    // grid
-    ctx.strokeStyle = "rgba(80,80,120,0.25)";
-    ctx.lineWidth = 1;
-    for(let x=0; x<canvas.width; x+=40){
+    // faint grid
+    ctx.strokeStyle = "rgba(60,80,140,0.18)";
+    for(let x=0; x<canvas.width; x+=60) {
         ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
     }
-    for(let y=0; y<canvas.height; y+=40){
+    for(let y=0; y<canvas.height; y+=60) {
         ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
     }
 
-    // locations (planets/cities)
-    locations.forEach(loc => {
-        ctx.fillStyle = "#5d4037";
-        ctx.beginPath();
-        ctx.arc(loc.x, loc.y, 18, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = "#8d6e63";
-        ctx.lineWidth = 3;
-        ctx.stroke();
+    // key worlds
+    keyWorlds.forEach(w => {
+        let col = w.type === "loyal" ? "#4fc3f7" : w.type === "betrayal" ? "#ff5252" : "#ffab00";
+        ctx.fillStyle = col + "44";
+        ctx.beginPath(); ctx.arc(w.x, w.y, 32, 0, Math.PI*2); ctx.fill();
+        ctx.fillStyle = col;
+        ctx.beginPath(); ctx.arc(w.x, w.y, 18, 0, Math.PI*2); ctx.fill();
+        ctx.strokeStyle = "#fff8"; ctx.lineWidth=2; ctx.stroke();
 
-        ctx.fillStyle = "#fff";
-        ctx.font = "13px Arial";
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "14px Arial";
         ctx.textAlign = "center";
-        ctx.fillText(loc.name, loc.x, loc.y + 38);
+        ctx.fillText(w.name.toUpperCase(), w.x, w.y + 48);
     });
 
-    // all other legions (smaller)
-    legions.forEach(leg => {
-        if (leg.name === playerLegion?.name) return; // skip player
-        let x = Math.random() * (canvas.width - 100) + 50;
-        let y = Math.random() * (canvas.height - 100) + 50;
-        drawUnit(x, y, leg.color, leg.roman + " – " + leg.name, 9, false);
+    // all legions (medium size, placed roughly by homeworld / crusade path)
+    const positions = [
+        {leg:"Dark Angels", x:200,y:120}, {leg:"Emperor's Children", x:500,y:200},
+        {leg:"Iron Warriors", x:450,y:450}, {leg:"White Scars", x:300,y:180},
+        {leg:"Space Wolves", x:220,y:520}, {leg:"Imperial Fists", x:680,y:80},
+        {leg:"Night Lords", x:520,y:380}, {leg:"Blood Angels", x:760,y:160},
+        {leg:"Iron Hands", x:340,y:300}, {leg:"World Eaters", x:480,y:420},
+        {leg:"Ultramarines", x:360,y:360}, {leg:"Death Guard", x:580,y:340},
+        {leg:"Thousand Sons", x:520,y:280}, {leg:"Sons of Horus", x:500,y:300},
+        {leg:"Word Bearers", x:440,y:340}, {leg:"Salamanders", x:820,y:440},
+        {leg:"Raven Guard", x:280,y:380}, {leg:"Alpha Legion", x:600,y:400}
+    ];
+
+    positions.forEach(p => {
+        const leg = legions.find(l => l.name === p.leg);
+        const isPlayer = playerLegion && leg.name === playerLegion.name;
+        drawMarker(p.x, p.y, leg.color, leg.roman + " " + leg.name, 14, false, isPlayer);
     });
 
-    // villains (medium size, red glow)
-    villains.forEach(v => {
-        let x = Math.random() * (canvas.width - 200) + 100;
-        let y = Math.random() * (canvas.height - 200) + 100;
-        drawUnit(x, y, v.color, v.name, 14, true);
-    });
+    // villains near Istvaan / traitor zones
+    drawMarker(480, 380, "#000", "HORUS", 18, true);
+    drawMarker(500, 360, "#d500f9", "FULGRIM", 16, true);
+    drawMarker(460, 400, "#d32f2f", "ANGRON", 16, true);
+    drawMarker(520, 300, "#6200ea", "MAGNUS", 16, true);
+    drawMarker(440, 420, "#880e4f", "LORGAR", 16, true);
 
-    // PLAYER legion – big & glowing
+    // player legion override (movable)
     if (playerLegion) {
-        drawUnit(playerPos.x, playerPos.y, playerLegion.color, "YOU – " + playerLegion.roman + " – " + playerLegion.name, 22, false, true);
+        drawMarker(playerPos.x, playerPos.y, playerLegion.color, "YOU – " + playerLegion.roman + " " + playerLegion.name, 26, false, true);
     }
 }
 
-function drawUnit(x, y, color, label, radius, isVillain = false, isPlayer = false) {
-    // glow
+function drawMarker(x, y, color, label, r=12, isVillain=false, isPlayer=false) {
     if (isPlayer) {
-        let grad = ctx.createRadialGradient(x,y,0, x,y,radius*2.5);
-        grad.addColorStop(0, color + "88");
-        grad.addColorStop(1, "transparent");
-        ctx.fillStyle = grad;
-        ctx.beginPath();
-        ctx.arc(x,y,radius*2.5,0,Math.PI*2);
-        ctx.fill();
+        let g = ctx.createRadialGradient(x,y,0,x,y,r*3);
+        g.addColorStop(0, color + "aa");
+        g.addColorStop(0.6, color + "44");
+        g.addColorStop(1, "transparent");
+        ctx.fillStyle = g;
+        ctx.beginPath(); ctx.arc(x,y,r*3,0,Math.PI*2); ctx.fill();
     }
 
     ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.arc(x, y, radius, 0, Math.PI*2);
-    ctx.fill();
+    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
 
     if (isVillain) {
-        ctx.strokeStyle = "#ff1744";
-        ctx.lineWidth = 3;
-        ctx.stroke();
+        ctx.strokeStyle = "#ff1744"; ctx.lineWidth=4; ctx.stroke();
+    } else if (isPlayer) {
+        ctx.strokeStyle = "#ffffff"; ctx.lineWidth=3; ctx.stroke();
     }
 
     ctx.fillStyle = "#fff";
-    ctx.font = (radius < 12 ? "11px" : "14px") + " Arial";
+    ctx.font = (r<16 ? "13px" : "16px") + " Arial";
     ctx.textAlign = "center";
-    ctx.shadowColor = "black";
-    ctx.shadowBlur = 4;
-    ctx.fillText(label, x, y + radius + 18);
-    ctx.shadowBlur = 0;
+    ctx.shadowColor="#000"; ctx.shadowBlur=6;
+    ctx.fillText(label, x, y + r + 24);
+    ctx.shadowBlur=0;
 }
 
-// Click to move YOUR legion
+// move player legion
 canvas.addEventListener('click', e => {
     if (!playerLegion) return;
     const rect = canvas.getBoundingClientRect();
     playerPos.x = e.clientX - rect.left;
     playerPos.y = e.clientY - rect.top;
-    drawAll();
+    drawGalaxy();
 });
 
-// initial draw (shows map even before choosing legion)
-drawAll();
+// show map immediately (before picking legion)
+drawGalaxy();
 </script>
 </body>
 </html>
