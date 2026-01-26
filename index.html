@@ -2,52 +2,34 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Horus Heresy – Legion Survival</title>
+<title>Legion Survival – Ruined Outpost</title>
 <style>
     body { margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden; }
-    #ui {
-        position: absolute; top:15px; left:15px; background:rgba(10,10,30,0.85);
-        padding:20px; border:1px solid #444; border-radius:10px; z-index:10; max-width:340px;
-    }
-    #canvas { display:block; }
-    button, select {
-        padding:10px 16px; margin:8px 6px 8px 0; font-size:15px; background:#1a1a3a; color:#eee;
-        border:1px solid #555; border-radius:6px; cursor:pointer;
-    }
+    #ui { position:absolute; top:15px; left:15px; background:rgba(10,10,30,0.85); padding:20px; border:1px solid #444; border-radius:10px; z-index:10; max-width:340px; }
+    #canvas { display:block; cursor:crosshair; image-rendering:pixelated; }
+    button, select { padding:10px 16px; margin:8px 6px 8px 0; font-size:15px; background:#1a1a3a; color:#eee; border:1px solid #555; border-radius:6px; cursor:pointer; }
     button:hover { background:#2a2a5a; }
-    #story {
-        position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20;
-        display:flex; flex-direction:column; justify-content:center; align-items:center;
-        padding:50px; text-align:center; font-size:19px; line-height:1.6;
-    }
+    #story { position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:50px; text-align:center; font-size:19px; line-height:1.6; }
     #story button { font-size:22px; padding:15px 40px; margin-top:40px; }
-    #objective {
-        position:absolute; bottom:20px; left:20px; background:rgba(0,0,0,0.7);
-        padding:12px 20px; border-radius:8px; font-size:16px; max-width:500px; z-index:5;
-        display:none;
-    }
-    #endScreen {
-        position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20;
-        display:none; flex-direction:column; justify-content:center; align-items:center;
-        padding:50px; text-align:center; font-size:24px; line-height:1.6;
-    }
+    #objective { position:absolute; bottom:20px; left:20px; background:rgba(0,0,0,0.7); padding:12px 20px; border-radius:8px; font-size:16px; max-width:600px; z-index:5; display:none; }
+    #endScreen { position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20; display:none; flex-direction:column; justify-content:center; align-items:center; padding:50px; text-align:center; font-size:28px; line-height:1.6; }
 </style>
 </head>
 <body>
 
 <div id="story">
-    <h1>The Horus Heresy – Abandoned Realm</h1>
-    <p>In the ruins of a forgotten world, echoing the shattered spires of ancient Terra mixed with medieval fortresses,<br>
-    your Legion squad awakens amidst chaos. Creatures of the warp swarm the shadows.<br><br>
-    Lead your 10 soldiers and yourself to the ancient machine. Press the red button to activate the beam<br>
-    and summon reinforcements – but survive the waves of horrors first!</p>
-    <button onclick="document.getElementById('story').style.display='none'">Enter the Ruins</button>
+    <h1>Abandoned Outpost – Forgotten World</h1>
+    <p>Your squad awakens in the ruins of an ancient settlement — crumbling stone walls, wooden shacks, a broken bridge over a sluggish river.<br>
+    Warp-tainted creatures prowl the shadows. The path ahead is long and treacherous.<br><br>
+    Lead your 10 battle-brothers and yourself to the distant machine. Activate the red button to call for orbital support.<br>
+    The ground behind you crumbles as you advance — no turning back.</p>
+    <button onclick="document.getElementById('story').style.display='none'">Begin Mission</button>
 </div>
 
 <div id="ui">
     <label><strong>Choose your Legion:</strong></label><br>
     <select id="legionSelect">
-        <option value="">— Select Your Legion —</option>
+        <option value="">— Select Legion —</option>
         <option value="Dark Angels">I – Dark Angels</option>
         <option value="Emperor's Children">III – Emperor's Children</option>
         <option value="Iron Warriors">IV – Iron Warriors</option>
@@ -67,17 +49,17 @@
         <option value="Raven Guard">XIX – Raven Guard</option>
         <option value="Alpha Legion">XX – Alpha Legion</option>
     </select><br>
-    <button onclick="startCampaign()">Launch Mission</button>
+    <button onclick="startCampaign()">Deploy</button>
 </div>
 
-<canvas id="canvas" width="1280" height="720"></canvas>
+<canvas id="canvas" width="1400" height="900"></canvas>
 
-<div id="objective">Click a soldier to select, then click a spot to move them. Move the leader (YOU) to have the team follow. Survive waves and reach the machine to press the red button!</div>
+<div id="objective">Select a marine (click on him), then click destination to move.<br>Click your leader (YOU) to make squad follow in formation.<br>Advance forward — the path behind vanishes. Reach and activate the distant machine.</div>
 
 <div id="endScreen">
-    <h1>Mission Complete!</h1>
-    <p>The blue beam pierces the sky, summoning aid. Your Legion prevails... for now.</p>
-    <button onclick="location.reload()">Restart</button>
+    <h1>Victory – Beam Activated</h1>
+    <p>The crimson button glows. A blinding blue beam lances into the heavens.<br>Reinforcements inbound. The outpost is secured... for the Emperor (or the Warmaster).</p>
+    <button onclick="location.reload()">New Campaign</button>
 </div>
 
 <script>
@@ -85,318 +67,356 @@
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-const legions = {
-    "Dark Angels": "#2e7d32",
-    "Emperor's Children": "#7b1fa2",
-    "Iron Warriors": "#616161",
-    "White Scars": "#e0e0e0",
-    "Space Wolves": "#90caf9",
-    "Imperial Fists": "#ffeb3b",
-    "Night Lords": "#0d47a1",
-    "Blood Angels": "#c62828",
-    "Iron Hands": "#212121",
-    "World Eaters": "#b71c1c",
-    "Ultramarines": "#1976d2",
-    "Death Guard": "#558b2f",
-    "Thousand Sons": "#283593",
-    "Sons of Horus": "#2e7d32",
-    "Word Bearers": "#880e4f",
-    "Salamanders": "#1b5e20",
-    "Raven Guard": "#263238",
-    "Alpha Legion": "#00695c"
+const LEGION_COLORS = {
+    "Dark Angels":"#2e7d32","Emperor's Children":"#7b1fa2","Iron Warriors":"#616161",
+    "White Scars":"#e0e0e0","Space Wolves":"#90caf9","Imperial Fists":"#ffeb3b",
+    "Night Lords":"#0d47a1","Blood Angels":"#c62828","Iron Hands":"#212121",
+    "World Eaters":"#b71c1c","Ultramarines":"#1976d2","Death Guard":"#558b2f",
+    "Thousand Sons":"#283593","Sons of Horus":"#2e7d32","Word Bearers":"#880e4f",
+    "Salamanders":"#1b5e20","Raven Guard":"#263238","Alpha Legion":"#00695c"
 };
 
 let playerColor = null;
-let playerUnits = []; // {x, y, destX, destY, hp, isLeader}
-let selectedUnit = null;
-let enemies = []; // {x, y, hp, type}
-let wave = 0;
-let machine = {x: 1200, y: 360, activated: false}; // right side
-let beamActive = false;
+let playerUnits = [];           // {x,y, destX,destY, hp, isLeader}
+let selectedUnitIndex = null;
+let enemies = [];               // {x,y, hp}
+let maxProgress = 0;            // how far the squad has advanced (y decreases = forward)
+let machinePos = {x: 700, y: -800}; // very far "north" (negative y)
+let buttonActivated = false;
+
+// World "scroll" offset — positive offset = world moved down (player advanced)
+let worldOffsetY = 0;
 
 function startCampaign() {
     const sel = document.getElementById('legionSelect').value;
-    if (!sel) { alert("Choose your Legion first!"); return; }
-    playerColor = legions[sel];
+    if (!sel) return alert("Select your Legion!");
+    playerColor = LEGION_COLORS[sel];
     document.getElementById('ui').style.display = 'none';
     document.getElementById('objective').style.display = 'block';
 
-    // Spawn player squad left side
+    // Squad starts near bottom-center
     playerUnits = [];
-    for (let i = 0; i < 11; i++) { // 10 soldiers + leader
+    for(let i=0; i<11; i++){
         playerUnits.push({
-            x: 100 + Math.random() * 50,
-            y: 200 + Math.random() * 300,
-            destX: null,
-            destY: null,
-            hp: 100,
-            isLeader: i === 0
+            x: 620 + (i-5)*18,
+            y: 780 + Math.random()*20 -10,
+            destX:null, destY:null,
+            hp:100,
+            isLeader: i===5   // middle one is leader
         });
     }
 
-    gameLoop();
-    spawnWave();
+    spawnEnemies();
+    requestAnimationFrame(gameLoop);
 }
 
-function drawRuins() {
-    // Dark ruined city background
-    const grad = ctx.createLinearGradient(0,0,0,canvas.height);
-    grad.addColorStop(0, "#333333");
-    grad.addColorStop(1, "#111111");
-    ctx.fillStyle = grad;
+function drawWorld() {
+    // Ground – mossy green/brown
+    ctx.fillStyle = '#3a5c2f';
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // Ruined buildings (medieval NYC vibe: tall ruins, towers)
-    ctx.fillStyle = "#444444";
-    ctx.fillRect(150, 100, 80, 400); // ruined skyscraper
-    ctx.fillRect(300, 200, 60, 300);
-    ctx.fillRect(450, 50, 100, 450);
-    ctx.fillRect(600, 150, 70, 350);
-    ctx.fillRect(750, 100, 90, 400);
-    ctx.fillRect(900, 250, 50, 250);
-    ctx.fillRect(1050, 80, 110, 420);
+    // River – bottom part visible at start
+    ctx.fillStyle = '#1e6fa5';
+    ctx.fillRect(200, canvas.height-220 + worldOffsetY, 1000, 180);
+    ctx.fillStyle = '#2a8bc4';
+    ctx.fillRect(220, canvas.height-200 + worldOffsetY, 960, 140);
 
-    // Medieval elements: arches, stones
-    ctx.strokeStyle = "#666666";
-    ctx.lineWidth = 5;
-    ctx.beginPath();
-    ctx.arc(200, 500, 40, Math.PI, 2*Math.PI); // arch
-    ctx.stroke();
-    ctx.beginPath();
-    ctx.arc(350, 500, 30, Math.PI, 2*Math.PI);
-    ctx.stroke();
+    // Stone path – winding upward (decreasing y)
+    ctx.fillStyle = '#555555';
+    ctx.fillRect(500, canvas.height-300 + worldOffsetY, 400, canvas.height+600); // long vertical path
+    ctx.fillRect(300, canvas.height-800 + worldOffsetY, 800, 200); // upper widening
 
-    // Ground cracks
-    ctx.strokeStyle = "#222222";
-    ctx.beginPath();
-    ctx.moveTo(0,600); ctx.lineTo(1280,600);
-    ctx.moveTo(200,620); ctx.lineTo(400,580);
-    ctx.moveTo(600,640); ctx.lineTo(800,590);
-    ctx.stroke();
+    // Ruins & objects (scaled & offset)
+    const off = worldOffsetY;
+    drawRuin(320, 680 + off, 140, 120, "#4a3728"); // shack left
+    drawRuin(820, 720 + off, 160, 100, "#4a3728"); // shack right
+    drawBridge(600, 620 + off);
+    drawBoat(680, 580 + off);
+    drawLogs(450, 500 + off);
+    drawFlowers(380, 750 + off, 6);
+    drawFlowers(880, 680 + off, 5);
+    drawStoneWall(200, 400 + off, 300);
+    drawStoneWall(900, 350 + off, 250);
+
+    // Distant machine – only visible when close
+    const machineScreenY = machinePos.y + worldOffsetY;
+    if (machineScreenY > -100 && machineScreenY < canvas.height + 100) {
+        ctx.fillStyle = '#555588';
+        ctx.fillRect(machinePos.x-40, machineScreenY-40, 80, 80);
+        ctx.fillStyle = buttonActivated ? '#00aaff' : '#880000';
+        ctx.beginPath();
+        ctx.arc(machinePos.x, machineScreenY, 22, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = '#ffffff';
+        ctx.font = '14px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText("MACHINE", machinePos.x, machineScreenY + 60);
+    }
 }
 
-function drawUnits() {
-    playerUnits.forEach((u, i) => {
-        if (u.hp <= 0) return;
+function drawRuin(x,y,w,h,col){
+    ctx.fillStyle = col;
+    ctx.fillRect(x,y,w,h);
+    ctx.fillStyle = '#333';
+    ctx.fillRect(x+10,y+10,w-20,h-30); // roof
+}
+
+function drawBridge(x,y){
+    ctx.fillStyle = '#8b5a2b';
+    ctx.fillRect(x-80, y-20, 160, 40);
+    ctx.fillStyle = '#6d4c41';
+    for(let i=-70;i<=70;i+=30) ctx.fillRect(x+i, y-30, 20, 60);
+}
+
+function drawBoat(x,y){
+    ctx.fillStyle = '#6d4c41';
+    ctx.beginPath();
+    ctx.moveTo(x-50,y); ctx.lineTo(x+50,y); ctx.lineTo(x+30,y+40); ctx.lineTo(x-30,y+40);
+    ctx.closePath(); ctx.fill();
+}
+
+function drawLogs(x,y){
+    for(let i=0;i<4;i++){
+        ctx.fillStyle = '#8b4513';
+        ctx.fillRect(x + i*25, y + Math.sin(i)*10, 60, 20);
+    }
+}
+
+function drawFlowers(x,y,count){
+    for(let i=0;i<count;i++){
+        ctx.fillStyle = Math.random()>0.5 ? '#ff69b4' : '#00ff7f';
+        ctx.beginPath();
+        ctx.arc(x + (Math.random()-0.5)*80, y + (Math.random()-0.5)*40, 6,0,Math.PI*2);
+        ctx.fill();
+    }
+}
+
+function drawStoneWall(x,y,len){
+    ctx.fillStyle = '#777';
+    ctx.fillRect(x, y, 40, len);
+    ctx.fillStyle = '#666';
+    for(let i=0;i<len;i+=30) ctx.fillRect(x+5, y+i+10, 30, 10);
+}
+
+function drawUnits(){
+    playerUnits.forEach((u,i) => {
+        if(u.hp<=0) return;
         ctx.fillStyle = playerColor;
         ctx.beginPath();
-        ctx.arc(u.x, u.y, u.isLeader ? 15 : 10, 0, Math.PI*2);
+        ctx.arc(u.x, u.y, u.isLeader?16:11, 0, Math.PI*2);
         ctx.fill();
-        if (u.isLeader) {
-            ctx.fillStyle = "#fff";
-            ctx.font = "12px Arial";
-            ctx.fillText("YOU", u.x - 10, u.y - 20);
+        // Shoulder pad / helmet detail
+        ctx.fillStyle = '#ffffff33';
+        ctx.beginPath();
+        ctx.arc(u.x-4, u.y-4, 5, 0, Math.PI*2);
+        ctx.fill();
+        if(u.isLeader){
+            ctx.fillStyle = '#ffff99';
+            ctx.font = '12px Arial';
+            ctx.textAlign = 'center';
+            ctx.fillText("LEADER", u.x, u.y-25);
         }
-        if (selectedUnit === i) {
-            ctx.strokeStyle = "#ffff00";
-            ctx.lineWidth = 2;
+        if(selectedUnitIndex === i){
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(u.x,u.y, u.isLeader?19:14,0,Math.PI*2);
             ctx.stroke();
         }
     });
 }
 
-function drawEnemies() {
+function drawEnemies(){
     enemies.forEach(e => {
-        if (e.hp <= 0) return;
-        ctx.fillStyle = "#ff0000";
+        if(e.hp<=0) return;
+        ctx.fillStyle = '#4a0000';
         ctx.beginPath();
-        ctx.arc(e.x, e.y, 12, 0, Math.PI*2);
+        ctx.arc(e.x, e.y, 13, 0, Math.PI*2);
         ctx.fill();
-        ctx.fillStyle = "#fff";
-        ctx.font = "10px Arial";
-        ctx.fillText("Creature", e.x - 15, e.y - 15);
+        ctx.fillStyle = '#ff0000';
+        ctx.font = '10px Arial';
+        ctx.textAlign = 'center';
+        ctx.fillText("Warp Spawn", e.x, e.y-18);
     });
 }
 
-function drawMachine() {
-    ctx.fillStyle = "#888888";
-    ctx.fillRect(machine.x - 30, machine.y - 30, 60, 60);
-    ctx.fillStyle = "#ff0000";
-    ctx.beginPath();
-    ctx.arc(machine.x, machine.y, 15, 0, Math.PI*2);
-    ctx.fill();
-    if (beamActive) {
-        ctx.strokeStyle = "#00ffff";
-        ctx.lineWidth = 20;
-        ctx.beginPath();
-        ctx.moveTo(machine.x, machine.y);
-        ctx.lineTo(machine.x, 0);
-        ctx.stroke();
-    }
-}
-
-function moveUnits() {
-    playerUnits.forEach((u, i) => {
-        if (u.hp <= 0 || !u.destX) return;
+function moveUnits(){
+    playerUnits.forEach(u => {
+        if(u.hp<=0 || !u.destX) return;
         const dx = u.destX - u.x;
         const dy = u.destY - u.y;
-        const dist = Math.sqrt(dx*dx + dy*dy);
-        if (dist < 5) {
-            u.destX = null;
-            u.destY = null;
+        const dist = Math.hypot(dx, dy);
+        if(dist < 4){
+            u.destX = u.destY = null;
             return;
         }
-        const speed = 2;
-        u.x += (dx / dist) * speed;
-        u.y += (dy / dist) * speed;
+        const speed = u.isLeader ? 2.4 : 2.1;
+        u.x += dx/dist * speed;
+        u.y += dy/dist * speed;
+
+        // Track progress (lower y = forward)
+        if(u.y < maxProgress) maxProgress = u.y;
     });
 }
 
-function enemyAI() {
+function enemyAI(){
     enemies.forEach(e => {
-        if (e.hp <= 0) return;
-        // Find nearest player unit
-        let nearest = null;
-        let minDist = Infinity;
-        playerUnits.forEach(u => {
-            if (u.hp > 0) {
-                const d = Math.hypot(e.x - u.x, e.y - u.y);
-                if (d < minDist) {
-                    minDist = d;
-                    nearest = u;
-                }
+        if(e.hp <=0) return;
+        // Find closest living player unit
+        let target = null, minD = Infinity;
+        playerUnits.forEach(p => {
+            if(p.hp>0){
+                const d = Math.hypot(p.x - e.x, p.y - e.y);
+                if(d < minD){ minD = d; target = p; }
             }
         });
-        if (nearest) {
-            const dx = nearest.x - e.x;
-            const dy = nearest.y - e.y;
-            const dist = Math.sqrt(dx*dx + dy*dy);
-            const speed = 1.5;
-            e.x += (dx / dist) * speed;
-            e.y += (dy / dist) * speed;
+        if(!target) return;
 
-            // Attack if close
-            if (dist < 20) {
-                nearest.hp -= 1; // damage over time
-            }
+        const dx = target.x - e.x;
+        const dy = target.y - e.y;
+        const dist = Math.hypot(dx,dy);
+
+        if(dist < 25){
+            // In melee – stop & attack
+            e.attacking = true;
+            target.hp -= 0.8; // slow damage
+        } else {
+            // Move slower than before
+            e.x += dx/dist * 1.1;
+            e.y += dy/dist * 1.1;
+            e.attacking = false;
         }
     });
 }
 
-function combat() {
+function playerCombat(){
     playerUnits.forEach(u => {
-        if (u.hp <= 0) return;
-        // Find nearest enemy in range (100px)
-        let nearestE = null;
-        let minDist = Infinity;
+        if(u.hp<=0) return;
+        let closestE = null, minD = Infinity;
         enemies.forEach(e => {
-            if (e.hp > 0) {
+            if(e.hp>0){
                 const d = Math.hypot(e.x - u.x, e.y - u.y);
-                if (d < 100 && d < minDist) {
-                    minDist = d;
-                    nearestE = e;
-                }
+                if(d < 140 && d < minD){ minD = d; closestE = e; }
             }
         });
-        if (nearestE) {
-            // Shoot: draw laser, damage
-            ctx.strokeStyle = "#00ff00";
-            ctx.lineWidth = 2;
+        if(closestE && minD < 140){
+            // Orange bolter fire
+            ctx.strokeStyle = '#ff8800';
+            ctx.lineWidth = 3;
             ctx.beginPath();
             ctx.moveTo(u.x, u.y);
-            ctx.lineTo(nearestE.x, nearestE.y);
+            ctx.lineTo(closestE.x, closestE.y);
             ctx.stroke();
-            nearestE.hp -= 0.5; // gradual damage
+            closestE.hp -= 0.7;
         }
     });
 }
 
-function spawnWave() {
-    wave++;
-    const num = wave * 3; // increasing
-    for (let i = 0; i < num; i++) {
-        enemies.push({
-            x: 1280 - Math.random() * 200, // from right
-            y: Math.random() * 720,
-            hp: 50,
-            type: "creature"
-        });
+function updateWorldFade(){
+    // Fade out behind max progress
+    const fadeStart = maxProgress + 180;
+    if(worldOffsetY < -fadeStart + canvas.height/2){
+        worldOffsetY = -fadeStart + canvas.height/2;
     }
-    setTimeout(spawnWave, 20000); // every 20s
 }
 
-function checkWin() {
-    if (machine.activated) {
-        beamActive = true;
-        setTimeout(() => {
+function spawnEnemies(){
+    setInterval(() => {
+        if(buttonActivated) return;
+        const num = Math.floor(Math.random()*3) + 2;
+        for(let i=0;i<num;i++){
+            enemies.push({
+                x: Math.random()*canvas.width,
+                y: Math.max( -worldOffsetY + 100, playerUnits.reduce((min,u)=>Math.min(min,u.y),Infinity) - 300 ),
+                hp: 60 + Math.random()*30
+            });
+        }
+    }, 18000);
+}
+
+function checkActivation(){
+    if(buttonActivated) return;
+    const mx = machinePos.x, my = machinePos.y;
+    if(playerUnits.some(u=> u.hp>0 && Math.hypot(u.x-mx, u.y-my)<60)){
+        buttonActivated = true;
+        setTimeout(()=>{
             document.getElementById('endScreen').style.display = 'flex';
-        }, 2000);
+        },1500);
     }
 }
 
-function gameLoop() {
+function gameLoop(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
-    drawRuins();
-    drawMachine();
+
+    // World with offset
+    ctx.save();
+    ctx.translate(0, worldOffsetY);
+    drawWorld();
+    ctx.restore();
+
     drawUnits();
     drawEnemies();
+
     moveUnits();
     enemyAI();
-    combat();
-    checkWin();
+    playerCombat();
+    updateWorldFade();
+    checkActivation();
 
-    // Clean dead
-    enemies = enemies.filter(e => e.hp > 0);
-    playerUnits = playerUnits.filter(u => u.hp > 0);
-
-    if (playerUnits.length === 0) {
-        // Game over, but not implemented
-    }
+    // Remove dead
+    enemies = enemies.filter(e=>e.hp>0);
+    playerUnits = playerUnits.filter(u=>u.hp>0);
 
     requestAnimationFrame(gameLoop);
 }
 
-canvas.addEventListener('click', e => {
+canvas.addEventListener('click', e=>{
+    if(buttonActivated) return;
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const cx = e.clientX - rect.left;
+    const cy = e.clientY - rect.top - worldOffsetY; // adjust for offset
 
-    if (machine.activated) return;
-
-    // Check if clicking machine button
-    if (Math.hypot(clickX - machine.x, clickY - machine.y) < 20) {
-        // Check if a unit is near
-        const near = playerUnits.some(u => u.hp > 0 && Math.hypot(u.x - machine.x, u.y - machine.y) < 50);
-        if (near) {
-            machine.activated = true;
-            return;
+    // Check if clicking machine
+    if(Math.hypot(cx - machinePos.x, cy - machinePos.y) < 30){
+        if(playerUnits.some(u=>Math.hypot(u.x-machinePos.x, u.y-machinePos.y)<70)){
+            buttonActivated = true;
         }
-    }
-
-    // Select unit if clicking on one
-    let newSelected = null;
-    playerUnits.forEach((u, i) => {
-        if (u.hp > 0 && Math.hypot(clickX - u.x, clickY - u.y) < (u.isLeader ? 15 : 10)) {
-            newSelected = i;
-        }
-    });
-    if (newSelected !== null) {
-        selectedUnit = newSelected;
         return;
     }
 
-    // Move selected unit to spot
-    if (selectedUnit !== null) {
-        const u = playerUnits[selectedUnit];
-        if (u.hp > 0) {
-            u.destX = clickX;
-            u.destY = clickY;
-            if (u.isLeader) {
-                // Team follows
-                playerUnits.forEach(other => {
-                    if (!other.isLeader && other.hp > 0) {
-                        other.destX = clickX + (Math.random() - 0.5) * 50;
-                        other.destY = clickY + (Math.random() - 0.5) * 50;
+    // Select unit
+    let clicked = null;
+    playerUnits.forEach((u,i)=>{
+        if(u.hp>0 && Math.hypot(cx - u.x, cy - u.y) < (u.isLeader?18:13)){
+            clicked = i;
+        }
+    });
+    if(clicked !== null){
+        selectedUnitIndex = clicked;
+        return;
+    }
+
+    // Move selected
+    if(selectedUnitIndex !== null){
+        const u = playerUnits[selectedUnitIndex];
+        if(u.hp>0){
+            u.destX = cx;
+            u.destY = cy;
+            if(u.isLeader){
+                // Squad follows with spread
+                playerUnits.forEach(other=>{
+                    if(other !== u && other.hp>0){
+                        other.destX = cx + (Math.random()-0.5)*60;
+                        other.destY = cy + (Math.random()-0.5)*60;
                     }
                 });
             }
         }
-        selectedUnit = null;
+        selectedUnitIndex = null;
     }
 });
 
-// Initial draw
-drawRuins();
+drawWorld(); // initial preview
 </script>
 </body>
 </html>
