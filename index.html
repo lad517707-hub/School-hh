@@ -54,7 +54,7 @@
 
 <canvas id="canvas" width="1400" height="900"></canvas>
 
-<div id="objective">Select a marine (click on him), then click destination to move.<br>Click your leader (YOU) to make squad follow in formation.<br>Advance forward — the path behind vanishes. Reach and activate the distant machine.</div>
+<div id="objective">Select a marine (click on him), then click destination to move.<br>Click your leader (YOU) to make squad follow in formation.<br>Use mouse wheel to zoom in/out for details. Advance forward — the path behind fades.</div>
 
 <div id="endScreen">
     <h1>Victory – Beam Activated</h1>
@@ -80,12 +80,11 @@ let playerColor = null;
 let playerUnits = [];           // {x,y, destX,destY, hp, isLeader}
 let selectedUnitIndex = null;
 let enemies = [];               // {x,y, hp}
-let maxProgress = 0;            // how far the squad has advanced (y decreases = forward)
-let machinePos = {x: 700, y: -800}; // very far "north" (negative y)
+let machinePos = {x: 700, y: -2000}; // farther
 let buttonActivated = false;
-
-// World "scroll" offset — positive offset = world moved down (player advanced)
-let worldOffsetY = 0;
+let zoom = 1;
+let cameraX = 700;
+let cameraY = 800;
 
 function startCampaign() {
     const sel = document.getElementById('legionSelect').value;
@@ -94,7 +93,7 @@ function startCampaign() {
     document.getElementById('ui').style.display = 'none';
     document.getElementById('objective').style.display = 'block';
 
-    // Squad starts near bottom-center
+    // Squad starts near bottom-center, on screen
     playerUnits = [];
     for(let i=0; i<11; i++){
         playerUnits.push({
@@ -113,45 +112,77 @@ function startCampaign() {
 function drawWorld() {
     // Ground – mossy green/brown
     ctx.fillStyle = '#3a5c2f';
-    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.fillRect(-1000, -3000, 3000, 5000); // large area
 
-    // River – bottom part visible at start
-    ctx.fillStyle = '#1e6fa5';
-    ctx.fillRect(200, canvas.height-220 + worldOffsetY, 1000, 180);
-    ctx.fillStyle = '#2a8bc4';
-    ctx.fillRect(220, canvas.height-200 + worldOffsetY, 960, 140);
-
-    // Stone path – winding upward (decreasing y)
+    // Extended path – longer upward
     ctx.fillStyle = '#555555';
-    ctx.fillRect(500, canvas.height-300 + worldOffsetY, 400, canvas.height+600); // long vertical path
-    ctx.fillRect(300, canvas.height-800 + worldOffsetY, 800, 200); // upper widening
+    ctx.fillRect(500, -2500, 400, 4000); // long path
+    ctx.fillRect(300, -1800, 800, 800); // widening upper
 
-    // Ruins & objects (scaled & offset)
-    const off = worldOffsetY;
-    drawRuin(320, 680 + off, 140, 120, "#4a3728"); // shack left
-    drawRuin(820, 720 + off, 160, 100, "#4a3728"); // shack right
-    drawBridge(600, 620 + off);
-    drawBoat(680, 580 + off);
-    drawLogs(450, 500 + off);
-    drawFlowers(380, 750 + off, 6);
-    drawFlowers(880, 680 + off, 5);
-    drawStoneWall(200, 400 + off, 300);
-    drawStoneWall(900, 350 + off, 250);
+    // River at start
+    ctx.fillStyle = '#1e6fa5';
+    ctx.fillRect(200, 580, 1000, 180);
+    ctx.fillStyle = '#2a8bc4';
+    ctx.fillRect(220, 600, 960, 140);
 
-    // Distant machine – only visible when close
-    const machineScreenY = machinePos.y + worldOffsetY;
-    if (machineScreenY > -100 && machineScreenY < canvas.height + 100) {
-        ctx.fillStyle = '#555588';
-        ctx.fillRect(machinePos.x-40, machineScreenY-40, 80, 80);
-        ctx.fillStyle = buttonActivated ? '#00aaff' : '#880000';
-        ctx.beginPath();
-        ctx.arc(machinePos.x, machineScreenY, 22, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '14px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText("MACHINE", machinePos.x, machineScreenY + 60);
+    // Ruins & objects extended
+    drawRuin(320, 680, 140, 120, "#4a3728"); // shack left
+    drawRuin(820, 720, 160, 100, "#4a3728"); // shack right
+    drawBridge(600, 620);
+    drawBoat(680, 580);
+    drawLogs(450, 500);
+    drawFlowers(380, 750, 6);
+    drawFlowers(880, 680, 5);
+    drawStoneWall(200, 400, 300);
+    drawStoneWall(900, 350, 250);
+
+    // More ruins further up
+    drawRuin(400, -200, 180, 140, "#4a3728");
+    drawRuin(850, -300, 120, 160, "#4a3728");
+    drawBridge(650, -400);
+    drawLogs(550, -500);
+    drawFlowers(450, -100, 8);
+    drawStoneWall(300, -600, 400);
+    drawRuin(500, -800, 200, 100, "#4a3728");
+    drawFlowers(700, -900, 7);
+    drawStoneWall(800, -1000, 350);
+    drawLogs(600, -1200);
+    drawRuin(350, -1400, 150, 130, "#4a3728");
+    drawBridge(550, -1600);
+    drawFlowers(900, -1700, 5);
+    drawStoneWall(200, -1800, 300);
+
+    // Detailed grass if zoomed in
+    if (zoom > 1.2) {
+        for (let i = 0; i < 500 * zoom; i++) {
+            let gx = Math.random() * 2800 - 700;
+            let gy = Math.random() * 5000 - 2500;
+            ctx.strokeStyle = `rgba(0,${Math.random()*100 + 100},0,0.5)`;
+            ctx.lineWidth = 1 / zoom;
+            ctx.beginPath();
+            ctx.moveTo(gx, gy);
+            ctx.lineTo(gx + (Math.random()-0.5)*4, gy - Math.random()*8 -4);
+            ctx.stroke();
+        }
     }
+
+    // Low quality: skip some if zoomed out
+    if (zoom < 0.8) {
+        // Skip flowers, logs etc.
+        return;
+    }
+
+    // Distant machine
+    ctx.fillStyle = '#555588';
+    ctx.fillRect(machinePos.x-40, machinePos.y-40, 80, 80);
+    ctx.fillStyle = buttonActivated ? '#00aaff' : '#880000';
+    ctx.beginPath();
+    ctx.arc(machinePos.x, machinePos.y, 22, 0, Math.PI*2);
+    ctx.fill();
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '14px Arial';
+    ctx.textAlign = 'center';
+    ctx.fillText("MACHINE", machinePos.x, machinePos.y + 60);
 }
 
 function drawRuin(x,y,w,h,col){
@@ -210,6 +241,19 @@ function drawUnits(){
         ctx.beginPath();
         ctx.arc(u.x-4, u.y-4, 5, 0, Math.PI*2);
         ctx.fill();
+        if (zoom > 1.5) {
+            // Scratches on armor
+            ctx.strokeStyle = '#00000044';
+            ctx.lineWidth = 1 / zoom;
+            for (let s = 0; s < 3; s++) {
+                ctx.beginPath();
+                let sx = (Math.random() - 0.5) * 10;
+                let sy = (Math.random() - 0.5) * 10;
+                ctx.moveTo(u.x + sx, u.y + sy);
+                ctx.lineTo(u.x + sx + (Math.random() - 0.5) * 6, u.y + sy + (Math.random() - 0.5) * 6);
+                ctx.stroke();
+            }
+        }
         if(u.isLeader){
             ctx.fillStyle = '#ffff99';
             ctx.font = '12px Arial';
@@ -218,7 +262,7 @@ function drawUnits(){
         }
         if(selectedUnitIndex === i){
             ctx.strokeStyle = '#ffff00';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3 / zoom;
             ctx.beginPath();
             ctx.arc(u.x,u.y, u.isLeader?19:14,0,Math.PI*2);
             ctx.stroke();
@@ -233,11 +277,35 @@ function drawEnemies(){
         ctx.beginPath();
         ctx.arc(e.x, e.y, 13, 0, Math.PI*2);
         ctx.fill();
+        if (zoom > 1.5) {
+            // Details on creatures, like eyes or claws
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(e.x - 4, e.y - 4, 3, 0, Math.PI*2);
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(e.x + 4, e.y - 4, 3, 0, Math.PI*2);
+            ctx.fill();
+        }
         ctx.fillStyle = '#ff0000';
         ctx.font = '10px Arial';
         ctx.textAlign = 'center';
         ctx.fillText("Warp Spawn", e.x, e.y-18);
     });
+}
+
+function drawFadeBehind() {
+    let behindY = -Infinity;
+    playerUnits.forEach(u => {
+        if (u.hp > 0) behindY = Math.max(behindY, u.y);
+    });
+    if (behindY === -Infinity) return;
+
+    const grad = ctx.createLinearGradient(0, behindY + 150, 0, behindY + 400);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-1000, behindY + 150, 3000, 1000);
 }
 
 function moveUnits(){
@@ -253,16 +321,12 @@ function moveUnits(){
         const speed = u.isLeader ? 2.4 : 2.1;
         u.x += dx/dist * speed;
         u.y += dy/dist * speed;
-
-        // Track progress (lower y = forward)
-        if(u.y < maxProgress) maxProgress = u.y;
     });
 }
 
 function enemyAI(){
     enemies.forEach(e => {
         if(e.hp <=0) return;
-        // Find closest living player unit
         let target = null, minD = Infinity;
         playerUnits.forEach(p => {
             if(p.hp>0){
@@ -277,11 +341,9 @@ function enemyAI(){
         const dist = Math.hypot(dx,dy);
 
         if(dist < 25){
-            // In melee – stop & attack
             e.attacking = true;
-            target.hp -= 0.8; // slow damage
+            target.hp -= 0.8;
         } else {
-            // Move slower than before
             e.x += dx/dist * 1.1;
             e.y += dy/dist * 1.1;
             e.attacking = false;
@@ -300,9 +362,8 @@ function playerCombat(){
             }
         });
         if(closestE && minD < 140){
-            // Orange bolter fire
             ctx.strokeStyle = '#ff8800';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3 / zoom;
             ctx.beginPath();
             ctx.moveTo(u.x, u.y);
             ctx.lineTo(closestE.x, closestE.y);
@@ -312,22 +373,15 @@ function playerCombat(){
     });
 }
 
-function updateWorldFade(){
-    // Fade out behind max progress
-    const fadeStart = maxProgress + 180;
-    if(worldOffsetY < -fadeStart + canvas.height/2){
-        worldOffsetY = -fadeStart + canvas.height/2;
-    }
-}
-
 function spawnEnemies(){
     setInterval(() => {
         if(buttonActivated) return;
         const num = Math.floor(Math.random()*3) + 2;
+        const minPY = playerUnits.reduce((min,u)=> u.hp>0 ? Math.min(min,u.y) : min, Infinity);
         for(let i=0;i<num;i++){
             enemies.push({
-                x: Math.random()*canvas.width,
-                y: Math.max( -worldOffsetY + 100, playerUnits.reduce((min,u)=>Math.min(min,u.y),Infinity) - 300 ),
+                x: Math.random()*1400,
+                y: minPY - 200 - Math.random()*400,
                 hp: 60 + Math.random()*30
             });
         }
@@ -348,22 +402,30 @@ function checkActivation(){
 function gameLoop(){
     ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    // World with offset
     ctx.save();
-    ctx.translate(0, worldOffsetY);
-    drawWorld();
-    ctx.restore();
+    ctx.translate(canvas.width / 2, canvas.height / 2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-cameraX, -cameraY);
 
+    drawWorld();
     drawUnits();
     drawEnemies();
+    drawFadeBehind();
+
+    ctx.restore();
+
+    // Auto center on leader
+    const leader = playerUnits.find(u => u.isLeader && u.hp > 0);
+    if (leader) {
+        cameraX += (leader.x - cameraX) * 0.1; // smooth follow
+        cameraY += (leader.y - cameraY) * 0.1;
+    }
 
     moveUnits();
     enemyAI();
     playerCombat();
-    updateWorldFade();
     checkActivation();
 
-    // Remove dead
     enemies = enemies.filter(e=>e.hp>0);
     playerUnits = playerUnits.filter(u=>u.hp>0);
 
@@ -373,11 +435,13 @@ function gameLoop(){
 canvas.addEventListener('click', e=>{
     if(buttonActivated) return;
     const rect = canvas.getBoundingClientRect();
-    const cx = e.clientX - rect.left;
-    const cy = e.clientY - rect.top - worldOffsetY; // adjust for offset
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+    const worldX = cameraX + (mouseX - canvas.width / 2) / zoom;
+    const worldY = cameraY + (mouseY - canvas.height / 2) / zoom;
 
-    // Check if clicking machine
-    if(Math.hypot(cx - machinePos.x, cy - machinePos.y) < 30){
+    // Check machine
+    if(Math.hypot(worldX - machinePos.x, worldY - machinePos.y) < 30){
         if(playerUnits.some(u=>Math.hypot(u.x-machinePos.x, u.y-machinePos.y)<70)){
             buttonActivated = true;
         }
@@ -387,7 +451,7 @@ canvas.addEventListener('click', e=>{
     // Select unit
     let clicked = null;
     playerUnits.forEach((u,i)=>{
-        if(u.hp>0 && Math.hypot(cx - u.x, cy - u.y) < (u.isLeader?18:13)){
+        if(u.hp>0 && Math.hypot(worldX - u.x, worldY - u.y) < (u.isLeader?18:13)){
             clicked = i;
         }
     });
@@ -396,18 +460,17 @@ canvas.addEventListener('click', e=>{
         return;
     }
 
-    // Move selected
+    // Move
     if(selectedUnitIndex !== null){
         const u = playerUnits[selectedUnitIndex];
         if(u.hp>0){
-            u.destX = cx;
-            u.destY = cy;
+            u.destX = worldX;
+            u.destY = worldY;
             if(u.isLeader){
-                // Squad follows with spread
                 playerUnits.forEach(other=>{
                     if(other !== u && other.hp>0){
-                        other.destX = cx + (Math.random()-0.5)*60;
-                        other.destY = cy + (Math.random()-0.5)*60;
+                        other.destX = worldX + (Math.random()-0.5)*60;
+                        other.destY = worldY + (Math.random()-0.5)*60;
                     }
                 });
             }
@@ -416,7 +479,22 @@ canvas.addEventListener('click', e=>{
     }
 });
 
-drawWorld(); // initial preview
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const rect = canvas.getBoundingClientRect();
+    const mouseX = e.clientX - rect.left;
+    const mouseY = e.clientY - rect.top;
+
+    const mouseWorldX = cameraX + (mouseX - canvas.width / 2) / zoom;
+    const mouseWorldY = cameraY + (mouseY - canvas.height / 2) / zoom;
+
+    zoom = Math.max(0.5, Math.min(3, zoom - Math.sign(e.deltaY) * 0.1));
+
+    cameraX = mouseWorldX - (mouseX - canvas.width / 2) / zoom;
+    cameraY = mouseWorldY - (mouseY - canvas.height / 2) / zoom;
+});
+
+drawWorld(); // initial
 </script>
 </body>
 </html>
