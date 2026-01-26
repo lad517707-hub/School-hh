@@ -2,90 +2,217 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Test - Legion Squad Visible</title>
+<title>Horus Heresy – Legion Survival</title>
 <style>
-    body { margin:0; padding:0; background:#000; overflow:hidden; }
-    #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:15px; border:1px solid #fff; z-index:10; }
-    #canvas { display:block; }
-    button, select { margin:5px; padding:8px; font-size:16px; }
+    body { margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden; }
+    #ui { position:absolute; top:15px; left:15px; background:rgba(10,10,30,0.85); padding:20px; border:1px solid #444; border-radius:10px; z-index:10; max-width:340px; }
+    #canvas { display:block; cursor:crosshair; image-rendering:pixelated; }
+    button, select { padding:10px 16px; margin:8px 6px 8px 0; font-size:15px; background:#1a1a3a; color:#eee; border:1px solid #555; border-radius:6px; cursor:pointer; }
+    button:hover { background:#2a2a5a; }
+    #story { position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20; display:flex; flex-direction:column; justify-content:center; align-items:center; padding:50px; text-align:center; font-size:19px; line-height:1.6; }
+    #story button { font-size:22px; padding:15px 40px; margin-top:40px; }
+    #objective { position:absolute; bottom:20px; left:20px; background:rgba(0,0,0,0.7); padding:12px 20px; border-radius:8px; font-size:16px; max-width:600px; z-index:5; display:none; }
+    #endScreen { position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20; display:none; flex-direction:column; justify-content:center; align-items:center; padding:50px; text-align:center; font-size:28px; line-height:1.6; }
 </style>
 </head>
 <body>
 
+<div id="story">
+    <h1>Abandoned Outpost – Forgotten World</h1>
+    <p>Your squad awakens in the ruins... Warp horrors everywhere.<br>
+    Lead your battle-brothers to the machine and activate the beam.</p>
+    <button onclick="document.getElementById('story').style.display='none'">Begin</button>
+</div>
+
 <div id="ui">
-    <label>Choose Legion:</label><br>
+    <label><strong>Choose your Legion:</strong></label><br>
     <select id="legionSelect">
-        <option value="">Pick one</option>
+        <option value="">— Select Legion —</option>
         <option value="Dark Angels">Dark Angels</option>
-        <option value="Ultramarines">Ultramarines</option>
+        <option value="Emperor's Children">Emperor's Children</option>
+        <option value="Iron Warriors">Iron Warriors</option>
+        <option value="White Scars">White Scars</option>
         <option value="Space Wolves">Space Wolves</option>
-        <!-- add more if you want -->
+        <option value="Imperial Fists">Imperial Fists</option>
+        <option value="Night Lords">Night Lords</option>
+        <option value="Blood Angels">Blood Angels</option>
+        <option value="Iron Hands">Iron Hands</option>
+        <option value="World Eaters">World Eaters</option>
+        <option value="Ultramarines">Ultramarines</option>
+        <option value="Death Guard">Death Guard</option>
+        <option value="Thousand Sons">Thousand Sons</option>
+        <option value="Sons of Horus">Sons of Horus</option>
+        <option value="Word Bearers">Word Bearers</option>
+        <option value="Salamanders">Salamanders</option>
+        <option value="Raven Guard">Raven Guard</option>
+        <option value="Alpha Legion">Alpha Legion</option>
     </select><br>
-    <button onclick="startGame()">Deploy</button>
+    <button onclick="startCampaign()">Deploy</button>
 </div>
 
 <canvas id="canvas" width="1400" height="900"></canvas>
+
+<div id="objective">Select marine → click to move<br>Leader makes squad follow<br>Mouse wheel = zoom</div>
+
+<div id="endScreen">
+    <h1>Victory!</h1>
+    <p>Beam activated. Glory to the Legion.</p>
+    <button onclick="location.reload()">Restart</button>
+</div>
 
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-let squad = [];
+let playerColor = null;
+let playerLegionName = "";
+let playerUnits = [];
+let selectedUnitIndex = null;
+let enemies = [];
+let machinePos = {x: 700, y: -1200}; // closer so it's reachable faster for testing
+let buttonActivated = false;
+let zoom = 1.2; // start slightly zoomed so details show
+let cameraX = 700;
+let cameraY = 450;
 
-function startGame() {
-    const legion = document.getElementById('legionSelect').value;
-    if (!legion) {
-        alert("Pick a legion first!");
-        return;
-    }
+const LEGION_DETAILS = {
+    "Dark Angels":       {main:"#2e7d32", accent:"#1b5e20", symbol:"sword"},
+    "Emperor's Children":{main:"#7b1fa2", accent:"#d500f9", symbol:"eagle"},
+    "Iron Warriors":     {main:"#616161", accent:"#424242", symbol:"skull"},
+    "White Scars":       {main:"#e0e0e0", accent:"#ffffff", symbol:"lightning"},
+    "Space Wolves":      {main:"#90caf9", accent:"#bbdefb", symbol:"wolf"},
+    "Imperial Fists":    {main:"#ffeb3b", accent:"#fdd835", symbol:"fist"},
+    "Night Lords":       {main:"#0d47a1", accent:"#1565c0", symbol:"bat"},
+    "Blood Angels":      {main:"#c62828", accent:"#b71c1c", symbol:"drop"},
+    "Iron Hands":        {main:"#212121", accent:"#424242", symbol:"hand"},
+    "World Eaters":      {main:"#b71c1c", accent:"#d32f2f", symbol:"axe"},
+    "Ultramarines":      {main:"#1976d2", accent:"#1565c0", symbol:"U"},
+    "Death Guard":       {main:"#558b2f", accent:"#33691e", symbol:"fly"},
+    "Thousand Sons":     {main:"#283593", accent:"#4527a0", symbol:"eye"},
+    "Sons of Horus":     {main:"#2e7d32", accent:"#1b5e20", symbol:"eye"},
+    "Word Bearers":      {main:"#880e4f", accent:"#ad1457", symbol:"book"},
+    "Salamanders":       {main:"#1b5e20", accent:"#2e7d32", symbol:"flame"},
+    "Raven Guard":       {main:"#263238", accent:"#37474f", symbol:"raven"},
+    "Alpha Legion":      {main:"#00695c", accent:"#004d40", symbol:"hydra"}
+};
 
-    // Hide UI
+function startCampaign() {
+    const sel = document.getElementById('legionSelect').value;
+    if (!sel) return alert("Select your Legion!");
+
+    playerLegionName = sel;
+    playerColor = LEGION_DETAILS[sel]?.main || "#888888";
+
     document.getElementById('ui').style.display = 'none';
+    document.getElementById('objective').style.display = 'block';
 
-    // Create squad in center of screen
-    squad = [];
-    for (let i = 0; i < 11; i++) {
-        squad.push({
-            x: 700 + (i - 5) * 30,
-            y: 450 + (i % 3 - 1) * 30,
-            color: legion === "Ultramarines" ? "#1976d2" : legion === "Space Wolves" ? "#90caf9" : "#2e7d32"
+    // Force visible squad right now
+    playerUnits = [];
+    for(let i = 0; i < 11; i++){
+        playerUnits.push({
+            x: 620 + (i-5)*18,
+            y: 450 + Math.random()*40 -20,
+            destX: null, destY: null,
+            hp: 100,
+            isLeader: i === 5
         });
     }
 
-    // Draw once right now
-    draw();
+    // Center camera on squad immediately
+    cameraX = 700;
+    cameraY = 450;
+
+    // Draw something right away
+    ctx.fillStyle = '#3a5c2f';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    drawUnits(); // show squad even before loop
+
+    // Start loop
+    requestAnimationFrame(gameLoop);
 }
 
-function draw() {
-    ctx.fillStyle = '#2e4d1a'; // dark green ground
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+function drawUnits() {
+    playerUnits.forEach((u, i) => {
+        if (u.hp <= 0) return;
 
-    // Debug text
-    ctx.fillStyle = 'white';
-    ctx.font = '24px Arial';
-    ctx.fillText("Squad should be visible here", 500, 100);
+        const details = LEGION_DETAILS[playerLegionName] || {main: playerColor, accent: playerColor, symbol: "?"};
+        const s = u.isLeader ? 16 : 11;
 
-    // Draw squad circles
-    squad.forEach((marine, i) => {
-        ctx.fillStyle = marine.color;
+        ctx.fillStyle = details.main;
         ctx.beginPath();
-        ctx.arc(marine.x, marine.y, i === 5 ? 18 : 12, 0, Math.PI * 2);
+        ctx.arc(u.x, u.y, s, 0, Math.PI*2);
         ctx.fill();
 
-        // White helmet
-        ctx.fillStyle = 'white';
+        ctx.fillStyle = details.accent || details.main;
         ctx.beginPath();
-        ctx.arc(marine.x, marine.y - 8, 8, 0, Math.PI * 2);
+        ctx.arc(u.x, u.y - s*0.5, s*0.6, 0, Math.PI*2);
         ctx.fill();
+
+        if (u.isLeader) {
+            ctx.strokeStyle = "#ffff99";
+            ctx.lineWidth = 4;
+            ctx.beginPath();
+            ctx.arc(u.x, u.y, s*1.4, 0, Math.PI*2);
+            ctx.stroke();
+        }
+
+        if (selectedUnitIndex === i) {
+            ctx.strokeStyle = '#ffff00';
+            ctx.lineWidth = 3;
+            ctx.beginPath();
+            ctx.arc(u.x, u.y, s*1.2, 0, Math.PI*2);
+            ctx.stroke();
+        }
     });
 }
 
-// Redraw every frame (even if nothing moves yet)
-function loop() {
-    draw();
-    requestAnimationFrame(loop);
+function gameLoop() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+
+    // Simple ground
+    ctx.fillStyle = '#3a5c2f';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // Debug rectangle around squad area
+    ctx.strokeStyle = '#00ff00';
+    ctx.lineWidth = 2;
+    ctx.strokeRect(500, 350, 400, 200);
+
+    // Machine debug
+    ctx.fillStyle = '#880000';
+    ctx.fillRect(650, 100, 100, 100);
+    ctx.fillStyle = '#ffffff';
+    ctx.font = '20px Arial';
+    ctx.fillText("MACHINE (far up)", 680, 150);
+
+    drawUnits();
+
+    // Auto-follow leader
+    const leader = playerUnits.find(u => u.isLeader && u.hp > 0);
+    if (leader) {
+        cameraX += (leader.x - cameraX) * 0.08;
+        cameraY += (leader.y - cameraY) * 0.08;
+    }
+
+    requestAnimationFrame(gameLoop);
 }
-loop();
+
+// Click to move (basic version for testing)
+canvas.addEventListener('click', e => {
+    const rect = canvas.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const y = e.clientY - rect.top;
+
+    if (playerUnits.length > 0) {
+        const leader = playerUnits.find(u => u.isLeader);
+        if (leader) {
+            leader.destX = x;
+            leader.destY = y;
+        }
+    }
+});
+
+drawUnits(); // show squad on load if possible
 </script>
 </body>
 </html>
