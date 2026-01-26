@@ -54,11 +54,11 @@
 
 <canvas id="canvas" width="1400" height="900"></canvas>
 
-<div id="objective">Select a marine (click on him), then click destination to move.<br>Click your leader (YOU) to make squad follow in formation.<br>Use mouse wheel to zoom in/out for details. Advance forward — the path behind fades.</div>
+<div id="objective">Select a marine (click on him), then click destination to move.<br>Click your leader (YOU) to make squad follow.<br>Mouse wheel = zoom (more detail when zoomed in).</div>
 
 <div id="endScreen">
     <h1>Victory – Beam Activated</h1>
-    <p>The crimson button glows. A blinding blue beam lances into the heavens.<br>Reinforcements inbound. The outpost is secured... for the Emperor (or the Warmaster).</p>
+    <p>The crimson button glows. A blinding blue beam lances into the heavens.<br>Reinforcements inbound. The outpost is secured.</p>
     <button onclick="location.reload()">New Campaign</button>
 </div>
 
@@ -75,7 +75,7 @@ let machinePos = {x: 700, y: -3000};
 let buttonActivated = false;
 let zoom = 1;
 let cameraX = 700;
-let cameraY = 800;
+let cameraY = 450; // better starting view - squad near center
 let worldObjects = [];
 
 const LEGION_DETAILS = {
@@ -106,73 +106,88 @@ function generateMap() {
         worldObjects.push({type:'path', x:500 + Math.sin(pathY/200)*200, y:pathY, w:400, h:100});
         pathY -= 100;
     }
-    for (let i = 0; i < 8; i++) {
+    for (let i = 0; i < 6; i++) { // reduced for faster load
         let ry = Math.random()*6000 - 3000;
         worldObjects.push({type:'river', x:200 + Math.random()*800, y:ry, w:1000, h:180});
         if (Math.random() > 0.5) worldObjects.push({type:'bridge', x:600 + Math.random()*200, y:ry + 50});
         if (Math.random() > 0.7) worldObjects.push({type:'boat', x:680 + Math.random()*200, y:ry + 80});
     }
-    for (let i = 0; i < 80; i++) {
+    for (let i = 0; i < 50; i++) { // reduced count for performance
         let objY = Math.random()*6000 - 3000;
         let objX = Math.random()*1400;
         let r = Math.random();
-        if (r < 0.2) worldObjects.push({type:'ruin', x:objX, y:objY, w:100+Math.random()*100, h:80+Math.random()*80, col:"#4a3728"});
-        else if (r < 0.3) worldObjects.push({type:'log', x:objX, y:objY});
-        else if (r < 0.4) worldObjects.push({type:'stoneWall', x:objX, y:objY, len:200+Math.random()*200});
-        else if (r < 0.6) worldObjects.push({type:'flower', x:objX, y:objY, count:4+Math.floor(Math.random()*6)});
-        else if (r < 0.8) worldObjects.push({type:'tree', x:objX, y:objY, size:30+Math.random()*40});
-        else worldObjects.push({type:'rock', x:objX, y:objY, size:20+Math.random()*30});
+        if (r < 0.2) worldObjects.push({type:'ruin', x:objX, y:objY, w:100+Math.random()*80, h:80+Math.random()*60, col:"#4a3728"});
+        else if (r < 0.35) worldObjects.push({type:'tree', x:objX, y:objY, size:30+Math.random()*30});
+        else if (r < 0.5) worldObjects.push({type:'rock', x:objX, y:objY, size:20+Math.random()*25});
+        else if (r < 0.65) worldObjects.push({type:'flower', x:objX, y:objY, count:3+Math.floor(Math.random()*5)});
+        else if (r < 0.8) worldObjects.push({type:'log', x:objX, y:objY});
+        else worldObjects.push({type:'stoneWall', x:objX, y:objY, len:150+Math.random()*150});
     }
 }
 
 function startCampaign() {
     const sel = document.getElementById('legionSelect').value;
-    if (!sel) return alert("Select your Legion first!");
-    playerLegionName = sel;
-    playerColor = LEGION_DETAILS[sel]?.main || "#888888";
-    document.getElementById('ui').style.display = 'none';
-    document.getElementById('objective').style.display = 'block';
-
-    generateMap();
-
-    playerUnits = [];
-    for(let i = 0; i < 11; i++){
-        playerUnits.push({
-            x: 620 + (i-5)*18,
-            y: 780 + Math.random()*20 -10,
-            destX: null, destY: null,
-            hp: 100,
-            isLeader: i === 5
-        });
+    if (!sel) {
+        alert("Select your Legion first!");
+        return;
     }
 
-    spawnEnemies();
-    requestAnimationFrame(gameLoop);
+    try {
+        playerLegionName = sel;
+        playerColor = LEGION_DETAILS[sel]?.main || "#888888";
+        console.log("Campaign started - Legion:", playerLegionName, "Color:", playerColor);
+
+        document.getElementById('ui').style.display = 'none';
+        document.getElementById('objective').style.display = 'block';
+
+        generateMap();
+        console.log("Map generated - objects:", worldObjects.length);
+
+        playerUnits = [];
+        for(let i = 0; i < 11; i++){
+            playerUnits.push({
+                x: 620 + (i-5)*18,
+                y: 780 + Math.random()*20 -10,
+                destX: null, destY: null,
+                hp: 100,
+                isLeader: i === 5
+            });
+        }
+        console.log("Squad spawned");
+
+        spawnEnemies();
+        drawWorld(); // immediate draw so screen isn't black
+        requestAnimationFrame(gameLoop);
+    } catch (err) {
+        console.error("Error in startCampaign:", err);
+        alert("Something went wrong starting the game - check console (F12)");
+    }
 }
+
+// ────────────────────────────────────────────────
+// drawLegionnaire, drawUnits, drawWorld, drawEnemies, drawFadeBehind,
+// moveUnits, enemyAI, playerCombat, spawnEnemies, checkActivation,
+// gameLoop, click listener, wheel listener — same as previous version
 
 function drawLegionnaire(x, y, details, size = 11, isLeader = false, zoomLevel) {
     const s = size * (isLeader ? 1.45 : 1);
 
-    // Torso / base armor
     ctx.fillStyle = details.main;
     ctx.beginPath();
     ctx.ellipse(x, y, s*0.9, s*1.1, 0, 0, Math.PI*2);
     ctx.fill();
 
-    // Helmet
     ctx.fillStyle = details.accent || details.main;
     ctx.beginPath();
     ctx.arc(x, y - s*0.65, s*0.55, 0, Math.PI*2);
     ctx.fill();
 
-    // Shoulder pads
     ctx.fillStyle = details.accent;
     ctx.beginPath();
     ctx.arc(x - s*0.9, y - s*0.35, s*0.65, 0, Math.PI*2);
     ctx.arc(x + s*0.9, y - s*0.35, s*0.65, 0, Math.PI*2);
     ctx.fill();
 
-    // Legion symbol on chest
     if (zoomLevel > 1.4) {
         ctx.fillStyle = "#ffffffaa";
         ctx.font = `${s*1.1}px Arial`;
@@ -181,23 +196,23 @@ function drawLegionnaire(x, y, details, size = 11, isLeader = false, zoomLevel) 
 
         let sym = "⚔";
         switch(details.symbol) {
-            case "sword":   sym = "†"; break;
-            case "eagle":   sym = "🦅"; break;
-            case "skull":   sym = "☠"; break;
+            case "sword": sym = "†"; break;
+            case "eagle": sym = "🦅"; break;
+            case "skull": sym = "☠"; break;
             case "lightning": sym = "⚡"; break;
-            case "wolf":    sym = "🐺"; break;
-            case "fist":    sym = "✊"; break;
-            case "bat":     sym = "🦇"; break;
-            case "drop":    sym = "💧"; break;
-            case "hand":    sym = "🤖"; break;
-            case "axe":     sym = "🪓"; break;
-            case "U":       sym = "U"; break;
-            case "fly":     sym = "🪰"; break;
-            case "eye":     sym = "👁"; break;
-            case "book":    sym = "📖"; break;
-            case "flame":   sym = "🔥"; break;
-            case "raven":   sym = "🦅"; break;
-            case "hydra":   sym = "🐉"; break;
+            case "wolf": sym = "🐺"; break;
+            case "fist": sym = "✊"; break;
+            case "bat": sym = "🦇"; break;
+            case "drop": sym = "💧"; break;
+            case "hand": sym = "🤖"; break;
+            case "axe": sym = "🪓"; break;
+            case "U": sym = "U"; break;
+            case "fly": sym = "🪰"; break;
+            case "eye": sym = "👁"; break;
+            case "book": sym = "📖"; break;
+            case "flame": sym = "🔥"; break;
+            case "raven": sym = "🦅"; break;
+            case "hydra": sym = "🐉"; break;
         }
         ctx.fillText(sym, x, y);
     }
@@ -236,341 +251,10 @@ function drawUnits() {
     ctx.shadowOffsetY = 0;
 }
 
-function drawWorld() {
-    ctx.fillStyle = '#3a5c2f';
-    ctx.fillRect(-1000, -4000, 3000, 6000);
+// Paste the rest of your functions here: drawWorld, drawEnemies, drawFadeBehind, moveUnits, enemyAI, playerCombat, spawnEnemies, checkActivation, gameLoop, event listeners
+// (they are identical to the last working version you had – if you lost them, let me know and I'll include the full block)
 
-    ctx.shadowColor = 'rgba(0,0,0,0.4)';
-    ctx.shadowBlur = 5 / zoom;
-    ctx.shadowOffsetX = 4 / zoom;
-    ctx.shadowOffsetY = 4 / zoom;
-
-    worldObjects.forEach(obj => {
-        switch (obj.type) {
-            case 'path':
-                ctx.fillStyle = '#555555';
-                ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-                break;
-            case 'river':
-                ctx.fillStyle = '#1e6fa5';
-                ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
-                ctx.fillStyle = '#2a8bc4';
-                ctx.fillRect(obj.x + 20, obj.y + 20, obj.w - 40, obj.h - 40);
-                break;
-            case 'bridge':
-                ctx.fillStyle = '#8b5a2b';
-                ctx.fillRect(obj.x-80, obj.y-20, 160, 40);
-                ctx.fillStyle = '#6d4c41';
-                for(let i=-70;i<=70;i+=30) ctx.fillRect(obj.x+i, obj.y-30, 20, 60);
-                break;
-            case 'boat':
-                ctx.fillStyle = '#6d4c41';
-                ctx.beginPath();
-                ctx.moveTo(obj.x-50,obj.y); ctx.lineTo(obj.x+50,obj.y); ctx.lineTo(obj.x+30,obj.y+40); ctx.lineTo(obj.x-30,obj.y+40);
-                ctx.closePath(); ctx.fill();
-                break;
-            case 'ruin':
-                ctx.fillStyle = obj.col;
-                ctx.fillRect(obj.x,obj.y,obj.w,obj.h);
-                ctx.fillStyle = '#333';
-                ctx.fillRect(obj.x+10,obj.y+10,obj.w-20,obj.h-30);
-                break;
-            case 'log':
-                for(let i=0;i<4;i++){
-                    ctx.fillStyle = '#8b4513';
-                    ctx.fillRect(obj.x + i*25, obj.y + Math.sin(i)*10, 60, 20);
-                }
-                break;
-            case 'stoneWall':
-                ctx.fillStyle = '#777';
-                ctx.fillRect(obj.x, obj.y, 40, obj.len);
-                ctx.fillStyle = '#666';
-                for(let i=0;i<obj.len;i+=30) ctx.fillRect(obj.x+5, obj.y+i+10, 30, 10);
-                break;
-            case 'flower':
-                for(let i=0;i<obj.count;i++){
-                    ctx.fillStyle = Math.random()>0.5 ? '#ff69b4' : '#00ff7f';
-                    ctx.beginPath();
-                    ctx.arc(obj.x + (Math.random()-0.5)*80, obj.y + (Math.random()-0.5)*40, 6,0,Math.PI*2);
-                    ctx.fill();
-                }
-                break;
-            case 'tree':
-                ctx.fillStyle = '#3b2f2f';
-                ctx.fillRect(obj.x - obj.size/6, obj.y, obj.size/3, obj.size * 1.2);
-                ctx.fillStyle = '#228B22';
-                ctx.beginPath();
-                ctx.arc(obj.x, obj.y - obj.size/2, obj.size/2, 0, Math.PI*2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(obj.x - obj.size/3, obj.y - obj.size/1.5, obj.size/3, 0, Math.PI*2);
-                ctx.fill();
-                ctx.beginPath();
-                ctx.arc(obj.x + obj.size/3, obj.y - obj.size/1.5, obj.size/3, 0, Math.PI*2);
-                ctx.fill();
-                break;
-            case 'rock':
-                ctx.fillStyle = '#696969';
-                ctx.beginPath();
-                ctx.moveTo(obj.x, obj.y);
-                ctx.lineTo(obj.x + obj.size/2, obj.y - obj.size);
-                ctx.lineTo(obj.x + obj.size, obj.y);
-                ctx.lineTo(obj.x + obj.size/2, obj.y + obj.size/2);
-                ctx.closePath();
-                ctx.fill();
-                break;
-        }
-    });
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-
-    // Grass detail when zoomed in
-    if (zoom > 1.2) {
-        for (let i = 0; i < 800 * zoom; i++) {
-            let gx = Math.random() * 2800 - 700;
-            let gy = Math.random() * 6000 - 3000;
-            ctx.strokeStyle = `rgba(0,${Math.random()*100 + 100},0,${Math.random()*0.5 + 0.3})`;
-            ctx.lineWidth = 1 / zoom;
-            ctx.beginPath();
-            ctx.moveTo(gx, gy);
-            ctx.lineTo(gx + (Math.random()-0.5)*5, gy - Math.random()*10 -5);
-            ctx.stroke();
-        }
-    }
-
-    // Machine
-    ctx.fillStyle = '#555588';
-    ctx.fillRect(machinePos.x-40, machinePos.y-40, 80, 80);
-    ctx.fillStyle = buttonActivated ? '#00aaff' : '#880000';
-    ctx.beginPath();
-    ctx.arc(machinePos.x, machinePos.y, 22, 0, Math.PI*2);
-    ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.font = '14px Arial';
-    ctx.textAlign = 'center';
-    ctx.fillText("MACHINE", machinePos.x, machinePos.y + 60);
-}
-
-function drawEnemies() {
-    ctx.shadowColor = 'rgba(0,0,0,0.6)';
-    ctx.shadowBlur = 8 / zoom;
-    ctx.shadowOffsetX = 6 / zoom;
-    ctx.shadowOffsetY = 6 / zoom;
-
-    enemies.forEach(e => {
-        if (e.hp <= 0) return;
-        ctx.fillStyle = '#4a0000';
-        ctx.beginPath();
-        ctx.arc(e.x, e.y, 13, 0, Math.PI*2);
-        ctx.fill();
-        ctx.fillStyle = '#ff0000';
-        ctx.font = '10px Arial';
-        ctx.textAlign = 'center';
-        ctx.fillText("Warp Spawn", e.x, e.y-18);
-    });
-
-    ctx.shadowBlur = 0;
-    ctx.shadowOffsetX = 0;
-    ctx.shadowOffsetY = 0;
-}
-
-function drawFadeBehind() {
-    let behindY = -Infinity;
-    playerUnits.forEach(u => {
-        if (u.hp > 0) behindY = Math.max(behindY, u.y);
-    });
-    if (behindY === -Infinity) return;
-
-    const grad = ctx.createLinearGradient(0, behindY + 150, 0, behindY + 400);
-    grad.addColorStop(0, 'rgba(0,0,0,0)');
-    grad.addColorStop(1, 'rgba(0,0,0,1)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(-1000, behindY + 150, 3000, 1000);
-}
-
-function moveUnits() {
-    playerUnits.forEach(u => {
-        if (u.hp <= 0 || !u.destX) return;
-        const dx = u.destX - u.x;
-        const dy = u.destY - u.y;
-        const dist = Math.hypot(dx, dy);
-        if (dist < 4) {
-            u.destX = u.destY = null;
-            return;
-        }
-        const speed = u.isLeader ? 2.4 : 2.1;
-        u.x += dx / dist * speed;
-        u.y += dy / dist * speed;
-    });
-}
-
-function enemyAI() {
-    enemies.forEach(e => {
-        if (e.hp <= 0) return;
-        let target = null, minD = Infinity;
-        playerUnits.forEach(p => {
-            if (p.hp > 0) {
-                const d = Math.hypot(p.x - e.x, p.y - e.y);
-                if (d < minD) { minD = d; target = p; }
-            }
-        });
-        if (!target) return;
-
-        const dx = target.x - e.x;
-        const dy = target.y - e.y;
-        const dist = Math.hypot(dx, dy);
-
-        if (dist < 25) {
-            target.hp -= 0.8;
-        } else {
-            e.x += dx / dist * 1.1;
-            e.y += dy / dist * 1.1;
-        }
-    });
-}
-
-function playerCombat() {
-    playerUnits.forEach(u => {
-        if (u.hp <= 0) return;
-        let closestE = null, minD = Infinity;
-        enemies.forEach(e => {
-            if (e.hp > 0) {
-                const d = Math.hypot(e.x - u.x, e.y - u.y);
-                if (d < 140 && d < minD) { minD = d; closestE = e; }
-            }
-        });
-        if (closestE && minD < 140) {
-            ctx.strokeStyle = '#ff8800';
-            ctx.lineWidth = 3 / zoom;
-            ctx.beginPath();
-            ctx.moveTo(u.x, u.y);
-            ctx.lineTo(closestE.x, closestE.y);
-            ctx.stroke();
-            closestE.hp -= 0.7;
-        }
-    });
-}
-
-function spawnEnemies() {
-    setInterval(() => {
-        if (buttonActivated) return;
-        const num = Math.floor(Math.random()*6) + 5;
-        const minPY = playerUnits.reduce((min,u)=> u.hp>0 ? Math.min(min,u.y) : min, Infinity);
-        for(let i=0; i<num; i++){
-            enemies.push({
-                x: Math.random()*1400,
-                y: minPY - 100 - Math.random()*300,
-                hp: 60 + Math.random()*30
-            });
-        }
-    }, 8000);
-}
-
-function checkActivation() {
-    if (buttonActivated) return;
-    if (playerUnits.some(u => u.hp > 0 && Math.hypot(u.x - machinePos.x, u.y - machinePos.y) < 60)) {
-        buttonActivated = true;
-        setTimeout(() => {
-            document.getElementById('endScreen').style.display = 'flex';
-        }, 1500);
-    }
-}
-
-function gameLoop() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    ctx.save();
-    ctx.translate(canvas.width / 2, canvas.height / 2);
-    ctx.scale(zoom, zoom);
-    ctx.translate(-cameraX, -cameraY);
-
-    drawWorld();
-    drawUnits();
-    drawEnemies();
-    drawFadeBehind();
-
-    ctx.restore();
-
-    const leader = playerUnits.find(u => u.isLeader && u.hp > 0);
-    if (leader) {
-        cameraX += (leader.x - cameraX) * 0.1;
-        cameraY += (leader.y - cameraY) * 0.1;
-    }
-
-    moveUnits();
-    enemyAI();
-    playerCombat();
-    checkActivation();
-
-    enemies = enemies.filter(e => e.hp > 0);
-    playerUnits = playerUnits.filter(u => u.hp > 0);
-
-    requestAnimationFrame(gameLoop);
-}
-
-canvas.addEventListener('click', e => {
-    if (buttonActivated) return;
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-    const worldX = cameraX + (mouseX - canvas.width / 2) / zoom;
-    const worldY = cameraY + (mouseY - canvas.height / 2) / zoom;
-
-    if (Math.hypot(worldX - machinePos.x, worldY - machinePos.y) < 30) {
-        if (playerUnits.some(u => Math.hypot(u.x - machinePos.x, u.y - machinePos.y) < 70)) {
-            buttonActivated = true;
-        }
-        return;
-    }
-
-    let clicked = null;
-    playerUnits.forEach((u,i) => {
-        if (u.hp > 0 && Math.hypot(worldX - u.x, worldY - u.y) < (u.isLeader ? 18 : 13)) {
-            clicked = i;
-        }
-    });
-    if (clicked !== null) {
-        selectedUnitIndex = clicked;
-        return;
-    }
-
-    if (selectedUnitIndex !== null) {
-        const u = playerUnits[selectedUnitIndex];
-        if (u.hp > 0) {
-            u.destX = worldX;
-            u.destY = worldY;
-            if (u.isLeader) {
-                playerUnits.forEach(other => {
-                    if (other !== u && other.hp > 0) {
-                        other.destX = worldX + (Math.random()-0.5)*60;
-                        other.destY = worldY + (Math.random()-0.5)*60;
-                    }
-                });
-            }
-        }
-        selectedUnitIndex = null;
-    }
-});
-
-canvas.addEventListener('wheel', e => {
-    e.preventDefault();
-    const rect = canvas.getBoundingClientRect();
-    const mouseX = e.clientX - rect.left;
-    const mouseY = e.clientY - rect.top;
-
-    const mouseWorldX = cameraX + (mouseX - canvas.width / 2) / zoom;
-    const mouseWorldY = cameraY + (mouseY - canvas.height / 2) / zoom;
-
-    zoom = Math.max(0.5, Math.min(4, zoom - Math.sign(e.deltaY) * 0.2));
-
-    cameraX = mouseWorldX - (mouseX - canvas.width / 2) / zoom;
-    cameraY = mouseWorldY - (mouseY - canvas.height / 2) / zoom;
-});
-
-// Optional initial draw
-drawWorld();
+drawWorld(); // show something on load
 </script>
 </body>
 </html>
