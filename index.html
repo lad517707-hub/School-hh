@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Horus Heresy – Legion Skirmish</title>
+<title>Horus Heresy – Legion Survival</title>
 <style>
     body { margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden; }
     #ui {
@@ -26,19 +26,22 @@
         padding:12px 20px; border-radius:8px; font-size:16px; max-width:500px; z-index:5;
         display:none;
     }
+    #endScreen {
+        position:absolute; inset:0; background:rgba(0,0,20,0.92); z-index:20;
+        display:none; flex-direction:column; justify-content:center; align-items:center;
+        padding:50px; text-align:center; font-size:24px; line-height:1.6;
+    }
 </style>
 </head>
 <body>
 
 <div id="story">
-    <h1>The Horus Heresy – 005-014.M31</h1>
-    <p>The Warmaster has fallen to Chaos.<br>
-    Half the Space Marine Legions have betrayed the Emperor.<br>
-    Worlds burn. Brothers slaughter brothers.<br><br>
-    You are the commander of one loyal or traitor Legion.<br>
-    The galaxy is your battlefield. Your choice will shape the Imperium's fate.<br><br>
-    <small>Objective: Maneuver your Legion across key worlds. Reach Terra... or stop those who would.</small></p>
-    <button onclick="document.getElementById('story').style.display='none'">Enter the Galaxy</button>
+    <h1>The Horus Heresy – Abandoned Realm</h1>
+    <p>In the ruins of a forgotten world, echoing the shattered spires of ancient Terra mixed with medieval fortresses,<br>
+    your Legion squad awakens amidst chaos. Creatures of the warp swarm the shadows.<br><br>
+    Lead your 10 soldiers and yourself to the ancient machine. Press the red button to activate the beam<br>
+    and summon reinforcements – but survive the waves of horrors first!</p>
+    <button onclick="document.getElementById('story').style.display='none'">Enter the Ruins</button>
 </div>
 
 <div id="ui">
@@ -64,189 +67,336 @@
         <option value="Raven Guard">XIX – Raven Guard</option>
         <option value="Alpha Legion">XX – Alpha Legion</option>
     </select><br>
-    <button onclick="startCampaign()">Launch Campaign</button>
+    <button onclick="startCampaign()">Launch Mission</button>
 </div>
 
 <canvas id="canvas" width="1280" height="720"></canvas>
 
-<div id="objective">Click anywhere to move YOUR Legion.<br>Navigate the galaxy. Reach key worlds or confront traitors.</div>
+<div id="objective">Click a soldier to select, then click a spot to move them. Move the leader (YOU) to have the team follow. Survive waves and reach the machine to press the red button!</div>
+
+<div id="endScreen">
+    <h1>Mission Complete!</h1>
+    <p>The blue beam pierces the sky, summoning aid. Your Legion prevails... for now.</p>
+    <button onclick="location.reload()">Restart</button>
+</div>
 
 <script>
 // ────────────────────────────────────────────────
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
 
-const legions = [
-    {name:"Dark Angels", roman:"I", color:"#2e7d32", loyal:true},
-    {name:"Emperor's Children", roman:"III", color:"#7b1fa2", loyal:false},
-    {name:"Iron Warriors", roman:"IV", color:"#616161", loyal:false},
-    {name:"White Scars", roman:"V", color:"#e0e0e0", loyal:true},
-    {name:"Space Wolves", roman:"VI", color:"#90caf9", loyal:true},
-    {name:"Imperial Fists", roman:"VII", color:"#ffeb3b", loyal:true},
-    {name:"Night Lords", roman:"VIII", color:"#0d47a1", loyal:false},
-    {name:"Blood Angels", roman:"IX", color:"#c62828", loyal:true},
-    {name:"Iron Hands", roman:"X", color:"#212121", loyal:true},
-    {name:"World Eaters", roman:"XII", color:"#b71c1c", loyal:false},
-    {name:"Ultramarines", roman:"XIII", color:"#1976d2", loyal:true},
-    {name:"Death Guard", roman:"XIV", color:"#558b2f", loyal:false},
-    {name:"Thousand Sons", roman:"XV", color:"#283593", loyal:false},
-    {name:"Sons of Horus", roman:"XVI", color:"#2e7d32", loyal:false},
-    {name:"Word Bearers", roman:"XVII", color:"#880e4f", loyal:false},
-    {name:"Salamanders", roman:"XVIII", color:"#1b5e20", loyal:true},
-    {name:"Raven Guard", roman:"XIX", color:"#263238", loyal:true},
-    {name:"Alpha Legion", roman:"XX", color:"#00695c", loyal:false}
-];
+const legions = {
+    "Dark Angels": "#2e7d32",
+    "Emperor's Children": "#7b1fa2",
+    "Iron Warriors": "#616161",
+    "White Scars": "#e0e0e0",
+    "Space Wolves": "#90caf9",
+    "Imperial Fists": "#ffeb3b",
+    "Night Lords": "#0d47a1",
+    "Blood Angels": "#c62828",
+    "Iron Hands": "#212121",
+    "World Eaters": "#b71c1c",
+    "Ultramarines": "#1976d2",
+    "Death Guard": "#558b2f",
+    "Thousand Sons": "#283593",
+    "Sons of Horus": "#2e7d32",
+    "Word Bearers": "#880e4f",
+    "Salamanders": "#1b5e20",
+    "Raven Guard": "#263238",
+    "Alpha Legion": "#00695c"
+};
 
-const villains = [
-    {name:"Horus Lupercal", color:"#000000", type:"primarch"},
-    {name:"Fulgrim", color:"#d500f9", type:"primarch"},
-    {name:"Perturabo", color:"#424242", type:"primarch"},
-    {name:"Konrad Curze", color:"#0d47a1", type:"primarch"},
-    {name:"Angron", color:"#d32f2f", type:"primarch"},
-    {name:"Magnus the Red", color:"#6200ea", type:"primarch"},
-    {name:"Mortarion", color:"#33691e", type:"primarch"},
-    {name:"Lorgar Aurelian", color:"#880e4f", type:"primarch"},
-    {name:"Alpharius/Omegon", color:"#004d40", type:"primarch"}
-];
-
-const keyWorlds = [
-    {name:"Terra", x:640, y:100, type:"loyal"},
-    {name:"Mars", x:680, y:140, type:"loyal"},
-    {name:"Istvaan V", x:480, y:380, type:"massacre"},
-    {name:"Calth", x:380, y:320, type:"betrayal"},
-    {name:"Prospero", x:520, y:280, type:"burning"},
-    {name:"Signus Prime", x:720, y:300, type:"daemonic"},
-    {name:"Macragge", x:360, y:420, type:"loyal"},
-    {name:"Fenris", x:280, y:520, type:"loyal"},
-    {name:"Baal", x:780, y:180, type:"loyal"},
-    {name:"Nocturne", x:860, y:460, type:"loyal"}
-];
-
-let playerLegion = null;
-let playerPos = {x: 640, y: 360}; // start near center / Terra area
+let playerColor = null;
+let playerUnits = []; // {x, y, destX, destY, hp, isLeader}
+let selectedUnit = null;
+let enemies = []; // {x, y, hp, type}
+let wave = 0;
+let machine = {x: 1200, y: 360, activated: false}; // right side
+let beamActive = false;
 
 function startCampaign() {
     const sel = document.getElementById('legionSelect').value;
     if (!sel) { alert("Choose your Legion first!"); return; }
-    playerLegion = legions.find(l => l.name === sel);
+    playerColor = legions[sel];
     document.getElementById('ui').style.display = 'none';
     document.getElementById('objective').style.display = 'block';
-    drawGalaxy();
+
+    // Spawn player squad left side
+    playerUnits = [];
+    for (let i = 0; i < 11; i++) { // 10 soldiers + leader
+        playerUnits.push({
+            x: 100 + Math.random() * 50,
+            y: 200 + Math.random() * 300,
+            destX: null,
+            destY: null,
+            hp: 100,
+            isLeader: i === 0
+        });
+    }
+
+    gameLoop();
+    spawnWave();
 }
 
-function drawGalaxy() {
-    // space bg
+function drawRuins() {
+    // Dark ruined city background
     const grad = ctx.createLinearGradient(0,0,0,canvas.height);
-    grad.addColorStop(0, "#0a001f");
-    grad.addColorStop(1, "#000814");
+    grad.addColorStop(0, "#333333");
+    grad.addColorStop(1, "#111111");
     ctx.fillStyle = grad;
     ctx.fillRect(0,0,canvas.width,canvas.height);
 
-    // stars
-    ctx.fillStyle = "#fff";
-    for(let i=0; i<600; i++){
-        let x = Math.random()*canvas.width;
-        let y = Math.random()*canvas.height;
-        let sz = Math.random()*1.8 + 0.4;
-        ctx.globalAlpha = Math.random()*0.7 + 0.3;
-        ctx.fillRect(x,y,sz,sz);
-    }
-    ctx.globalAlpha = 1;
+    // Ruined buildings (medieval NYC vibe: tall ruins, towers)
+    ctx.fillStyle = "#444444";
+    ctx.fillRect(150, 100, 80, 400); // ruined skyscraper
+    ctx.fillRect(300, 200, 60, 300);
+    ctx.fillRect(450, 50, 100, 450);
+    ctx.fillRect(600, 150, 70, 350);
+    ctx.fillRect(750, 100, 90, 400);
+    ctx.fillRect(900, 250, 50, 250);
+    ctx.fillRect(1050, 80, 110, 420);
 
-    // faint grid
-    ctx.strokeStyle = "rgba(60,80,140,0.18)";
-    for(let x=0; x<canvas.width; x+=60) {
-        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
-    }
-    for(let y=0; y<canvas.height; y+=60) {
-        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
-    }
+    // Medieval elements: arches, stones
+    ctx.strokeStyle = "#666666";
+    ctx.lineWidth = 5;
+    ctx.beginPath();
+    ctx.arc(200, 500, 40, Math.PI, 2*Math.PI); // arch
+    ctx.stroke();
+    ctx.beginPath();
+    ctx.arc(350, 500, 30, Math.PI, 2*Math.PI);
+    ctx.stroke();
 
-    // key worlds
-    keyWorlds.forEach(w => {
-        let col = w.type === "loyal" ? "#4fc3f7" : w.type === "betrayal" ? "#ff5252" : "#ffab00";
-        ctx.fillStyle = col + "44";
-        ctx.beginPath(); ctx.arc(w.x, w.y, 32, 0, Math.PI*2); ctx.fill();
-        ctx.fillStyle = col;
-        ctx.beginPath(); ctx.arc(w.x, w.y, 18, 0, Math.PI*2); ctx.fill();
-        ctx.strokeStyle = "#fff8"; ctx.lineWidth=2; ctx.stroke();
+    // Ground cracks
+    ctx.strokeStyle = "#222222";
+    ctx.beginPath();
+    ctx.moveTo(0,600); ctx.lineTo(1280,600);
+    ctx.moveTo(200,620); ctx.lineTo(400,580);
+    ctx.moveTo(600,640); ctx.lineTo(800,590);
+    ctx.stroke();
+}
 
-        ctx.fillStyle = "#ffffff";
-        ctx.font = "14px Arial";
-        ctx.textAlign = "center";
-        ctx.fillText(w.name.toUpperCase(), w.x, w.y + 48);
+function drawUnits() {
+    playerUnits.forEach((u, i) => {
+        if (u.hp <= 0) return;
+        ctx.fillStyle = playerColor;
+        ctx.beginPath();
+        ctx.arc(u.x, u.y, u.isLeader ? 15 : 10, 0, Math.PI*2);
+        ctx.fill();
+        if (u.isLeader) {
+            ctx.fillStyle = "#fff";
+            ctx.font = "12px Arial";
+            ctx.fillText("YOU", u.x - 10, u.y - 20);
+        }
+        if (selectedUnit === i) {
+            ctx.strokeStyle = "#ffff00";
+            ctx.lineWidth = 2;
+            ctx.stroke();
+        }
     });
+}
 
-    // all legions (medium size, placed roughly by homeworld / crusade path)
-    const positions = [
-        {leg:"Dark Angels", x:200,y:120}, {leg:"Emperor's Children", x:500,y:200},
-        {leg:"Iron Warriors", x:450,y:450}, {leg:"White Scars", x:300,y:180},
-        {leg:"Space Wolves", x:220,y:520}, {leg:"Imperial Fists", x:680,y:80},
-        {leg:"Night Lords", x:520,y:380}, {leg:"Blood Angels", x:760,y:160},
-        {leg:"Iron Hands", x:340,y:300}, {leg:"World Eaters", x:480,y:420},
-        {leg:"Ultramarines", x:360,y:360}, {leg:"Death Guard", x:580,y:340},
-        {leg:"Thousand Sons", x:520,y:280}, {leg:"Sons of Horus", x:500,y:300},
-        {leg:"Word Bearers", x:440,y:340}, {leg:"Salamanders", x:820,y:440},
-        {leg:"Raven Guard", x:280,y:380}, {leg:"Alpha Legion", x:600,y:400}
-    ];
-
-    positions.forEach(p => {
-        const leg = legions.find(l => l.name === p.leg);
-        const isPlayer = playerLegion && leg.name === playerLegion.name;
-        drawMarker(p.x, p.y, leg.color, leg.roman + " " + leg.name, 14, false, isPlayer);
+function drawEnemies() {
+    enemies.forEach(e => {
+        if (e.hp <= 0) return;
+        ctx.fillStyle = "#ff0000";
+        ctx.beginPath();
+        ctx.arc(e.x, e.y, 12, 0, Math.PI*2);
+        ctx.fill();
+        ctx.fillStyle = "#fff";
+        ctx.font = "10px Arial";
+        ctx.fillText("Creature", e.x - 15, e.y - 15);
     });
+}
 
-    // villains near Istvaan / traitor zones
-    drawMarker(480, 380, "#000", "HORUS", 18, true);
-    drawMarker(500, 360, "#d500f9", "FULGRIM", 16, true);
-    drawMarker(460, 400, "#d32f2f", "ANGRON", 16, true);
-    drawMarker(520, 300, "#6200ea", "MAGNUS", 16, true);
-    drawMarker(440, 420, "#880e4f", "LORGAR", 16, true);
-
-    // player legion override (movable)
-    if (playerLegion) {
-        drawMarker(playerPos.x, playerPos.y, playerLegion.color, "YOU – " + playerLegion.roman + " " + playerLegion.name, 26, false, true);
+function drawMachine() {
+    ctx.fillStyle = "#888888";
+    ctx.fillRect(machine.x - 30, machine.y - 30, 60, 60);
+    ctx.fillStyle = "#ff0000";
+    ctx.beginPath();
+    ctx.arc(machine.x, machine.y, 15, 0, Math.PI*2);
+    ctx.fill();
+    if (beamActive) {
+        ctx.strokeStyle = "#00ffff";
+        ctx.lineWidth = 20;
+        ctx.beginPath();
+        ctx.moveTo(machine.x, machine.y);
+        ctx.lineTo(machine.x, 0);
+        ctx.stroke();
     }
 }
 
-function drawMarker(x, y, color, label, r=12, isVillain=false, isPlayer=false) {
-    if (isPlayer) {
-        let g = ctx.createRadialGradient(x,y,0,x,y,r*3);
-        g.addColorStop(0, color + "aa");
-        g.addColorStop(0.6, color + "44");
-        g.addColorStop(1, "transparent");
-        ctx.fillStyle = g;
-        ctx.beginPath(); ctx.arc(x,y,r*3,0,Math.PI*2); ctx.fill();
-    }
-
-    ctx.fillStyle = color;
-    ctx.beginPath(); ctx.arc(x,y,r,0,Math.PI*2); ctx.fill();
-
-    if (isVillain) {
-        ctx.strokeStyle = "#ff1744"; ctx.lineWidth=4; ctx.stroke();
-    } else if (isPlayer) {
-        ctx.strokeStyle = "#ffffff"; ctx.lineWidth=3; ctx.stroke();
-    }
-
-    ctx.fillStyle = "#fff";
-    ctx.font = (r<16 ? "13px" : "16px") + " Arial";
-    ctx.textAlign = "center";
-    ctx.shadowColor="#000"; ctx.shadowBlur=6;
-    ctx.fillText(label, x, y + r + 24);
-    ctx.shadowBlur=0;
+function moveUnits() {
+    playerUnits.forEach((u, i) => {
+        if (u.hp <= 0 || !u.destX) return;
+        const dx = u.destX - u.x;
+        const dy = u.destY - u.y;
+        const dist = Math.sqrt(dx*dx + dy*dy);
+        if (dist < 5) {
+            u.destX = null;
+            u.destY = null;
+            return;
+        }
+        const speed = 2;
+        u.x += (dx / dist) * speed;
+        u.y += (dy / dist) * speed;
+    });
 }
 
-// move player legion
+function enemyAI() {
+    enemies.forEach(e => {
+        if (e.hp <= 0) return;
+        // Find nearest player unit
+        let nearest = null;
+        let minDist = Infinity;
+        playerUnits.forEach(u => {
+            if (u.hp > 0) {
+                const d = Math.hypot(e.x - u.x, e.y - u.y);
+                if (d < minDist) {
+                    minDist = d;
+                    nearest = u;
+                }
+            }
+        });
+        if (nearest) {
+            const dx = nearest.x - e.x;
+            const dy = nearest.y - e.y;
+            const dist = Math.sqrt(dx*dx + dy*dy);
+            const speed = 1.5;
+            e.x += (dx / dist) * speed;
+            e.y += (dy / dist) * speed;
+
+            // Attack if close
+            if (dist < 20) {
+                nearest.hp -= 1; // damage over time
+            }
+        }
+    });
+}
+
+function combat() {
+    playerUnits.forEach(u => {
+        if (u.hp <= 0) return;
+        // Find nearest enemy in range (100px)
+        let nearestE = null;
+        let minDist = Infinity;
+        enemies.forEach(e => {
+            if (e.hp > 0) {
+                const d = Math.hypot(e.x - u.x, e.y - u.y);
+                if (d < 100 && d < minDist) {
+                    minDist = d;
+                    nearestE = e;
+                }
+            }
+        });
+        if (nearestE) {
+            // Shoot: draw laser, damage
+            ctx.strokeStyle = "#00ff00";
+            ctx.lineWidth = 2;
+            ctx.beginPath();
+            ctx.moveTo(u.x, u.y);
+            ctx.lineTo(nearestE.x, nearestE.y);
+            ctx.stroke();
+            nearestE.hp -= 0.5; // gradual damage
+        }
+    });
+}
+
+function spawnWave() {
+    wave++;
+    const num = wave * 3; // increasing
+    for (let i = 0; i < num; i++) {
+        enemies.push({
+            x: 1280 - Math.random() * 200, // from right
+            y: Math.random() * 720,
+            hp: 50,
+            type: "creature"
+        });
+    }
+    setTimeout(spawnWave, 20000); // every 20s
+}
+
+function checkWin() {
+    if (machine.activated) {
+        beamActive = true;
+        setTimeout(() => {
+            document.getElementById('endScreen').style.display = 'flex';
+        }, 2000);
+    }
+}
+
+function gameLoop() {
+    ctx.clearRect(0,0,canvas.width,canvas.height);
+    drawRuins();
+    drawMachine();
+    drawUnits();
+    drawEnemies();
+    moveUnits();
+    enemyAI();
+    combat();
+    checkWin();
+
+    // Clean dead
+    enemies = enemies.filter(e => e.hp > 0);
+    playerUnits = playerUnits.filter(u => u.hp > 0);
+
+    if (playerUnits.length === 0) {
+        // Game over, but not implemented
+    }
+
+    requestAnimationFrame(gameLoop);
+}
+
 canvas.addEventListener('click', e => {
-    if (!playerLegion) return;
     const rect = canvas.getBoundingClientRect();
-    playerPos.x = e.clientX - rect.left;
-    playerPos.y = e.clientY - rect.top;
-    drawGalaxy();
+    const clickX = e.clientX - rect.left;
+    const clickY = e.clientY - rect.top;
+
+    if (machine.activated) return;
+
+    // Check if clicking machine button
+    if (Math.hypot(clickX - machine.x, clickY - machine.y) < 20) {
+        // Check if a unit is near
+        const near = playerUnits.some(u => u.hp > 0 && Math.hypot(u.x - machine.x, u.y - machine.y) < 50);
+        if (near) {
+            machine.activated = true;
+            return;
+        }
+    }
+
+    // Select unit if clicking on one
+    let newSelected = null;
+    playerUnits.forEach((u, i) => {
+        if (u.hp > 0 && Math.hypot(clickX - u.x, clickY - u.y) < (u.isLeader ? 15 : 10)) {
+            newSelected = i;
+        }
+    });
+    if (newSelected !== null) {
+        selectedUnit = newSelected;
+        return;
+    }
+
+    // Move selected unit to spot
+    if (selectedUnit !== null) {
+        const u = playerUnits[selectedUnit];
+        if (u.hp > 0) {
+            u.destX = clickX;
+            u.destY = clickY;
+            if (u.isLeader) {
+                // Team follows
+                playerUnits.forEach(other => {
+                    if (!other.isLeader && other.hp > 0) {
+                        other.destX = clickX + (Math.random() - 0.5) * 50;
+                        other.destY = clickY + (Math.random() - 0.5) * 50;
+                    }
+                });
+            }
+        }
+        selectedUnit = null;
+    }
 });
 
-// show map immediately (before picking legion)
-drawGalaxy();
+// Initial draw
+drawRuins();
 </script>
 </body>
 </html>
