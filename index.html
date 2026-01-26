@@ -2,168 +2,367 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Horus Heresy – Legion Survival (Visible Fix)</title>
+<title>Horus Heresy – Legion Survival</title>
 <style>
     body { margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden; }
-    #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.7); padding:15px; border:1px solid #fff; z-index:10; }
-    #canvas { display:block; }
-    button, select { margin:5px; padding:8px; font-size:16px; }
-    #objective { position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.7); padding:10px; z-index:5; display:none; font-size:16px; }
+    #ui { position:absolute; top:10px; left:10px; background:rgba(0,0,0,0.8); padding:15px; border:1px solid #444; z-index:10; max-width:340px; }
+    #canvas { display:block; cursor:crosshair; image-rendering:pixelated; image-rendering:-moz-crisp-edges; }
+    button, select { margin:5px; padding:8px 12px; font-size:15px; background:#222; color:#eee; border:1px solid #555; border-radius:4px; cursor:pointer; }
+    button:hover { background:#444; }
+    #objective { position:absolute; bottom:10px; left:10px; background:rgba(0,0,0,0.7); padding:10px 15px; border-radius:6px; font-size:15px; max-width:500px; z-index:5; display:none; }
+    #endScreen { position:absolute; inset:0; background:rgba(0,0,30,0.9); z-index:20; display:none; flex-direction:column; justify-content:center; align-items:center; text-align:center; color:#00ffff; font-size:32px; }
 </style>
 </head>
 <body>
 
 <div id="ui">
-    <label>Choose Legion:</label><br>
+    <label>Choose your Legion:</label><br>
     <select id="legionSelect">
-        <option value="">Pick one</option>
-        <option value="Dark Angels">I – Dark Angels</option>
-        <option value="Emperor's Children">III – Emperor's Children</option>
-        <option value="Iron Warriors">IV – Iron Warriors</option>
-        <option value="White Scars">V – White Scars</option>
-        <option value="Space Wolves">VI – Space Wolves</option>
-        <option value="Imperial Fists">VII – Imperial Fists</option>
-        <option value="Night Lords">VIII – Night Lords</option>
-        <option value="Blood Angels">IX – Blood Angels</option>
-        <option value="Iron Hands">X – Iron Hands</option>
-        <option value="World Eaters">XII – World Eaters</option>
-        <option value="Ultramarines">XIII – Ultramarines</option>
-        <option value="Death Guard">XIV – Death Guard</option>
-        <option value="Thousand Sons">XV – Thousand Sons</option>
-        <option value="Sons of Horus">XVI – Sons of Horus</option>
-        <option value="Word Bearers">XVII – Word Bearers</option>
-        <option value="Salamanders">XVIII – Salamanders</option>
-        <option value="Raven Guard">XIX – Raven Guard</option>
-        <option value="Alpha Legion">XX – Alpha Legion</option>
+        <option value="">— Select —</option>
+        <option value="Dark Angels">Dark Angels</option>
+        <option value="Emperor's Children">Emperor's Children</option>
+        <option value="Iron Warriors">Iron Warriors</option>
+        <option value="White Scars">White Scars</option>
+        <option value="Space Wolves">Space Wolves</option>
+        <option value="Imperial Fists">Imperial Fists</option>
+        <option value="Night Lords">Night Lords</option>
+        <option value="Blood Angels">Blood Angels</option>
+        <option value="Iron Hands">Iron Hands</option>
+        <option value="World Eaters">World Eaters</option>
+        <option value="Ultramarines">Ultramarines</option>
+        <option value="Death Guard">Death Guard</option>
+        <option value="Thousand Sons">Thousand Sons</option>
+        <option value="Sons of Horus">Sons of Horus</option>
+        <option value="Word Bearers">Word Bearers</option>
+        <option value="Salamanders">Salamanders</option>
+        <option value="Raven Guard">Raven Guard</option>
+        <option value="Alpha Legion">Alpha Legion</option>
     </select><br>
     <button onclick="startGame()">Deploy</button>
 </div>
 
 <canvas id="canvas" width="1400" height="900"></canvas>
 
-<div id="objective">Click a marine to select → click destination to move<br>Click leader (bigger) → squad follows<br>Enemies spawn from top – shoot orange bolts</div>
+<div id="objective">Click a marine to select → click to move<br>Click leader (bigger) → squad follows<br>Mouse wheel = zoom (grass + details appear when close)</div>
+
+<div id="endScreen">
+    <h1>VICTORY</h1>
+    <p style="font-size:24px; margin:20px 0;">BLUE BEAM ACTIVATED</p>
+    <p style="font-size:18px;">Orbital support inbound. Glory to the Legion.</p>
+    <button onclick="location.reload()" style="margin-top:40px; padding:15px 40px; font-size:20px;">New Campaign</button>
+</div>
 
 <script>
 const canvas = document.getElementById('canvas');
 const ctx = canvas.getContext('2d');
-
-const LEGION_COLORS = {
-    "Dark Angels": "#2e7d32",
-    "Emperor's Children": "#7b1fa2",
-    "Iron Warriors": "#616161",
-    "White Scars": "#e0e0e0",
-    "Space Wolves": "#90caf9",
-    "Imperial Fists": "#ffeb3b",
-    "Night Lords": "#0d47a1",
-    "Blood Angels": "#c62828",
-    "Iron Hands": "#212121",
-    "World Eaters": "#b71c1c",
-    "Ultramarines": "#1976d2",
-    "Death Guard": "#558b2f",
-    "Thousand Sons": "#283593",
-    "Sons of Horus": "#2e7d32",
-    "Word Bearers": "#880e4f",
-    "Salamanders": "#1b5e20",
-    "Raven Guard": "#263238",
-    "Alpha Legion": "#00695c"
-};
 
 let playerColor = null;
 let playerLegionName = "";
 let playerUnits = [];
 let selectedUnitIndex = null;
 let enemies = [];
+let machinePos = {x: 700, y: -8000}; // very far → ~10 min walk
 let buttonActivated = false;
+let zoom = 1;
+let cameraX = 700;
+let cameraY = 450;
+let worldObjects = [];
+
+const LEGION_COLORS = {
+    "Dark Angels":"#2e7d32","Emperor's Children":"#7b1fa2","Iron Warriors":"#616161",
+    "White Scars":"#e0e0e0","Space Wolves":"#90caf9","Imperial Fists":"#ffeb3b",
+    "Night Lords":"#0d47a1","Blood Angels":"#c62828","Iron Hands":"#212121",
+    "World Eaters":"#b71c1c","Ultramarines":"#1976d2","Death Guard":"#558b2f",
+    "Thousand Sons":"#283593","Sons of Horus":"#2e7d32","Word Bearers":"#880e4f",
+    "Salamanders":"#1b5e20","Raven Guard":"#263238","Alpha Legion":"#00695c"
+};
+
+function generateMap() {
+    worldObjects = [];
+    let pathY = 900;
+    while (pathY > machinePos.y - 300) {
+        worldObjects.push({type:'path', x:500 + Math.sin(pathY/180)*220, y:pathY, w:440, h:120});
+        pathY -= 90;
+    }
+    for (let i = 0; i < 12; i++) {
+        let ry = Math.random()*10000 - 5000;
+        worldObjects.push({type:'river', x:150 + Math.random()*900, y:ry, w:1100, h:200});
+        if (Math.random() > 0.4) worldObjects.push({type:'bridge', x:600 + Math.random()*200, y:ry + 60});
+        if (Math.random() > 0.6) worldObjects.push({type:'boat', x:680 + Math.random()*300, y:ry + 100});
+    }
+    for (let i = 0; i < 120; i++) {
+        let oy = Math.random()*10000 - 5000;
+        let ox = Math.random()*1400;
+        let r = Math.random();
+        if (r < 0.25) worldObjects.push({type:'ruin', x:ox, y:oy, w:90+Math.random()*140, h:70+Math.random()*100, col:"#4a3728"});
+        else if (r < 0.4) worldObjects.push({type:'tree', x:ox, y:oy, size:35+Math.random()*45});
+        else if (r < 0.55) worldObjects.push({type:'rock', x:ox, y:oy, size:25+Math.random()*35});
+        else if (r < 0.7) worldObjects.push({type:'flower', x:ox, y:oy, count:5+Math.floor(Math.random()*8)});
+        else if (r < 0.85) worldObjects.push({type:'log', x:ox, y:oy});
+        else worldObjects.push({type:'stoneWall', x:ox, y:oy, len:180+Math.random()*220});
+    }
+}
 
 function startGame() {
-    const legion = document.getElementById('legionSelect').value;
-    if (!legion) {
-        alert("Pick a legion first!");
-        return;
-    }
+    const sel = document.getElementById('legionSelect').value;
+    if (!sel) return alert("Select your Legion!");
 
-    playerLegionName = legion;
-    playerColor = LEGION_COLORS[legion] || "#888888";
+    playerLegionName = sel;
+    playerColor = LEGION_COLORS[sel] || "#888888";
 
     document.getElementById('ui').style.display = 'none';
     document.getElementById('objective').style.display = 'block';
 
-    // Squad always in center of screen
+    generateMap();
+
     playerUnits = [];
-    for (let i = 0; i < 11; i++) {
+    for(let i = 0; i < 11; i++){
         playerUnits.push({
-            x: 700 + (i - 5) * 40,
-            y: 450 + Math.floor(i / 4 - 1) * 60,
-            destX: null,
-            destY: null,
-            hp: 100,
-            isLeader: i === 5
+            x: 700 + (i-5)*40,
+            y: 450 + Math.floor(i/4 -1)*60,
+            destX:null, destY:null,
+            hp:100,
+            isLeader: i===5
         });
     }
 
     spawnEnemies();
-    gameLoop();
+    requestAnimationFrame(gameLoop);
 }
 
-function drawGroundAndDebug() {
-    ctx.fillStyle = '#2e4d1a'; // dark green ground
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+function drawLegionnaire(x, y, size = 12, isLeader = false, zoomLevel) {
+    const s = size * (isLeader ? 1.5 : 1);
 
-    ctx.fillStyle = 'white';
-    ctx.font = '24px Arial';
-    ctx.fillText(playerLegionName + " squad here", 500, 80);
+    ctx.fillStyle = playerColor;
+    ctx.beginPath();
+    ctx.ellipse(x, y, s*0.9, s*1.1, 0, 0, Math.PI*2);
+    ctx.fill();
 
-    // Machine debug (far up, but visible in this version)
-    ctx.fillStyle = '#880000';
-    ctx.fillRect(650, 100, 100, 100);
-    ctx.fillStyle = 'white';
-    ctx.font = '20px Arial';
-    ctx.fillText("MACHINE", 670, 150);
+    ctx.fillStyle = "#eeeeee";
+    ctx.beginPath();
+    ctx.arc(x, y - s*0.6, s*0.55, 0, Math.PI*2);
+    ctx.fill();
+
+    ctx.fillStyle = playerColor;
+    ctx.beginPath();
+    ctx.arc(x - s*0.9, y - s*0.3, s*0.6, 0, Math.PI*2);
+    ctx.arc(x + s*0.9, y - s*0.3, s*0.6, 0, Math.PI*2);
+    ctx.fill();
+
+    if (zoomLevel > 1.4) {
+        ctx.fillStyle = "#ffffffaa";
+        ctx.font = `${s}px Arial`;
+        ctx.textAlign = "center";
+        ctx.textBaseline = "middle";
+        ctx.fillText("A", x, y); // placeholder legion symbol
+    }
+
+    if (isLeader) {
+        ctx.strokeStyle = "#ffff99";
+        ctx.lineWidth = 4 / zoomLevel;
+        ctx.beginPath();
+        ctx.arc(x, y, s*1.3, 0, Math.PI*2);
+        ctx.stroke();
+    }
 }
 
 function drawUnits() {
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 10 / zoom;
+    ctx.shadowOffsetX = 6 / zoom;
+    ctx.shadowOffsetY = 8 / zoom;
+
     playerUnits.forEach((u, i) => {
         if (u.hp <= 0) return;
-
-        const s = u.isLeader ? 20 : 14;
-
-        ctx.fillStyle = playerColor;
-        ctx.beginPath();
-        ctx.arc(u.x, u.y, s, 0, Math.PI * 2);
-        ctx.fill();
-
-        // Helmet
-        ctx.fillStyle = '#eeeeee';
-        ctx.beginPath();
-        ctx.arc(u.x, u.y - s * 0.5, s * 0.6, 0, Math.PI * 2);
-        ctx.fill();
-
-        if (u.isLeader) {
-            ctx.strokeStyle = "#ffff99";
-            ctx.lineWidth = 4;
-            ctx.beginPath();
-            ctx.arc(u.x, u.y, s * 1.3, 0, Math.PI * 2);
-            ctx.stroke();
-        }
+        drawLegionnaire(u.x, u.y, 12, u.isLeader, zoom);
 
         if (selectedUnitIndex === i) {
             ctx.strokeStyle = '#ffff00';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3 / zoom;
             ctx.beginPath();
-            ctx.arc(u.x, u.y, s * 1.2, 0, Math.PI * 2);
+            ctx.arc(u.x, u.y, u.isLeader ? 24 : 17, 0, Math.PI*2);
             ctx.stroke();
         }
     });
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
 }
 
 function drawEnemies() {
+    ctx.shadowColor = 'rgba(0,0,0,0.7)';
+    ctx.shadowBlur = 10 / zoom;
+    ctx.shadowOffsetX = 6 / zoom;
+    ctx.shadowOffsetY = 8 / zoom;
+
     enemies.forEach(e => {
         if (e.hp <= 0) return;
-        ctx.fillStyle = '#800000';
+        ctx.fillStyle = '#4a0000';
         ctx.beginPath();
-        ctx.arc(e.x, e.y, 15, 0, Math.PI * 2);
+        ctx.arc(e.x, e.y, 14, 0, Math.PI*2);
         ctx.fill();
+        if (zoom > 1.5) {
+            ctx.fillStyle = '#ff0000';
+            ctx.beginPath();
+            ctx.arc(e.x - 5, e.y - 5, 4, 0, Math.PI*2);
+            ctx.arc(e.x + 5, e.y - 5, 4, 0, Math.PI*2);
+            ctx.fill();
+        }
     });
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+}
+
+function drawWorld() {
+    ctx.fillStyle = '#2a3d1a';
+    ctx.fillRect(-2000, -10000, 5000, 12000);
+
+    ctx.shadowColor = 'rgba(0,0,0,0.5)';
+    ctx.shadowBlur = 6 / zoom;
+    ctx.shadowOffsetX = 4 / zoom;
+    ctx.shadowOffsetY = 5 / zoom;
+
+    worldObjects.forEach(obj => {
+        switch (obj.type) {
+            case 'path':
+                ctx.fillStyle = '#444';
+                ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                break;
+            case 'river':
+                ctx.fillStyle = '#1e4a7a';
+                ctx.fillRect(obj.x, obj.y, obj.w, obj.h);
+                ctx.fillStyle = '#2a6ca8';
+                ctx.fillRect(obj.x+20, obj.y+20, obj.w-40, obj.h-40);
+                break;
+            case 'bridge':
+                ctx.fillStyle = '#8b5a2b';
+                ctx.fillRect(obj.x-90, obj.y-25, 180, 50);
+                ctx.fillStyle = '#6d4c41';
+                for(let i=-80;i<=80;i+=35) ctx.fillRect(obj.x+i, obj.y-35, 25, 70);
+                break;
+            case 'boat':
+                ctx.fillStyle = '#6d4c41';
+                ctx.beginPath();
+                ctx.moveTo(obj.x-60,obj.y); ctx.lineTo(obj.x+60,obj.y); ctx.lineTo(obj.x+35,obj.y+50); ctx.lineTo(obj.x-35,obj.y+50);
+                ctx.closePath(); ctx.fill();
+                break;
+            case 'ruin':
+                ctx.fillStyle = obj.col;
+                ctx.fillRect(obj.x,obj.y,obj.w,obj.h);
+                ctx.fillStyle = '#2a2a2a';
+                ctx.fillRect(obj.x+12,obj.y+12,obj.w-24,obj.h-35);
+                break;
+            case 'tree':
+                ctx.fillStyle = '#3b2f2f';
+                ctx.fillRect(obj.x - obj.size/5, obj.y, obj.size/2.5, obj.size * 1.4);
+                ctx.fillStyle = '#1a5c1a';
+                ctx.beginPath();
+                ctx.arc(obj.x, obj.y - obj.size*0.6, obj.size*0.6, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(obj.x - obj.size*0.4, obj.y - obj.size*0.9, obj.size*0.4, 0, Math.PI*2);
+                ctx.fill();
+                ctx.beginPath();
+                ctx.arc(obj.x + obj.size*0.4, obj.y - obj.size*0.9, obj.size*0.4, 0, Math.PI*2);
+                ctx.fill();
+                break;
+            case 'rock':
+                ctx.fillStyle = '#5a5a5a';
+                ctx.beginPath();
+                ctx.moveTo(obj.x, obj.y);
+                ctx.lineTo(obj.x + obj.size/2, obj.y - obj.size);
+                ctx.lineTo(obj.x + obj.size, obj.y);
+                ctx.lineTo(obj.x + obj.size/2, obj.y + obj.size/2);
+                ctx.closePath();
+                ctx.fill();
+                break;
+            case 'flower':
+                for(let k=0;k<obj.count;k++){
+                    ctx.fillStyle = Math.random()>0.5 ? '#ff69b4' : '#7cfc00';
+                    ctx.beginPath();
+                    ctx.arc(obj.x + (Math.random()-0.5)*90, obj.y + (Math.random()-0.5)*50, 7,0,Math.PI*2);
+                    ctx.fill();
+                }
+                break;
+            case 'log':
+                for(let k=0;k<5;k++){
+                    ctx.fillStyle = '#8b4513';
+                    ctx.fillRect(obj.x + k*28, obj.y + Math.sin(k)*12, 70, 25);
+                }
+                break;
+            case 'stoneWall':
+                ctx.fillStyle = '#777';
+                ctx.fillRect(obj.x, obj.y, 50, obj.len);
+                ctx.fillStyle = '#666';
+                for(let k=0;k<obj.len;k+=35) ctx.fillRect(obj.x+8, obj.y+k+12, 34, 12);
+                break;
+        }
+    });
+
+    ctx.shadowBlur = 0;
+    ctx.shadowOffsetX = 0;
+    ctx.shadowOffsetY = 0;
+
+    // Grass when zoomed
+    if (zoom > 1.3) {
+        for (let i = 0; i < 1200 * zoom; i++) {
+            let gx = Math.random() * 3000 - 800;
+            let gy = Math.random() * 11000 - 5500;
+            ctx.strokeStyle = `rgba(0,${80 + Math.random()*80},0,${0.4 + Math.random()*0.4})`;
+            ctx.lineWidth = 1.2 / zoom;
+            ctx.beginPath();
+            ctx.moveTo(gx, gy);
+            ctx.lineTo(gx + (Math.random()-0.5)*6, gy - Math.random()*12 -6);
+            ctx.stroke();
+        }
+    }
+
+    // Machine
+    ctx.fillStyle = '#444466';
+    ctx.fillRect(machinePos.x-50, machinePos.y-50, 100, 100);
+    ctx.fillStyle = buttonActivated ? '#00aaff' : '#880000';
+    ctx.beginPath();
+    ctx.arc(machinePos.x, machinePos.y, 28, 0, Math.PI*2);
+    ctx.fill();
+
+    if (buttonActivated) {
+        // Blue beam
+        const grad = ctx.createLinearGradient(machinePos.x, machinePos.y, machinePos.x, machinePos.y - 2000);
+        grad.addColorStop(0, '#00ffff');
+        grad.addColorStop(0.3, '#00aaff');
+        grad.addColorStop(1, 'transparent');
+        ctx.strokeStyle = grad;
+        ctx.lineWidth = 40;
+        ctx.beginPath();
+        ctx.moveTo(machinePos.x, machinePos.y);
+        ctx.lineTo(machinePos.x, machinePos.y - 2000);
+        ctx.stroke();
+
+        // Glow
+        ctx.shadowColor = '#00ffff';
+        ctx.shadowBlur = 60;
+        ctx.beginPath();
+        ctx.arc(machinePos.x, machinePos.y, 80, 0, Math.PI*2);
+        ctx.fillStyle = 'rgba(0,255,255,0.3)';
+        ctx.fill();
+        ctx.shadowBlur = 0;
+    }
+}
+
+function drawFadeBehind() {
+    let minY = Infinity;
+    playerUnits.forEach(u => { if (u.hp > 0) minY = Math.min(minY, u.y); });
+    if (minY === Infinity) return;
+
+    const fadeStart = minY + 200;
+    const grad = ctx.createLinearGradient(0, fadeStart, 0, fadeStart + 600);
+    grad.addColorStop(0, 'rgba(0,0,0,0)');
+    grad.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(-2000, fadeStart, 5000, 1200);
 }
 
 function moveUnits() {
@@ -176,7 +375,7 @@ function moveUnits() {
             u.destX = u.destY = null;
             return;
         }
-        const speed = u.isLeader ? 3 : 2.5;
+        const speed = u.isLeader ? 2.6 : 2.2;
         u.x += dx / dist * speed;
         u.y += dy / dist * speed;
     });
@@ -185,27 +384,25 @@ function moveUnits() {
 function enemyAI() {
     enemies.forEach(e => {
         if (e.hp <= 0) return;
-        let closest = null;
-        let minDist = Infinity;
+        let target = null;
+        let minD = Infinity;
         playerUnits.forEach(p => {
             if (p.hp > 0) {
                 const d = Math.hypot(p.x - e.x, p.y - e.y);
-                if (d < minDist) {
-                    minDist = d;
-                    closest = p;
-                }
+                if (d < minD) { minD = d; target = p; }
             }
         });
-        if (closest) {
-            const dx = closest.x - e.x;
-            const dy = closest.y - e.y;
-            const dist = Math.hypot(dx, dy);
-            if (dist < 30) {
-                closest.hp -= 0.6;
-            } else {
-                e.x += dx / dist * 1.3;
-                e.y += dy / dist * 1.3;
-            }
+        if (!target) return;
+
+        const dx = target.x - e.x;
+        const dy = target.y - e.y;
+        const dist = Math.hypot(dx, dy);
+
+        if (dist < 28) {
+            target.hp -= 0.7;
+        } else {
+            e.x += dx / dist * 1.0; // slower enemies
+            e.y += dy / dist * 1.0;
         }
     });
 }
@@ -214,24 +411,21 @@ function playerCombat() {
     playerUnits.forEach(u => {
         if (u.hp <= 0) return;
         let closest = null;
-        let minDist = Infinity;
+        let minD = Infinity;
         enemies.forEach(e => {
             if (e.hp > 0) {
                 const d = Math.hypot(e.x - u.x, e.y - u.y);
-                if (d < 120 && d < minDist) {
-                    minDist = d;
-                    closest = e;
-                }
+                if (d < 150 && d < minD) { minD = d; closest = e; }
             }
         });
         if (closest) {
             ctx.strokeStyle = '#ff8800';
-            ctx.lineWidth = 3;
+            ctx.lineWidth = 3 / zoom;
             ctx.beginPath();
             ctx.moveTo(u.x, u.y);
             ctx.lineTo(closest.x, closest.y);
             ctx.stroke();
-            closest.hp -= 0.8;
+            closest.hp -= 0.6;
         }
     });
 }
@@ -239,52 +433,88 @@ function playerCombat() {
 function spawnEnemies() {
     setInterval(() => {
         if (buttonActivated) return;
-        const num = Math.floor(Math.random() * 6) + 4;
-        for (let i = 0; i < num; i++) {
+        const num = Math.floor(Math.random()*7) + 5;
+        const minY = Math.min(...playerUnits.filter(u=>u.hp>0).map(u=>u.y));
+        for(let i=0; i<num; i++){
             enemies.push({
-                x: Math.random() * canvas.width,
-                y: Math.random() * 100 - 150, // spawn off top
-                hp: 60 + Math.random() * 50
+                x: Math.random()*canvas.width,
+                y: minY - 400 - Math.random()*600,
+                hp: 70 + Math.random()*60
             });
         }
-    }, 7000);
+    }, 9000);
 }
 
 function gameLoop() {
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    ctx.clearRect(0,0,canvas.width,canvas.height);
 
-    drawGroundAndDebug();
+    ctx.save();
+    ctx.translate(canvas.width/2, canvas.height/2);
+    ctx.scale(zoom, zoom);
+    ctx.translate(-cameraX, -cameraY);
+
+    drawWorld();
     drawUnits();
     drawEnemies();
+    drawFadeBehind();
+
+    ctx.restore();
+
+    const leader = playerUnits.find(u => u.isLeader && u.hp > 0);
+    if (leader) {
+        cameraX += (leader.x - cameraX) * 0.08;
+        cameraY += (leader.y - cameraY) * 0.08;
+    }
 
     moveUnits();
     enemyAI();
     playerCombat();
 
+    if (buttonActivated) {
+        // keep beam visible
+        ctx.save();
+        ctx.translate(canvas.width/2, canvas.height/2);
+        ctx.scale(zoom, zoom);
+        ctx.translate(-cameraX, -cameraY);
+        ctx.strokeStyle = '#00ffff';
+        ctx.lineWidth = 40;
+        ctx.beginPath();
+        ctx.moveTo(machinePos.x, machinePos.y);
+        ctx.lineTo(machinePos.x, machinePos.y - 2000);
+        ctx.stroke();
+        ctx.restore();
+    }
+
     requestAnimationFrame(gameLoop);
 }
 
 canvas.addEventListener('click', e => {
+    if (buttonActivated) return;
     const rect = canvas.getBoundingClientRect();
-    const clickX = e.clientX - rect.left;
-    const clickY = e.clientY - rect.top;
+    const mx = e.clientX - rect.left;
+    const my = e.clientY - rect.top;
+    const wx = cameraX + (mx - canvas.width/2) / zoom;
+    const wy = cameraY + (my - canvas.height/2) / zoom;
 
     let clicked = null;
-    playerUnits.forEach((u, i) => {
-        if (Math.hypot(clickX - u.x, clickY - u.y) < 25) clicked = i;
+    playerUnits.forEach((u,i) => {
+        if (Math.hypot(wx - u.x, wy - u.y) < 20) clicked = i;
     });
 
     if (clicked !== null) {
         selectedUnitIndex = clicked;
-    } else if (selectedUnitIndex !== null) {
+        return;
+    }
+
+    if (selectedUnitIndex !== null) {
         const u = playerUnits[selectedUnitIndex];
-        u.destX = clickX;
-        u.destY = clickY;
+        u.destX = wx;
+        u.destY = wy;
         if (u.isLeader) {
             playerUnits.forEach(other => {
                 if (other !== u && other.hp > 0) {
-                    other.destX = clickX + (Math.random() - 0.5) * 100;
-                    other.destY = clickY + (Math.random() - 0.5) * 100;
+                    other.destX = wx + (Math.random()-0.5)*120;
+                    other.destY = wy + (Math.random()-0.5)*120;
                 }
             });
         }
@@ -292,7 +522,22 @@ canvas.addEventListener('click', e => {
     }
 });
 
-gameLoop(); // start loop early so canvas is active
+canvas.addEventListener('wheel', e => {
+    e.preventDefault();
+    const mx = e.clientX - canvas.getBoundingClientRect().left;
+    const my = e.clientY - canvas.getBoundingClientRect().top;
+
+    const wx = cameraX + (mx - canvas.width/2) / zoom;
+    const wy = cameraY + (my - canvas.height/2) / zoom;
+
+    zoom += e.deltaY * -0.0008;
+    zoom = Math.max(0.6, Math.min(3.5, zoom));
+
+    cameraX = wx - (mx - canvas.width/2) / zoom;
+    cameraY = wy - (my - canvas.height/2) / zoom;
+});
+
+drawGroundAndDebug = () => { /* not used anymore */ };
 </script>
 </body>
 </html>
