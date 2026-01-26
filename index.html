@@ -1,218 +1,189 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Warhammer Tabletop Style Game</title>
-    <style>
-        body {
-            background-color: #111;
-            color: #fff;
-            font-family: Arial, sans-serif;
-            text-align: center;
-            margin: 0;
-            padding: 0;
-        }
-        #menu {
-            position: absolute;
-            top: 10px;
-            left: 10px;
-            background: rgba(0, 0, 0, 0.7);
-            padding: 10px;
-            border: 1px solid #fff;
-        }
-        #canvas {
-            border: 2px solid #fff;
-            background: #222;
-        }
-        button, select {
-            margin: 5px;
-            padding: 5px;
-        }
-    </style>
+<meta charset="UTF-8">
+<title>2D Tabletop War Game</title>
+<style>
+  body {
+    margin: 0;
+    background: #111;
+    color: white;
+    font-family: Arial, sans-serif;
+  }
+
+  #menu {
+    position: absolute;
+    inset: 0;
+    background: radial-gradient(circle, #222, #000);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+  }
+
+  button {
+    padding: 12px 24px;
+    font-size: 18px;
+    margin-top: 20px;
+    cursor: pointer;
+  }
+
+  #ui {
+    padding: 8px;
+    background: #222;
+  }
+
+  canvas {
+    display: block;
+    background: #1a1a1a;
+  }
+</style>
 </head>
 <body>
-    <div id="menu">
-        <select id="legionSelect">
-            <option value="">Select Your Legion</option>
-            <option value="Dark Angels">Dark Angels (Green)</option>
-            <option value="Emperor's Children">Emperor's Children (Purple)</option>
-            <option value="Iron Warriors">Iron Warriors (Gray)</option>
-            <option value="White Scars">White Scars (White)</option>
-            <option value="Space Wolves">Space Wolves (LightBlue)</option>
-            <option value="Imperial Fists">Imperial Fists (Yellow)</option>
-            <option value="Night Lords">Night Lords (DarkBlue)</option>
-            <option value="Blood Angels">Blood Angels (Red)</option>
-            <option value="Iron Hands">Iron Hands (Black)</option>
-            <option value="World Eaters">World Eaters (DarkRed)</option>
-            <option value="Ultramarines">Ultramarines (Blue)</option>
-            <option value="Death Guard">Death Guard (Olive)</option>
-            <option value="Thousand Sons">Thousand Sons (RoyalBlue)</option>
-            <option value="Sons of Horus">Sons of Horus (SeaGreen)</option>
-            <option value="Word Bearers">Word Bearers (Crimson)</option>
-            <option value="Salamanders">Salamanders (DarkGreen)</option>
-            <option value="Raven Guard">Raven Guard (MidnightBlue)</option>
-            <option value="Alpha Legion">Alpha Legion (Teal)</option>
-        </select>
-        <button onclick="startGame()">Start Game</button>
-    </div>
-    <canvas id="canvas" width="800" height="600"></canvas>
 
-    <script>
-        // Define all legions with unique colors
-        const legions = [
-            { name: "Dark Angels", color: "green" },
-            { name: "Emperor's Children", color: "purple" },
-            { name: "Iron Warriors", color: "gray" },
-            { name: "White Scars", color: "white" },
-            { name: "Space Wolves", color: "lightblue" },
-            { name: "Imperial Fists", color: "yellow" },
-            { name: "Night Lords", color: "darkblue" },
-            { name: "Blood Angels", color: "red" },
-            { name: "Iron Hands", color: "black" },
-            { name: "World Eaters", color: "darkred" },
-            { name: "Ultramarines", color: "blue" },
-            { name: "Death Guard", color: "olive" },
-            { name: "Thousand Sons", color: "royalblue" },
-            { name: "Sons of Horus", color: "seagreen" },
-            { name: "Word Bearers", color: "crimson" },
-            { name: "Salamanders", color: "darkgreen" },
-            { name: "Raven Guard", color: "midnightblue" },
-            { name: "Alpha Legion", color: "teal" }
-        ];
+<div id="menu">
+  <h1>⚔️ Tabletop War: 2D ⚔️</h1>
+  <p>Warhammer-style turn based strategy</p>
+  <button onclick="startGame()">Start Game</button>
+</div>
 
-        // Define villains (Traitor Primarchs and key figures as examples)
-        const villains = [
-            { name: "Horus", color: "black" },
-            { name: "Angron", color: "darkred" },
-            { name: "Magnus", color: "magenta" },
-            { name: "Mortarion", color: "darkolivegreen" },
-            { name: "Fulgrim", color: "violet" },
-            { name: "Perturabo", color: "slategray" },
-            { name: "Lorgar", color: "maroon" },
-            { name: "Konrad Curze", color: "navy" },
-            { name: "Alpharius", color: "darkcyan" },
-            { name: "Abaddon", color: "dimgray" },
-            { name: "Kharn", color: "firebrick" },
-            { name: "Ahriman", color: "indigo" },
-            { name: "Lucius", color: "orchid" },
-            { name: "Typhus", color: "darkkhaki" },
-            { name: "Fabius Bile", color: "plum" }
-        ];
+<div id="ui" style="display:none;">
+  Turn: <span id="turnText"></span>
+</div>
 
-        // Define towns/cities on the map
-        const towns = [
-            { name: "Terra", x: 100, y: 100 },
-            { name: "Macragge", x: 200, y: 300 },
-            { name: "Calth", x: 400, y: 150 },
-            { name: "Nocturne", x: 600, y: 400 },
-            { name: "Fenris", x: 300, y: 500 },
-            { name: "Baal", x: 500, y: 200 },
-            { name: "Deliverance", x: 700, y: 100 },
-            { name: "Olympia", x: 150, y: 400 },
-            { name: "Prospero", x: 350, y: 250 },
-            { name: "Barbarus", x: 550, y: 350 }
-        ];
+<canvas id="game" width="800" height="600"></canvas>
 
-        // Game state
-        let selectedLegion = null;
-        let unitPositions = {}; // To store positions of legions and villains
+<script>
+const canvas = document.getElementById("game");
+const ctx = canvas.getContext("2d");
+const tileSize = 40;
+const cols = 20;
+const rows = 15;
 
-        function startGame() {
-            const canvas = document.getElementById('canvas');
-            const ctx = canvas.getContext('2d');
+let currentTurn = 0;
+let selectedUnit = null;
 
-            selectedLegion = document.getElementById('legionSelect').value;
-            if (!selectedLegion) {
-                alert('Please select a legion!');
-                return;
-            }
+const legions = [
+  { name: "Imperium", color: "#3a7bd5", villain: "Warmaster" },
+  { name: "Chaos", color: "#b00020", villain: "Dark Lord" },
+  { name: "Orks", color: "#2ecc71", villain: "Waaagh Boss" },
+  { name: "Eldar", color: "#9b59b6", villain: "Farseer" },
+  { name: "Necrons", color: "#bdc3c7", villain: "Overlord" },
+  { name: "Tyranids", color: "#e67e22", villain: "Hive Mind" }
+];
 
-            // Clear canvas
-            ctx.clearRect(0, 0, canvas.width, canvas.height);
+let units = [];
+let towns = [];
 
-            // Draw map background (simple grid)
-            ctx.strokeStyle = '#555';
-            const gridSize = 50;
-            for (let x = 0; x <= canvas.width; x += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(x, 0);
-                ctx.lineTo(x, canvas.height);
-                ctx.stroke();
-            }
-            for (let y = 0; y <= canvas.height; y += gridSize) {
-                ctx.beginPath();
-                ctx.moveTo(0, y);
-                ctx.lineTo(canvas.width, y);
-                ctx.stroke();
-            }
+function startGame() {
+  document.getElementById("menu").style.display = "none";
+  document.getElementById("ui").style.display = "block";
+  initGame();
+  requestAnimationFrame(loop);
+}
 
-            // Draw towns/cities
-            towns.forEach(town => {
-                ctx.fillStyle = 'brown';
-                ctx.fillRect(town.x - 20, town.y - 20, 40, 40);
-                ctx.fillStyle = 'white';
-                ctx.font = '12px Arial';
-                ctx.fillText(town.name, town.x - 20, town.y - 25);
-            });
+function initGame() {
+  units = [];
+  towns = [];
 
-            // Place legions and villains randomly on the map
-            unitPositions = {};
-            [...legions, ...villains].forEach(unit => {
-                const x = Math.floor(Math.random() * (canvas.width - 50)) + 25;
-                const y = Math.floor(Math.random() * (canvas.height - 50)) + 25;
-                unitPositions[unit.name] = { x, y };
-                drawUnit(ctx, unit, x, y);
-            });
+  legions.forEach((legion, i) => {
+    units.push({
+      x: i * 3 + 1,
+      y: i * 2 + 1,
+      hp: 10,
+      legion: legion
+    });
+  });
 
-            // Add click event for simple interaction (move selected legion's unit)
-            canvas.onclick = (e) => {
-                if (selectedLegion) {
-                    const rect = canvas.getBoundingClientRect();
-                    const clickX = e.clientX - rect.left;
-                    const clickY = e.clientY - rect.top;
-                    // Move selected legion to click position (simple tabletop move simulation)
-                    unitPositions[selectedLegion] = { x: clickX, y: clickY };
-                    // Redraw everything
-                    ctx.clearRect(0, 0, canvas.width, canvas.height);
-                    // Redraw grid
-                    for (let x = 0; x <= canvas.width; x += gridSize) {
-                        ctx.beginPath();
-                        ctx.moveTo(x, 0);
-                        ctx.lineTo(x, canvas.height);
-                        ctx.stroke();
-                    }
-                    for (let y = 0; y <= canvas.height; y += gridSize) {
-                        ctx.beginPath();
-                        ctx.moveTo(0, y);
-                        ctx.lineTo(canvas.width, y);
-                        ctx.stroke();
-                    }
-                    // Redraw towns
-                    towns.forEach(town => {
-                        ctx.fillStyle = 'brown';
-                        ctx.fillRect(town.x - 20, town.y - 20, 40, 40);
-                        ctx.fillStyle = 'white';
-                        ctx.fillText(town.name, town.x - 20, town.y - 25);
-                    });
-                    // Redraw units
-                    [...legions, ...villains].forEach(unit => {
-                        const pos = unitPositions[unit.name];
-                        drawUnit(ctx, unit, pos.x, pos.y);
-                    });
-                }
-            };
-        }
+  towns.push(
+    { x: 8, y: 7, owner: null },
+    { x: 14, y: 10, owner: null },
+    { x: 3, y: 11, owner: null }
+  );
+}
 
-        function drawUnit(ctx, unit, x, y) {
-            ctx.fillStyle = unit.color;
-            ctx.beginPath();
-            ctx.arc(x, y, 10, 0, 2 * Math.PI);
-            ctx.fill();
-            ctx.fillStyle = 'white';
-            ctx.font = '10px Arial';
-            ctx.fillText(unit.name, x - 20, y - 15);
-        }
-    </script>
+canvas.addEventListener("click", e => {
+  const rect = canvas.getBoundingClientRect();
+  const x = Math.floor((e.clientX - rect.left) / tileSize);
+  const y = Math.floor((e.clientY - rect.top) / tileSize);
+
+  const clickedUnit = units.find(u => u.x === x && u.y === y);
+
+  if (selectedUnit && !clickedUnit) {
+    selectedUnit.x = x;
+    selectedUnit.y = y;
+    nextTurn();
+    selectedUnit = null;
+  } else {
+    selectedUnit = clickedUnit;
+  }
+
+  towns.forEach(t => {
+    if (t.x === x && t.y === y && selectedUnit) {
+      t.owner = selectedUnit.legion;
+    }
+  });
+});
+
+function nextTurn() {
+  currentTurn = (currentTurn + 1) % legions.length;
+}
+
+function drawGrid() {
+  ctx.strokeStyle = "#333";
+  for (let x = 0; x <= cols; x++) {
+    ctx.beginPath();
+    ctx.moveTo(x * tileSize, 0);
+    ctx.lineTo(x * tileSize, rows * tileSize);
+    ctx.stroke();
+  }
+  for (let y = 0; y <= rows; y++) {
+    ctx.beginPath();
+    ctx.moveTo(0, y * tileSize);
+    ctx.lineTo(cols * tileSize, y * tileSize);
+    ctx.stroke();
+  }
+}
+
+function drawUnits() {
+  units.forEach(u => {
+    ctx.fillStyle = u.legion.color;
+    ctx.fillRect(
+      u.x * tileSize + 5,
+      u.y * tileSize + 5,
+      tileSize - 10,
+      tileSize - 10
+    );
+  });
+}
+
+function drawTowns() {
+  towns.forEach(t => {
+    ctx.fillStyle = t.owner ? t.owner.color : "#666";
+    ctx.beginPath();
+    ctx.arc(
+      t.x * tileSize + tileSize / 2,
+      t.y * tileSize + tileSize / 2,
+      10,
+      0,
+      Math.PI * 2
+    );
+    ctx.fill();
+  });
+}
+
+function loop() {
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  drawGrid();
+  drawTowns();
+  drawUnits();
+
+  document.getElementById("turnText").textContent =
+    legions[currentTurn].name + " (" + legions[currentTurn].villain + ")";
+
+  requestAnimationFrame(loop);
+}
+</script>
+
 </body>
 </html>
