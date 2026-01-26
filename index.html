@@ -2,188 +2,248 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>2D Tabletop War Game</title>
+<title>Horus Heresy - Tabletop Skirmish</title>
 <style>
-  body {
-    margin: 0;
-    background: #111;
-    color: white;
-    font-family: Arial, sans-serif;
-  }
-
-  #menu {
-    position: absolute;
-    inset: 0;
-    background: radial-gradient(circle, #222, #000);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    justify-content: center;
-  }
-
-  button {
-    padding: 12px 24px;
-    font-size: 18px;
-    margin-top: 20px;
-    cursor: pointer;
-  }
-
-  #ui {
-    padding: 8px;
-    background: #222;
-  }
-
-  canvas {
-    display: block;
-    background: #1a1a1a;
-  }
+    body {
+        margin:0; padding:0; background:#000; color:#eee; font-family:Arial, sans-serif; overflow:hidden;
+    }
+    #ui {
+        position: absolute; top:10px; left:10px; background:rgba(0,0,0,0.75);
+        padding:15px; border:1px solid #444; border-radius:8px; z-index:10; max-width:320px;
+    }
+    #canvas {
+        display:block; background:#000;
+    }
+    button, select {
+        padding:8px 12px; margin:6px 4px 6px 0; font-size:14px; background:#222; color:#eee;
+        border:1px solid #555; border-radius:4px; cursor:pointer;
+    }
+    button:hover { background:#444; }
+    #story {
+        position:absolute; inset:0; background:rgba(0,0,0,0.9); z-index:20;
+        display:flex; flex-direction:column; justify-content:center; align-items:center;
+        padding:40px; text-align:center; font-size:18px; line-height:1.5;
+    }
+    #story button { font-size:20px; padding:12px 30px; margin-top:30px; }
 </style>
 </head>
 <body>
 
-<div id="menu">
-  <h1>⚔️ Tabletop War: 2D ⚔️</h1>
-  <p>Warhammer-style turn based strategy</p>
-  <button onclick="startGame()">Start Game</button>
+<div id="story">
+    <h1>The Horus Heresy – 31st Millennium</h1>
+    <p>The Emperor's dream is shattered.<br>
+    Half the Legions have turned traitor.<br>
+    Brother fights brother across the galaxy.<br><br>
+    You command one of the Space Marine Legions.<br>
+    Will you defend the Imperium… or tear it apart?</p>
+    <button onclick="document.getElementById('story').style.display='none'">Begin Campaign</button>
 </div>
 
-<div id="ui" style="display:none;">
-  Turn: <span id="turnText"></span>
+<div id="ui">
+    <label>Choose your Legion:</label><br>
+    <select id="legionSelect">
+        <option value="">— Select Legion —</option>
+        <option value="Dark Angels">I – Dark Angels</option>
+        <option value="Emperor's Children">III – Emperor's Children</option>
+        <option value="Iron Warriors">IV – Iron Warriors</option>
+        <option value="White Scars">V – White Scars</option>
+        <option value="Space Wolves">VI – Space Wolves</option>
+        <option value="Imperial Fists">VII – Imperial Fists</option>
+        <option value="Night Lords">VIII – Night Lords</option>
+        <option value="Blood Angels">IX – Blood Angels</option>
+        <option value="Iron Hands">X – Iron Hands</option>
+        <option value="World Eaters">XII – World Eaters</option>
+        <option value="Ultramarines">XIII – Ultramarines</option>
+        <option value="Death Guard">XIV – Death Guard</option>
+        <option value="Thousand Sons">XV – Thousand Sons</option>
+        <option value="Luna Wolves">XVI – Sons of Horus</option>
+        <option value="Word Bearers">XVII – Word Bearers</option>
+        <option value="Salamanders">XVIII – Salamanders</option>
+        <option value="Raven Guard">XIX – Raven Guard</option>
+        <option value="Alpha Legion">XX – Alpha Legion</option>
+    </select><br>
+    <button onclick="startGame()">Start Campaign</button>
 </div>
 
-<canvas id="game" width="800" height="600"></canvas>
+<canvas id="canvas" width="1200" height="700"></canvas>
 
 <script>
-const canvas = document.getElementById("game");
-const ctx = canvas.getContext("2d");
-const tileSize = 40;
-const cols = 20;
-const rows = 15;
+// ────────────────────────────────────────────────
+const canvas = document.getElementById('canvas');
+const ctx = canvas.getContext('2d');
 
-let currentTurn = 0;
-let selectedUnit = null;
-
+// LEGIONS – color + Roman numeral
 const legions = [
-  { name: "Imperium", color: "#3a7bd5", villain: "Warmaster" },
-  { name: "Chaos", color: "#b00020", villain: "Dark Lord" },
-  { name: "Orks", color: "#2ecc71", villain: "Waaagh Boss" },
-  { name: "Eldar", color: "#9b59b6", villain: "Farseer" },
-  { name: "Necrons", color: "#bdc3c7", villain: "Overlord" },
-  { name: "Tyranids", color: "#e67e22", villain: "Hive Mind" }
+    {name:"Dark Angels", roman:"I", color:"#2e7d32"},
+    {name:"Emperor's Children", roman:"III", color:"#7b1fa2"},
+    {name:"Iron Warriors", roman:"IV", color:"#616161"},
+    {name:"White Scars", roman:"V", color:"#e0e0e0"},
+    {name:"Space Wolves", roman:"VI", color:"#90caf9"},
+    {name:"Imperial Fists", roman:"VII", color:"#ffeb3b"},
+    {name:"Night Lords", roman:"VIII", color:"#0d47a1"},
+    {name:"Blood Angels", roman:"IX", color:"#c62828"},
+    {name:"Iron Hands", roman:"X", color:"#212121"},
+    {name:"World Eaters", roman:"XII", color:"#b71c1c"},
+    {name:"Ultramarines", roman:"XIII", color:"#1976d2"},
+    {name:"Death Guard", roman:"XIV", color:"#558b2f"},
+    {name:"Thousand Sons", roman:"XV", color:"#283593"},
+    {name:"Sons of Horus", roman:"XVI", color:"#2e7d32"},
+    {name:"Word Bearers", roman:"XVII", color:"#880e4f"},
+    {name:"Salamanders", roman:"XVIII", color:"#1b5e20"},
+    {name:"Raven Guard", roman:"XIX", color:"#263238"},
+    {name:"Alpha Legion", roman:"XX", color:"#00695c"}
 ];
 
-let units = [];
-let towns = [];
+// TRAITORS / VILLAINS
+const villains = [
+    {name:"Horus", color:"#000", type:"primarch"},
+    {name:"Fulgrim", color:"#d500f9", type:"primarch"},
+    {name:"Perturabo", color:"#424242", type:"primarch"},
+    {name:"Konrad Curze", color:"#0d47a1", type:"primarch"},
+    {name:"Angron", color:"#d32f2f", type:"primarch"},
+    {name:"Magnus", color:"#6200ea", type:"primarch"},
+    {name:"Mortarion", color:"#33691e", type:"primarch"},
+    {name:"Lorgar", color:"#880e4f", type:"primarch"},
+    {name:"Alpharius Omegon", color:"#004d40", type:"primarch"},
+    {name:"Abaddon", color:"#212121", type:"champion"},
+    {name:"Khârn", color:"#b71c1c", type:"champion"},
+    {name:"Lucius", color:"#d81b60", type:"champion"},
+    {name:"Ahriman", color:"#4527a0", type:"champion"},
+    {name:"Typhus", color:"#33691e", type:"champion"}
+];
+
+// CITIES / WORLDS
+const locations = [
+    {name:"Terra", x:150, y:120},
+    {name:"Mars", x:220, y:180},
+    {name:"Macragge", x:380, y:320},
+    {name:"Calth", x:460, y:200},
+    {name:"Fenris", x:280, y:520},
+    {name:"Baal", x:680, y:180},
+    {name:"Nocturne", x:820, y:480},
+    {name:"Deliverance", x:900, y:140},
+    {name:"Olympia", x:180, y:420},
+    {name:"Prospero", x:520, y:280},
+    {name:"Istvaan V", x:640, y:360}
+];
+
+let playerLegion = null;
+let playerPos = {x:600, y:350}; // starting position of YOUR legion
 
 function startGame() {
-  document.getElementById("menu").style.display = "none";
-  document.getElementById("ui").style.display = "block";
-  initGame();
-  requestAnimationFrame(loop);
-}
-
-function initGame() {
-  units = [];
-  towns = [];
-
-  legions.forEach((legion, i) => {
-    units.push({
-      x: i * 3 + 1,
-      y: i * 2 + 1,
-      hp: 10,
-      legion: legion
-    });
-  });
-
-  towns.push(
-    { x: 8, y: 7, owner: null },
-    { x: 14, y: 10, owner: null },
-    { x: 3, y: 11, owner: null }
-  );
-}
-
-canvas.addEventListener("click", e => {
-  const rect = canvas.getBoundingClientRect();
-  const x = Math.floor((e.clientX - rect.left) / tileSize);
-  const y = Math.floor((e.clientY - rect.top) / tileSize);
-
-  const clickedUnit = units.find(u => u.x === x && u.y === y);
-
-  if (selectedUnit && !clickedUnit) {
-    selectedUnit.x = x;
-    selectedUnit.y = y;
-    nextTurn();
-    selectedUnit = null;
-  } else {
-    selectedUnit = clickedUnit;
-  }
-
-  towns.forEach(t => {
-    if (t.x === x && t.y === y && selectedUnit) {
-      t.owner = selectedUnit.legion;
+    const select = document.getElementById('legionSelect');
+    if (!select.value) {
+        alert("Select your Legion first!");
+        return;
     }
-  });
+    playerLegion = legions.find(l => l.name === select.value);
+    document.getElementById('ui').style.display = 'none';
+    drawAll();
+}
+
+function drawAll() {
+    ctx.fillStyle = "#0a0a1f";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // starry background
+    ctx.fillStyle = "#fff";
+    for(let i=0;i<300;i++){
+        let x = Math.random()*canvas.width;
+        let y = Math.random()*canvas.height;
+        let size = Math.random()*1.5+0.5;
+        ctx.fillRect(x,y,size,size);
+    }
+
+    // grid
+    ctx.strokeStyle = "rgba(80,80,120,0.25)";
+    ctx.lineWidth = 1;
+    for(let x=0; x<canvas.width; x+=40){
+        ctx.beginPath(); ctx.moveTo(x,0); ctx.lineTo(x,canvas.height); ctx.stroke();
+    }
+    for(let y=0; y<canvas.height; y+=40){
+        ctx.beginPath(); ctx.moveTo(0,y); ctx.lineTo(canvas.width,y); ctx.stroke();
+    }
+
+    // locations (planets/cities)
+    locations.forEach(loc => {
+        ctx.fillStyle = "#5d4037";
+        ctx.beginPath();
+        ctx.arc(loc.x, loc.y, 18, 0, Math.PI*2);
+        ctx.fill();
+        ctx.strokeStyle = "#8d6e63";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+
+        ctx.fillStyle = "#fff";
+        ctx.font = "13px Arial";
+        ctx.textAlign = "center";
+        ctx.fillText(loc.name, loc.x, loc.y + 38);
+    });
+
+    // all other legions (smaller)
+    legions.forEach(leg => {
+        if (leg.name === playerLegion?.name) return; // skip player
+        let x = Math.random() * (canvas.width - 100) + 50;
+        let y = Math.random() * (canvas.height - 100) + 50;
+        drawUnit(x, y, leg.color, leg.roman + " – " + leg.name, 9, false);
+    });
+
+    // villains (medium size, red glow)
+    villains.forEach(v => {
+        let x = Math.random() * (canvas.width - 200) + 100;
+        let y = Math.random() * (canvas.height - 200) + 100;
+        drawUnit(x, y, v.color, v.name, 14, true);
+    });
+
+    // PLAYER legion – big & glowing
+    if (playerLegion) {
+        drawUnit(playerPos.x, playerPos.y, playerLegion.color, "YOU – " + playerLegion.roman + " – " + playerLegion.name, 22, false, true);
+    }
+}
+
+function drawUnit(x, y, color, label, radius, isVillain = false, isPlayer = false) {
+    // glow
+    if (isPlayer) {
+        let grad = ctx.createRadialGradient(x,y,0, x,y,radius*2.5);
+        grad.addColorStop(0, color + "88");
+        grad.addColorStop(1, "transparent");
+        ctx.fillStyle = grad;
+        ctx.beginPath();
+        ctx.arc(x,y,radius*2.5,0,Math.PI*2);
+        ctx.fill();
+    }
+
+    ctx.fillStyle = color;
+    ctx.beginPath();
+    ctx.arc(x, y, radius, 0, Math.PI*2);
+    ctx.fill();
+
+    if (isVillain) {
+        ctx.strokeStyle = "#ff1744";
+        ctx.lineWidth = 3;
+        ctx.stroke();
+    }
+
+    ctx.fillStyle = "#fff";
+    ctx.font = (radius < 12 ? "11px" : "14px") + " Arial";
+    ctx.textAlign = "center";
+    ctx.shadowColor = "black";
+    ctx.shadowBlur = 4;
+    ctx.fillText(label, x, y + radius + 18);
+    ctx.shadowBlur = 0;
+}
+
+// Click to move YOUR legion
+canvas.addEventListener('click', e => {
+    if (!playerLegion) return;
+    const rect = canvas.getBoundingClientRect();
+    playerPos.x = e.clientX - rect.left;
+    playerPos.y = e.clientY - rect.top;
+    drawAll();
 });
 
-function nextTurn() {
-  currentTurn = (currentTurn + 1) % legions.length;
-}
-
-function drawGrid() {
-  ctx.strokeStyle = "#333";
-  for (let x = 0; x <= cols; x++) {
-    ctx.beginPath();
-    ctx.moveTo(x * tileSize, 0);
-    ctx.lineTo(x * tileSize, rows * tileSize);
-    ctx.stroke();
-  }
-  for (let y = 0; y <= rows; y++) {
-    ctx.beginPath();
-    ctx.moveTo(0, y * tileSize);
-    ctx.lineTo(cols * tileSize, y * tileSize);
-    ctx.stroke();
-  }
-}
-
-function drawUnits() {
-  units.forEach(u => {
-    ctx.fillStyle = u.legion.color;
-    ctx.fillRect(
-      u.x * tileSize + 5,
-      u.y * tileSize + 5,
-      tileSize - 10,
-      tileSize - 10
-    );
-  });
-}
-
-function drawTowns() {
-  towns.forEach(t => {
-    ctx.fillStyle = t.owner ? t.owner.color : "#666";
-    ctx.beginPath();
-    ctx.arc(
-      t.x * tileSize + tileSize / 2,
-      t.y * tileSize + tileSize / 2,
-      10,
-      0,
-      Math.PI * 2
-    );
-    ctx.fill();
-  });
-}
-
-function loop() {
-  ctx.clearRect(0, 0, canvas.width, canvas.height);
-  drawGrid();
-  drawTowns();
-  drawUnits();
-
-  document.getElementById("turnText").textContent =
-    legions[currentTurn].name + " (" + legions[currentTurn].villain + ")";
-
-  requestAnimationFrame(loop);
-}
+// initial draw (shows map even before choosing legion)
+drawAll();
 </script>
-
 </body>
 </html>
