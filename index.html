@@ -2,243 +2,133 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Horus Heresy – Legion Survival</title>
+<title>Legion Control – Pixel Test</title>
 <style>
-    body {
-        margin:0;
-        background:#000;
-        color:#eee;
-        font-family:Arial, sans-serif;
-        overflow:hidden;
-    }
-    #ui {
-        position:absolute;
-        top:10px;
-        left:10px;
-        background:rgba(0,0,0,0.85);
-        padding:15px;
-        border:1px solid #444;
-        z-index:10;
-    }
-    canvas {
-        image-rendering: pixelated;
-        image-rendering: crisp-edges;
-        cursor: crosshair;
-    }
-    button, select {
-        margin-top:6px;
-        padding:8px 12px;
-        font-size:14px;
-        background:#222;
-        color:#eee;
-        border:1px solid #555;
-        border-radius:4px;
-    }
+body {
+    margin:0;
+    background:black;
+    overflow:hidden;
+    color:white;
+    font-family:Arial;
+}
+#ui {
+    position:absolute;
+    top:10px;
+    left:10px;
+    background:rgba(0,0,0,.8);
+    padding:10px;
+    z-index:10;
+}
+canvas {
+    image-rendering: pixelated;
+    image-rendering: crisp-edges;
+}
 </style>
 </head>
 <body>
 
 <div id="ui">
-    <select id="legionSelect">
-        <option value="">— Select Legion —</option>
-        <option>Dark Angels</option>
-        <option>Emperor's Children</option>
-        <option>Iron Warriors</option>
-        <option>White Scars</option>
-        <option>Space Wolves</option>
-        <option>Imperial Fists</option>
-        <option>Night Lords</option>
-        <option>Blood Angels</option>
-        <option>Iron Hands</option>
-        <option>World Eaters</option>
-        <option>Ultramarines</option>
-        <option>Death Guard</option>
-        <option>Thousand Sons</option>
-        <option>Sons of Horus</option>
-        <option>Word Bearers</option>
-        <option>Salamanders</option>
-        <option>Raven Guard</option>
-        <option>Alpha Legion</option>
-    </select><br>
-    <button onclick="startGame()">Deploy</button>
-    <div style="font-size:12px;opacity:.7">
-        Click unit → WASD to move<br>
-        ESC to deselect
-    </div>
+<select id="legion">
+<option value="">— Select Legion —</option>
+<option>Dark Angels</option>
+<option>Emperor's Children</option>
+<option>Iron Warriors</option>
+<option>White Scars</option>
+<option>Space Wolves</option>
+<option>Imperial Fists</option>
+<option>Night Lords</option>
+<option>Blood Angels</option>
+<option>Iron Hands</option>
+<option>World Eaters</option>
+<option>Ultramarines</option>
+<option>Death Guard</option>
+<option>Thousand Sons</option>
+<option>Sons of Horus</option>
+<option>Word Bearers</option>
+<option>Salamanders</option>
+<option>Raven Guard</option>
+<option>Alpha Legion</option>
+</select>
+<button onclick="start()">Deploy</button>
+<p style="font-size:12px">Click marine → WASD</p>
 </div>
 
-<!-- INTERNAL RESOLUTION LOW, DISPLAY LARGE -->
-<canvas id="canvas" width="700" height="450" style="width:1400px;height:900px"></canvas>
+<!-- LOW INTERNAL RES, SCALED UP -->
+<canvas id="c" width="320" height="180"
+style="width:1280px;height:720px"></canvas>
 
 <script>
-const canvas = document.getElementById("canvas");
+const canvas = document.getElementById("c");
 const ctx = canvas.getContext("2d");
 ctx.imageSmoothingEnabled = false;
 
-let zoom = 1;
-let cameraX = 700;
-let cameraY = 450;
+let units = [];
+let selected = null;
 
-let playerUnits = [];
-let selectedUnitIndex = null;
-let enemies = [];
+const keys = { w:0,a:0,s:0,d:0 };
 
-const keys = { w:false, a:false, s:false, d:false };
-
-window.addEventListener("keydown", e => {
+onkeydown = e => {
     const k = e.key.toLowerCase();
-    if (k in keys) keys[k] = true;
-    if (e.key === "Escape") selectedUnitIndex = null;
-});
-window.addEventListener("keyup", e => {
+    if (k in keys) keys[k] = 1;
+};
+onkeyup = e => {
     const k = e.key.toLowerCase();
-    if (k in keys) keys[k] = false;
-});
+    if (k in keys) keys[k] = 0;
+};
 
-function startGame() {
-    document.getElementById("ui").style.display = "none";
-
-    playerUnits = [];
-    for (let i=0;i<11;i++) {
-        playerUnits.push({
-            x:700+(i-5)*30,
-            y:450+Math.floor(i/4)*25,
-            hp:100,
-            isLeader:i===5
+function start() {
+    document.getElementById("ui").style.display="none";
+    units = [];
+    for (let i=0;i<8;i++) {
+        units.push({
+            x: 60 + i*20,
+            y: 90,
+            leader: i===4
         });
     }
-
-    spawnEnemies();
-    requestAnimationFrame(gameLoop);
+    loop();
 }
 
-function drawUnit(u, selected=false) {
-    const x = Math.round(u.x);
-    const y = Math.round(u.y);
-    const s = u.isLeader ? 7 : 5;
+canvas.onclick = e => {
+    const r = canvas.getBoundingClientRect();
+    const mx = (e.clientX - r.left) * (canvas.width / r.width);
+    const my = (e.clientY - r.top) * (canvas.height / r.height);
 
-    ctx.fillStyle = "#ccc";
-    ctx.fillRect(x-s,y-s,s*2,s*2);
+    selected = null;
+    units.forEach((u,i)=>{
+        if (Math.abs(mx-u.x)<6 && Math.abs(my-u.y)<6)
+            selected=i;
+    });
+};
 
-    if (selected) {
-        ctx.strokeStyle="#ffff00";
-        ctx.lineWidth=1;
-        ctx.strokeRect(x-s-2,y-s-2,s*2+4,s*2+4);
-    }
+function update() {
+    if (selected===null) return;
+    const u = units[selected];
+    if (keys.w) u.y -= 1;
+    if (keys.s) u.y += 1;
+    if (keys.a) u.x -= 1;
+    if (keys.d) u.x += 1;
 }
 
-function drawEnemy(e) {
-    ctx.fillStyle="#800";
-    ctx.fillRect(Math.round(e.x-4),Math.round(e.y-4),8,8);
-}
+function draw() {
+    ctx.fillStyle="#203b1f";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
 
-function keyboardMove() {
-    if (selectedUnitIndex === null) return;
-    const u = playerUnits[selectedUnitIndex];
-    if (!u || u.hp<=0) return;
+    units.forEach((u,i)=>{
+        ctx.fillStyle = u.leader ? "#ffff55" : "#cccccc";
+        ctx.fillRect(u.x-3,u.y-3,6,6);
 
-    let dx=0,dy=0;
-    if (keys.w) dy--;
-    if (keys.s) dy++;
-    if (keys.a) dx--;
-    if (keys.d) dx++;
-
-    if (dx===0 && dy===0) return;
-
-    const len = Math.hypot(dx,dy);
-    dx/=len; dy/=len;
-
-    const speed = u.isLeader ? 2.4 : 2.0;
-    u.x += dx*speed;
-    u.y += dy*speed;
-
-    if (u.isLeader) {
-        playerUnits.forEach(o=>{
-            if(o!==u){
-                o.x += dx*speed*0.7;
-                o.y += dy*speed*0.7;
-            }
-        });
-    }
-}
-
-function enemyAI() {
-    enemies.forEach(e=>{
-        let target=null,min=9999;
-        playerUnits.forEach(p=>{
-            const d=Math.hypot(p.x-e.x,p.y-e.y);
-            if(d<min){min=d;target=p;}
-        });
-        if(!target) return;
-        if(min<12) target.hp-=0.25;
-        else {
-            e.x+=(target.x-e.x)*0.01;
-            e.y+=(target.y-e.y)*0.01;
+        if (i===selected) {
+            ctx.strokeStyle="#00ffff";
+            ctx.strokeRect(u.x-5,u.y-5,10,10);
         }
     });
 }
 
-function spawnEnemies() {
-    setInterval(()=>{
-        enemies.push({
-            x:Math.random()*1400,
-            y:cameraY-300,
-            hp:60
-        });
-    },5000);
-}
-
-canvas.addEventListener("click",e=>{
-    const rect=canvas.getBoundingClientRect();
-    const mx=(e.clientX-rect.left)/2;
-    const my=(e.clientY-rect.top)/2;
-
-    const wx=cameraX+(mx-canvas.width/2);
-    const wy=cameraY+(my-canvas.height/2);
-
-    selectedUnitIndex=null;
-    playerUnits.forEach((u,i)=>{
-        if(Math.hypot(wx-u.x,wy-u.y)<10)
-            selectedUnitIndex=i;
-    });
-});
-
-function gameLoop() {
-    ctx.clearRect(0,0,canvas.width,canvas.height);
-
-    ctx.save();
-    ctx.translate(
-        Math.round(canvas.width/2),
-        Math.round(canvas.height/2)
-    );
-    ctx.scale(zoom,zoom);
-    ctx.translate(
-        Math.round(-cameraX),
-        Math.round(-cameraY)
-    );
-
-    ctx.fillStyle="#2a3d1a";
-    ctx.fillRect(-3000,-3000,6000,6000);
-
-    enemies.forEach(drawEnemy);
-    playerUnits.forEach((u,i)=>drawUnit(u,i===selectedUnitIndex));
-
-    ctx.restore();
-
-    keyboardMove();
-    enemyAI();
-
-    const focus =
-        selectedUnitIndex!==null
-        ? playerUnits[selectedUnitIndex]
-        : playerUnits.find(u=>u.isLeader);
-
-    if(focus){
-        cameraX+=(focus.x-cameraX)*0.12;
-        cameraY+=(focus.y-cameraY)*0.12;
-    }
-
-    requestAnimationFrame(gameLoop);
+function loop() {
+    update();
+    draw();
+    requestAnimationFrame(loop);
 }
 </script>
 </body>
