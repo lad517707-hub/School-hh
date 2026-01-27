@@ -2,239 +2,218 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Legion Survival</title>
+<title>Legion Game</title>
 <style>
-body{margin:0;overflow:hidden;background:black}
-canvas{
- image-rendering:pixelated;
- image-rendering:crisp-edges;
- cursor:crosshair;
-}
-#ui{
- position:absolute;top:10px;left:10px;
- background:rgba(0,0,0,.85);
- color:#eee;padding:12px;
- font-family:Arial;border:1px solid #555;
- z-index:10
-}
-#health{
- position:absolute;top:10px;right:10px;
- width:220px;height:22px;
- border:2px solid #999;
- background:#300;
-}
-#bar{height:100%;background:#0f0}
+ html,body{margin:0;overflow:hidden;background:#000}
+ canvas{image-rendering:pixelated}
 </style>
 </head>
 <body>
-
-<div id="ui">
-<select id="legion">
-<option value="">Select Legion</option>
-<option value="#1976d2">Ultramarines</option>
-<option value="#c62828">Blood Angels</option>
-<option value="#558b2f">Death Guard</option>
-<option value="#263238">Raven Guard</option>
-<option value="#00695c">Alpha Legion</option>
-</select>
-<button onclick="start()">Deploy</button>
-</div>
-
-<div id="health"><div id="bar"></div></div>
-
-<canvas id="c" width="420" height="240" style="width:1680px;height:960px"></canvas>
-
+<canvas id="c"></canvas>
 <script>
 const c = document.getElementById("c");
 const ctx = c.getContext("2d");
-ctx.imageSmoothingEnabled = false;
+c.width = innerWidth;
+c.height = innerHeight;
 
+// ================== CAMERA ==================
 let camX=0, camY=0;
-let leader, units=[], enemies=[], bullets=[];
-let terrain=[];
-let keys={w:0,a:0,s:0,d:0};
-let machine={x:0,y:-9000,active:false};
 
-onkeydown=e=>keys[e.key]=1;
-onkeyup=e=>keys[e.key]=0;
+// ================== IMAGE ==================
+const marineImg = new Image();
+marineImg.src = "marine.png";
+const legionSprites = {};
 
-function rand(a,b){return Math.random()*(b-a)+a}
-
-function start(){
- const col=document.getElementById("legion").value;
- if(!col) return;
-
- document.getElementById("ui").style.display="none";
-
- units=[];
- for(let i=0;i<11;i++){
-  const u={
-   x:(i-5)*10,
-   y:Math.floor(i/4)*12,
-   ox:(i-5)*10,
-   oy:Math.floor(i/4)*12,
-   hp:100,
-   leader:i===5,
-   color:col
-  };
-  units.push(u);
-  if(u.leader) leader=u;
- }
-
- generateTerrain();
- spawnEnemies();
- loop();
+// ================== UTIL ==================
+function hexToRgb(h){
+ const n=parseInt(h.slice(1),16);
+ return{r:(n>>16)&255,g:(n>>8)&255,b:n&255};
 }
 
-function generateTerrain(){
- terrain=[];
- for(let i=0;i<800;i++){
-  const r=Math.random();
-  if(r<0.25) terrain.push({t:"tree",x:rand(-4000,4000),y:rand(-10000,1000)});
-  else if(r<0.4) terrain.push({t:"ruin",x:rand(-4000,4000),y:rand(-10000,1000)});
-  else if(r<0.55) terrain.push({t:"water",x:rand(-4000,4000),y:rand(-10000,1000)});
- }
-}
-
-function spawnEnemies(){
- setInterval(()=>{
-  const y=leader.y-400-rand(0,600);
-  for(let i=0;i<6;i++){
-   enemies.push({x:leader.x+rand(-300,300),y:y,hp:80});
+function tintSprite(img,color){
+ const t=document.createElement("canvas");
+ t.width=img.width; t.height=img.height;
+ const g=t.getContext("2d");
+ g.drawImage(img,0,0);
+ const d=g.getImageData(0,0,t.width,t.height);
+ const rgb=hexToRgb(color);
+ for(let i=0;i<d.data.length;i+=4){
+  const r=d.data[i],g0=d.data[i+1],b=d.data[i+2];
+  if(b>r+20 && b>g0+20){
+   d.data[i]=rgb.r;
+   d.data[i+1]=rgb.g;
+   d.data[i+2]=rgb.b;
   }
- },9000);
+ }
+ g.putImageData(d,0,0);
+ return t;
 }
 
+function buildLegionSprites(color){
+ legionSprites.normal = tintSprite(marineImg,color);
+ legionSprites.leader = tintSprite(marineImg,"#ffeb3b");
+}
+
+// ================== WORLD ==================
+const TILE=64;
+function drawGround(){
+ for(let x=-10;x<20;x++){
+  for(let y=-10;y<20;y++){
+   const wx=Math.floor((camX+x*TILE)/TILE);
+   const wy=Math.floor((camY+y*TILE)/TILE);
+   const px=wx*TILE-camX;
+   const py=wy*TILE-camY;
+
+   ctx.fillStyle="#2d6a2d";
+   ctx.fillRect(px,py,TILE,TILE);
+
+   if((wx+wy)%9===0){
+    ctx.fillStyle="#1e4f1e";
+    ctx.fillRect(px+20,py+20,24,24);
+   }
+   if((wx*wy)%17===0){
+    ctx.fillStyle="#444";
+    ctx.fillRect(px+10,py+30,40,20);
+   }
+   if((wx+wy)%23===0){
+    ctx.fillStyle="#1e90ff";
+    ctx.fillRect(px,py+40,TILE,24);
+   }
+  }
+ }
+}
+
+// ================== UNITS ==================
+const units=[];
+let playerColor="#ff0000";
+
+function spawnSquad(){
+ units.length=0;
+ for(let i=0;i<6;i++){
+  units.push({
+   x:200+i*18,y:200,
+   leader:i===0,
+   hp:100,
+   vx:0,vy:0
+  });
+ }
+}
+
+function drawMarine(u){
+ const img=u.leader?legionSprites.leader:legionSprites.normal;
+ ctx.drawImage(img,u.x-camX-8,u.y-camY-10,16,20);
+}
+
+// ================== INPUT ==================
+const keys={};
+addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
+
+addEventListener("click",e=>{
+ const mx=e.clientX+camX,my=e.clientY+camY;
+ units.forEach(u=>u.leader=false);
+ let closest=null,d=9999;
+ units.forEach(u=>{
+  const dist=Math.hypot(u.x-mx,u.y-my);
+  if(dist<d){d=dist;closest=u;}
+ });
+ if(closest)closest.leader=true;
+});
+
+// ================== BULLETS ==================
+const bullets=[];
+function shoot(x,y,dx,dy){
+ bullets.push({x,y,dx,dy,life:80});
+}
+
+// ================== ENEMIES ==================
+const enemies=[];
+function spawnEnemy(){
+ enemies.push({
+  x:camX+Math.random()*c.width,
+  y:camY+Math.random()*c.height,
+  hp:50
+ });
+}
+
+// ================== BUTTON ==================
+const button={x:2200,y:1800,pressed:false};
+
+function drawButton(){
+ if(Math.hypot(button.x-camX,button.y-camY)>800)return;
+ ctx.fillStyle="#555";
+ ctx.fillRect(button.x-camX-20,button.y-camY-20,40,40);
+ if(button.pressed){
+  ctx.strokeStyle="#00f";
+  ctx.lineWidth=4;
+  ctx.beginPath();
+  ctx.moveTo(button.x-camX,button.y-camY);
+  ctx.lineTo(button.x-camX,button.y-camY-800);
+  ctx.stroke();
+ }
+}
+
+// ================== LOOP ==================
 function update(){
- // MOVE LEADER FREELY
- let dx=0,dy=0;
- if(keys.w)dy--;
- if(keys.s)dy++;
- if(keys.a)dx--;
- if(keys.d)dx++;
- if(dx||dy){
-  const l=Math.hypot(dx,dy);
-  leader.x+=dx/l*2.4;
-  leader.y+=dy/l*2.4;
+ const leader=units.find(u=>u.leader);
+ if(leader){
+  if(keys.w)leader.y-=3;
+  if(keys.s)leader.y+=3;
+  if(keys.a)leader.x-=3;
+  if(keys.d)leader.x+=3;
+  camX=leader.x-c.width/2;
+  camY=leader.y-c.height/2;
  }
 
- // FOLLOW FORMATION
  units.forEach(u=>{
   if(!u.leader){
-   u.x+=(leader.x+u.ox-u.x)*0.12;
-   u.y+=(leader.y+u.oy-u.y)*0.12;
+   u.x+=(leader.x-u.x)*0.05;
+   u.y+=(leader.y-u.y)*0.05;
   }
  });
 
- // ENEMIES
+ bullets.forEach(b=>{
+  b.x+=b.dx;b.y+=b.dy;b.life--;
+ });
+ for(let i=bullets.length-1;i>=0;i--){
+  if(bullets[i].life<=0)bullets.splice(i,1);
+ }
+
  enemies.forEach(e=>{
-  const dx=leader.x-e.x;
-  const dy=leader.y-e.y;
-  const d=Math.hypot(dx,dy);
-  if(d>20){
-   e.x+=dx/d*0.6;
-   e.y+=dy/d*0.6;
-  } else leader.hp-=0.2;
+  e.x+=(leader.x-e.x)*0.005;
+  e.y+=(leader.y-e.y)*0.005;
  });
 
- // SHOOTING
- units.forEach(u=>{
-  let t=null,md=200;
-  enemies.forEach(e=>{
-   const d=Math.hypot(e.x-u.x,e.y-u.y);
-   if(d<md){md=d;t=e}
-  });
-  if(t){
-   bullets.push({x:u.x,y:u.y,tx:t.x,ty:t.y});
-   t.hp-=0.5;
-  }
- });
+ if(Math.random()<0.02)spawnEnemy();
 
- enemies=enemies.filter(e=>e.hp>0);
- bullets=bullets.slice(-40);
-
- // CAMERA
- camX+=(leader.x-camX)*0.08;
- camY+=(leader.y-camY)*0.08;
-
- // MACHINE
- if(Math.hypot(leader.x-machine.x,leader.y-machine.y)<40)
-  machine.active=true;
-
- // HEALTH BAR
- const hp=units.reduce((s,u)=>s+Math.max(0,u.hp),0)/(units.length*100);
- document.getElementById("bar").style.width=(hp*100)+"%";
+ if(!button.pressed && Math.hypot(leader.x-button.x,leader.y-button.y)<40){
+  button.pressed=true;
+ }
 }
 
 function draw(){
  ctx.clearRect(0,0,c.width,c.height);
- ctx.save();
- ctx.translate(c.width/2,c.height/2);
- ctx.translate(-camX,-camY);
+ drawGround();
 
- // GROUND
- ctx.fillStyle="#2a3d1a";
- ctx.fillRect(camX-1000,camY-1000,2000,2000);
-
- // TERRAIN
- terrain.forEach(o=>{
-  if(o.t==="tree"){
-   ctx.fillStyle="#3b2f2f";
-   ctx.fillRect(o.x,o.y,4,12);
-   ctx.fillStyle="#1a5c1a";
-   ctx.fillRect(o.x-6,o.y-10,16,10);
-  }
-  if(o.t==="ruin"){
-   ctx.fillStyle="#4a3728";
-   ctx.fillRect(o.x,o.y,30,18);
-   ctx.fillStyle="#2a2a2a";
-   ctx.fillRect(o.x+6,o.y+6,18,8);
-  }
-  if(o.t==="water"){
-   ctx.fillStyle="#1e4a7a";
-   ctx.fillRect(o.x,o.y,60,20);
-  }
- });
-
- // MACHINE + BEAM
- ctx.fillStyle="#444";
- ctx.fillRect(machine.x-16,machine.y-16,32,32);
- ctx.fillStyle=machine.active?"#0ff":"#800";
- ctx.beginPath();ctx.arc(machine.x,machine.y,8,0,Math.PI*2);ctx.fill();
-
- if(machine.active){
-  ctx.strokeStyle="#0ff";
-  ctx.lineWidth=20;
-  ctx.beginPath();
-  ctx.moveTo(machine.x,machine.y);
-  ctx.lineTo(machine.x,machine.y-2000);
-  ctx.stroke();
- }
-
- // BULLETS
- bullets.forEach(b=>{
-  ctx.strokeStyle="#ff8800";
-  ctx.beginPath();
-  ctx.moveTo(b.x,b.y);
-  ctx.lineTo(b.tx,b.ty);
-  ctx.stroke();
- });
-
- // ENEMIES
  enemies.forEach(e=>{
-  ctx.fillStyle="#4a0000";
-  ctx.beginPath();
-  ctx.arc(e.x,e.y,6,0,Math.PI*2);
-  ctx.fill();
+  ctx.fillStyle="purple";
+  ctx.fillRect(e.x-camX-6,e.y-camY-6,12,12);
  });
 
- // UNITS
- units.forEach(u=>{
-  ctx.fillStyle=u.leader?"#ff0":u.color;
-  ctx.fillRect(u.x-4,u.y-4,8,8);
+ bullets.forEach(b=>{
+  ctx.fillStyle="#ff0";
+  ctx.fillRect(b.x-camX,b.y-camY,4,2);
  });
 
- ctx.restore();
+ units.forEach(drawMarine);
+ drawButton();
+
+ // TEAM HP
+ const hp=units.reduce((a,b)=>a+b.hp,0)/(units.length*100);
+ ctx.fillStyle="#000";
+ ctx.fillRect(20,20,200,12);
+ ctx.fillStyle="#0f0";
+ ctx.fillRect(20,20,200*hp,12);
 }
 
 function loop(){
@@ -242,6 +221,13 @@ function loop(){
  draw();
  requestAnimationFrame(loop);
 }
+
+// ================== START ==================
+marineImg.onload=()=>{
+ buildLegionSprites(playerColor);
+ spawnSquad();
+ loop();
+};
 </script>
 </body>
 </html>
