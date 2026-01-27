@@ -40,19 +40,35 @@
 
 <div id="ui">
     <select id="legionSelect">
-        <option value="">Select Legion</option>
-        <option>Ultramarines</option>
-        <option>Blood Angels</option>
-        <option>Imperial Fists</option>
+        <option value="">— Select Legion —</option>
+        <option>Dark Angels</option>
+        <option>Emperor's Children</option>
         <option>Iron Warriors</option>
+        <option>White Scars</option>
+        <option>Space Wolves</option>
+        <option>Imperial Fists</option>
         <option>Night Lords</option>
+        <option>Blood Angels</option>
+        <option>Iron Hands</option>
+        <option>World Eaters</option>
+        <option>Ultramarines</option>
+        <option>Death Guard</option>
+        <option>Thousand Sons</option>
+        <option>Sons of Horus</option>
+        <option>Word Bearers</option>
+        <option>Salamanders</option>
+        <option>Raven Guard</option>
+        <option>Alpha Legion</option>
     </select><br>
     <button onclick="startGame()">Deploy</button>
-    <p style="font-size:12px;opacity:.7">Click soldier → WASD to move</p>
+    <div style="font-size:12px;opacity:.7">
+        Click unit → WASD to move<br>
+        ESC to deselect
+    </div>
 </div>
 
-<!-- INTERNAL LOW RES, DISPLAY LARGE -->
-<canvas id="canvas" width="350" height="225" style="width:1400px;height:900px"></canvas>
+<!-- INTERNAL RESOLUTION LOW, DISPLAY LARGE -->
+<canvas id="canvas" width="700" height="450" style="width:1400px;height:900px"></canvas>
 
 <script>
 const canvas = document.getElementById("canvas");
@@ -66,17 +82,8 @@ let cameraY = 450;
 let playerUnits = [];
 let selectedUnitIndex = null;
 let enemies = [];
-let buttonActivated = false;
 
 const keys = { w:false, a:false, s:false, d:false };
-
-const LEGION_COLORS = {
-    Ultramarines:"#1976d2",
-    Blood Angels:"#c62828",
-    Imperial Fists:"#fdd835",
-    Iron Warriors:"#777777",
-    Night Lords:"#0d47a1"
-};
 
 window.addEventListener("keydown", e => {
     const k = e.key.toLowerCase();
@@ -94,8 +101,8 @@ function startGame() {
     playerUnits = [];
     for (let i=0;i<11;i++) {
         playerUnits.push({
-            x:700+(i-5)*18,
-            y:450+Math.floor(i/4)*16,
+            x:700+(i-5)*30,
+            y:450+Math.floor(i/4)*25,
             hp:100,
             isLeader:i===5
         });
@@ -108,20 +115,21 @@ function startGame() {
 function drawUnit(u, selected=false) {
     const x = Math.round(u.x);
     const y = Math.round(u.y);
-    const s = u.isLeader ? 6 : 4;
+    const s = u.isLeader ? 7 : 5;
 
     ctx.fillStyle = "#ccc";
     ctx.fillRect(x-s,y-s,s*2,s*2);
 
     if (selected) {
         ctx.strokeStyle="#ffff00";
+        ctx.lineWidth=1;
         ctx.strokeRect(x-s-2,y-s-2,s*2+4,s*2+4);
     }
 }
 
 function drawEnemy(e) {
     ctx.fillStyle="#800";
-    ctx.fillRect(Math.round(e.x-3),Math.round(e.y-3),6,6);
+    ctx.fillRect(Math.round(e.x-4),Math.round(e.y-4),8,8);
 }
 
 function keyboardMove() {
@@ -140,15 +148,15 @@ function keyboardMove() {
     const len = Math.hypot(dx,dy);
     dx/=len; dy/=len;
 
-    const speed = u.isLeader ? 1.6 : 1.2;
+    const speed = u.isLeader ? 2.4 : 2.0;
     u.x += dx*speed;
     u.y += dy*speed;
 
     if (u.isLeader) {
         playerUnits.forEach(o=>{
             if(o!==u){
-                o.x += dx*speed*0.8;
-                o.y += dy*speed*0.8;
+                o.x += dx*speed*0.7;
+                o.y += dy*speed*0.7;
             }
         });
     }
@@ -162,36 +170,35 @@ function enemyAI() {
             if(d<min){min=d;target=p;}
         });
         if(!target) return;
-        if(min<10) target.hp-=0.3;
+        if(min<12) target.hp-=0.25;
         else {
-            e.x+=(target.x-e.x)*0.005;
-            e.y+=(target.y-e.y)*0.005;
+            e.x+=(target.x-e.x)*0.01;
+            e.y+=(target.y-e.y)*0.01;
         }
     });
 }
 
 function spawnEnemies() {
     setInterval(()=>{
-        for(let i=0;i<5;i++){
-            enemies.push({
-                x:Math.random()*1400,
-                y:cameraY-300,
-                hp:60
-            });
-        }
-    },6000);
+        enemies.push({
+            x:Math.random()*1400,
+            y:cameraY-300,
+            hp:60
+        });
+    },5000);
 }
 
 canvas.addEventListener("click",e=>{
     const rect=canvas.getBoundingClientRect();
-    const mx=(e.clientX-rect.left)/4;
-    const my=(e.clientY-rect.top)/4;
-    const wx=cameraX+(mx-canvas.width/2)/zoom;
-    const wy=cameraY+(my-canvas.height/2)/zoom;
+    const mx=(e.clientX-rect.left)/2;
+    const my=(e.clientY-rect.top)/2;
+
+    const wx=cameraX+(mx-canvas.width/2);
+    const wy=cameraY+(my-canvas.height/2);
 
     selectedUnitIndex=null;
     playerUnits.forEach((u,i)=>{
-        if(Math.hypot(wx-u.x,wy-u.y)<8)
+        if(Math.hypot(wx-u.x,wy-u.y)<10)
             selectedUnitIndex=i;
     });
 });
@@ -211,7 +218,7 @@ function gameLoop() {
     );
 
     ctx.fillStyle="#2a3d1a";
-    ctx.fillRect(-2000,-2000,4000,4000);
+    ctx.fillRect(-3000,-3000,6000,6000);
 
     enemies.forEach(drawEnemy);
     playerUnits.forEach((u,i)=>drawUnit(u,i===selectedUnitIndex));
@@ -227,8 +234,8 @@ function gameLoop() {
         : playerUnits.find(u=>u.isLeader);
 
     if(focus){
-        cameraX+=(focus.x-cameraX)*0.1;
-        cameraY+=(focus.y-cameraY)*0.1;
+        cameraX+=(focus.x-cameraX)*0.12;
+        cameraY+=(focus.y-cameraY)*0.12;
     }
 
     requestAnimationFrame(gameLoop);
