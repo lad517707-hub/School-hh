@@ -11,79 +11,50 @@
 <body>
 <canvas id="c"></canvas>
 <script>
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
-c.width = innerWidth;
-c.height = innerHeight;
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
+c.width=innerWidth;
+c.height=innerHeight;
 
-// ================== CAMERA ==================
-let camX=0, camY=0;
+// ================= CAMERA =================
+let camX=0,camY=0;
 
-// ================== IMAGE ==================
-const marineImg = new Image();
-marineImg.src = "marine.png";
-const legionSprites = {};
-
-// ================== UTIL ==================
+// ================= UTIL =================
 function hexToRgb(h){
  const n=parseInt(h.slice(1),16);
  return{r:(n>>16)&255,g:(n>>8)&255,b:n&255};
 }
 
-function tintSprite(img,color){
- const t=document.createElement("canvas");
- t.width=img.width; t.height=img.height;
- const g=t.getContext("2d");
- g.drawImage(img,0,0);
- const d=g.getImageData(0,0,t.width,t.height);
- const rgb=hexToRgb(color);
- for(let i=0;i<d.data.length;i+=4){
-  const r=d.data[i],g0=d.data[i+1],b=d.data[i+2];
-  if(b>r+20 && b>g0+20){
-   d.data[i]=rgb.r;
-   d.data[i+1]=rgb.g;
-   d.data[i+2]=rgb.b;
-  }
- }
- g.putImageData(d,0,0);
- return t;
-}
-
-function buildLegionSprites(color){
- legionSprites.normal = tintSprite(marineImg,color);
- legionSprites.leader = tintSprite(marineImg,"#ffeb3b");
-}
-
-// ================== WORLD ==================
+// ================= WORLD =================
 const TILE=64;
 function drawGround(){
- for(let x=-10;x<20;x++){
-  for(let y=-10;y<20;y++){
+ for(let x=-12;x<18;x++){
+  for(let y=-12;y<18;y++){
    const wx=Math.floor((camX+x*TILE)/TILE);
    const wy=Math.floor((camY+y*TILE)/TILE);
    const px=wx*TILE-camX;
    const py=wy*TILE-camY;
 
-   ctx.fillStyle="#2d6a2d";
+   ctx.fillStyle="#2f6b2f";
    ctx.fillRect(px,py,TILE,TILE);
 
-   if((wx+wy)%9===0){
-    ctx.fillStyle="#1e4f1e";
-    ctx.fillRect(px+20,py+20,24,24);
+   if((wx+wy)%7===0){
+    ctx.fillStyle="#1f4f1f";
+    ctx.fillRect(px+18,py+18,28,28);
    }
-   if((wx*wy)%17===0){
-    ctx.fillStyle="#444";
-    ctx.fillRect(px+10,py+30,40,20);
+   if((wx*wy)%11===0){
+    ctx.fillStyle="#555";
+    ctx.fillRect(px+10,py+34,44,20);
    }
-   if((wx+wy)%23===0){
+   if((wx+wy)%19===0){
     ctx.fillStyle="#1e90ff";
-    ctx.fillRect(px,py+40,TILE,24);
+    ctx.fillRect(px,py+44,TILE,20);
    }
   }
  }
 }
 
-// ================== UNITS ==================
+// ================= UNITS =================
 const units=[];
 let playerColor="#ff0000";
 
@@ -93,18 +64,22 @@ function spawnSquad(){
   units.push({
    x:200+i*18,y:200,
    leader:i===0,
-   hp:100,
-   vx:0,vy:0
+   hp:100
   });
  }
 }
 
 function drawMarine(u){
- const img=u.leader?legionSprites.leader:legionSprites.normal;
- ctx.drawImage(img,u.x-camX-8,u.y-camY-10,16,20);
+ const x=u.x-camX;
+ const y=u.y-camY;
+ ctx.fillStyle=u.leader?"#ffeb3b":playerColor;
+ ctx.fillRect(x-4,y-8,8,12);
+ ctx.fillRect(x-5,y-10,10,4);
+ ctx.fillStyle="#222";
+ ctx.fillRect(x+4,y-4,6,2);
 }
 
-// ================== INPUT ==================
+// ================= INPUT =================
 const keys={};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
@@ -112,35 +87,70 @@ addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 addEventListener("click",e=>{
  const mx=e.clientX+camX,my=e.clientY+camY;
  units.forEach(u=>u.leader=false);
- let closest=null,d=9999;
+ let best=null,d=1e9;
  units.forEach(u=>{
   const dist=Math.hypot(u.x-mx,u.y-my);
-  if(dist<d){d=dist;closest=u;}
+  if(dist<d){d=dist;best=u;}
  });
- if(closest)closest.leader=true;
+ if(best)best.leader=true;
 });
 
-// ================== BULLETS ==================
+// ================= BULLETS =================
 const bullets=[];
-function shoot(x,y,dx,dy){
- bullets.push({x,y,dx,dy,life:80});
-}
+addEventListener("mousedown",()=>{
+ const l=units.find(u=>u.leader);
+ bullets.push({x:l.x,y:l.y,dx:8,dy:0,life:80});
+});
 
-// ================== ENEMIES ==================
-const enemies=[];
-function spawnEnemy(){
- enemies.push({
+// ================= MONSTERS =================
+const monsters=[];
+
+function spawnMonster(big=false){
+ monsters.push({
   x:camX+Math.random()*c.width,
   y:camY+Math.random()*c.height,
-  hp:50
+  big,
+  hp:big?300:80,
+  max:big?300:80
  });
 }
 
-// ================== BUTTON ==================
+// === MONSTER SPRITES (PIXEL ART)
+function drawMonster(m){
+ const x=m.x-camX;
+ const y=m.y-camY;
+
+ if(m.big){
+  // BIG MONSTER
+  ctx.fillStyle="#4b0082";
+  ctx.fillRect(x-18,y-18,36,36);
+  ctx.fillStyle="#8b0000";
+  ctx.fillRect(x-12,y-6,24,12);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(x-10,y-10,4,4);
+  ctx.fillRect(x+6,y-10,4,4);
+
+  // HP BAR
+  ctx.fillStyle="#000";
+  ctx.fillRect(x-18,y-26,36,5);
+  ctx.fillStyle="#f00";
+  ctx.fillRect(x-18,y-26,36*(m.hp/m.max),5);
+
+ }else{
+  // SMALL MONSTER
+  ctx.fillStyle="#551a8b";
+  ctx.fillRect(x-8,y-8,16,16);
+  ctx.fillStyle="#fff";
+  ctx.fillRect(x-4,y-4,3,3);
+  ctx.fillRect(x+1,y-4,3,3);
+ }
+}
+
+// ================= BUTTON =================
 const button={x:2200,y:1800,pressed:false};
 
 function drawButton(){
- if(Math.hypot(button.x-camX,button.y-camY)>800)return;
+ if(Math.hypot(button.x-camX,button.y-camY)>900)return;
  ctx.fillStyle="#555";
  ctx.fillRect(button.x-camX-20,button.y-camY-20,40,40);
  if(button.pressed){
@@ -148,12 +158,12 @@ function drawButton(){
   ctx.lineWidth=4;
   ctx.beginPath();
   ctx.moveTo(button.x-camX,button.y-camY);
-  ctx.lineTo(button.x-camX,button.y-camY-800);
+  ctx.lineTo(button.x-camX,button.y-camY-900);
   ctx.stroke();
  }
 }
 
-// ================== LOOP ==================
+// ================= LOOP =================
 function update(){
  const leader=units.find(u=>u.leader);
  if(leader){
@@ -167,24 +177,34 @@ function update(){
 
  units.forEach(u=>{
   if(!u.leader){
-   u.x+=(leader.x-u.x)*0.05;
-   u.y+=(leader.y-u.y)*0.05;
+   u.x+=(leader.x-u.x)*0.06;
+   u.y+=(leader.y-u.y)*0.06;
   }
  });
 
  bullets.forEach(b=>{
-  b.x+=b.dx;b.y+=b.dy;b.life--;
+  b.x+=b.dx;b.life--;
+  monsters.forEach(m=>{
+   if(Math.hypot(b.x-m.x,b.y-m.y)<(m.big?20:10)){
+    m.hp-=20;
+    b.life=0;
+   }
+  });
  });
+
  for(let i=bullets.length-1;i>=0;i--){
   if(bullets[i].life<=0)bullets.splice(i,1);
  }
 
- enemies.forEach(e=>{
-  e.x+=(leader.x-e.x)*0.005;
-  e.y+=(leader.y-e.y)*0.005;
- });
+ for(let i=monsters.length-1;i>=0;i--){
+  const m=monsters[i];
+  m.x+=(leader.x-m.x)*(m.big?0.002:0.006);
+  m.y+=(leader.y-m.y)*(m.big?0.002:0.006);
+  if(m.hp<=0)monsters.splice(i,1);
+ }
 
- if(Math.random()<0.02)spawnEnemy();
+ if(Math.random()<0.02)spawnMonster(false);
+ if(Math.random()<0.005)spawnMonster(true);
 
  if(!button.pressed && Math.hypot(leader.x-button.x,leader.y-button.y)<40){
   button.pressed=true;
@@ -195,10 +215,7 @@ function draw(){
  ctx.clearRect(0,0,c.width,c.height);
  drawGround();
 
- enemies.forEach(e=>{
-  ctx.fillStyle="purple";
-  ctx.fillRect(e.x-camX-6,e.y-camY-6,12,12);
- });
+ monsters.forEach(drawMonster);
 
  bullets.forEach(b=>{
   ctx.fillStyle="#ff0";
@@ -208,7 +225,6 @@ function draw(){
  units.forEach(drawMarine);
  drawButton();
 
- // TEAM HP
  const hp=units.reduce((a,b)=>a+b.hp,0)/(units.length*100);
  ctx.fillStyle="#000";
  ctx.fillRect(20,20,200,12);
@@ -222,12 +238,9 @@ function loop(){
  requestAnimationFrame(loop);
 }
 
-// ================== START ==================
-marineImg.onload=()=>{
- buildLegionSprites(playerColor);
- spawnSquad();
- loop();
-};
+// ================= START =================
+spawnSquad();
+loop();
 </script>
 </body>
 </html>
