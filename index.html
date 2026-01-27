@@ -1,82 +1,71 @@
 <!DOCTYPE html>
-<html>
+<html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>Legion Game</title>
+<title>Horus Heresy – Legion Survival</title>
 <style>
- html,body{margin:0;overflow:hidden;background:#000}
- canvas{image-rendering:pixelated}
+body { margin:0; overflow:hidden; background:#000; }
+canvas {
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
+}
+#ui {
+  position:absolute; top:10px; left:10px;
+  background:rgba(0,0,0,.85);
+  padding:12px; color:#eee;
+  border:1px solid #555;
+  z-index:10;
+}
+select,button {
+  background:#222; color:#eee;
+  border:1px solid #555;
+  padding:6px; margin-top:6px;
+}
 </style>
 </head>
 <body>
+
+<div id="ui">
+  <div>Select Legion</div>
+  <select id="legion">
+    <option value="">-- Choose --</option>
+    <option value="#1976d2">Ultramarines</option>
+    <option value="#c62828">Blood Angels</option>
+    <option value="#1b5e20">Salamanders</option>
+    <option value="#263238">Raven Guard</option>
+    <option value="#880e4f">Word Bearers</option>
+    <option value="#616161">Iron Warriors</option>
+  </select><br>
+  <button onclick="start()">Deploy</button>
+</div>
+
 <canvas id="c"></canvas>
+
 <script>
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
-c.width=innerWidth;
-c.height=innerHeight;
+const c = document.getElementById("c");
+const ctx = c.getContext("2d");
+resize();
+addEventListener("resize", resize);
+function resize(){ c.width=innerWidth; c.height=innerHeight; }
 
-// ================= CAMERA =================
-let camX=0,camY=0;
-
-// ================= UTIL =================
-function hexToRgb(h){
- const n=parseInt(h.slice(1),16);
- return{r:(n>>16)&255,g:(n>>8)&255,b:n&255};
-}
-
-// ================= WORLD =================
-const TILE=64;
-function drawGround(){
- for(let x=-12;x<18;x++){
-  for(let y=-12;y<18;y++){
-   const wx=Math.floor((camX+x*TILE)/TILE);
-   const wy=Math.floor((camY+y*TILE)/TILE);
-   const px=wx*TILE-camX;
-   const py=wy*TILE-camY;
-
-   ctx.fillStyle="#2f6b2f";
-   ctx.fillRect(px,py,TILE,TILE);
-
-   if((wx+wy)%7===0){
-    ctx.fillStyle="#1f4f1f";
-    ctx.fillRect(px+18,py+18,28,28);
-   }
-   if((wx*wy)%11===0){
-    ctx.fillStyle="#555";
-    ctx.fillRect(px+10,py+34,44,20);
-   }
-   if((wx+wy)%19===0){
-    ctx.fillStyle="#1e90ff";
-    ctx.fillRect(px,py+44,TILE,20);
-   }
-  }
- }
-}
+// ================= GLOBAL =================
+let camX=0, camY=0;
+let zoom=1.4;
+let legionColor="#fff";
+let started=false;
 
 // ================= UNITS =================
 const units=[];
-let playerColor="#ff0000";
-
-function spawnSquad(){
- units.length=0;
- for(let i=0;i<6;i++){
-  units.push({
-   x:200+i*18,y:200,
-   leader:i===0,
-   hp:100
-  });
- }
-}
-
-function drawMarine(u){
- const x=u.x-camX;
- const y=u.y-camY;
- ctx.fillStyle=u.leader?"#ffeb3b":playerColor;
- ctx.fillRect(x-4,y-8,8,12);
- ctx.fillRect(x-5,y-10,10,4);
- ctx.fillStyle="#222";
- ctx.fillRect(x+4,y-4,6,2);
+function spawnUnits(){
+  units.length=0;
+  for(let i=0;i<10;i++){
+    units.push({
+      x:0+i*18,
+      y:0,
+      leader:i===0,
+      hp:100
+    });
+  }
 }
 
 // ================= INPUT =================
@@ -84,162 +73,189 @@ const keys={};
 addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
 addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 
-addEventListener("click",e=>{
- const mx=e.clientX+camX,my=e.clientY+camY;
- units.forEach(u=>u.leader=false);
- let best=null,d=1e9;
- units.forEach(u=>{
-  const dist=Math.hypot(u.x-mx,u.y-my);
-  if(dist<d){d=dist;best=u;}
- });
- if(best)best.leader=true;
-});
-
 // ================= BULLETS =================
 const bullets=[];
-addEventListener("mousedown",()=>{
- const l=units.find(u=>u.leader);
- bullets.push({x:l.x,y:l.y,dx:8,dy:0,life:80});
-});
+function shoot(){
+  const l=units.find(u=>u.leader);
+  bullets.push({
+    x:l.x, y:l.y,
+    dx:Math.cos(0)*10,
+    dy:Math.sin(0)*10,
+    life:40
+  });
+}
+addEventListener("mousedown",()=>started&&shoot());
 
 // ================= MONSTERS =================
 const monsters=[];
-
 function spawnMonster(big=false){
- monsters.push({
-  x:camX+Math.random()*c.width,
-  y:camY+Math.random()*c.height,
-  big,
-  hp:big?300:80,
-  max:big?300:80
- });
-}
-
-// === MONSTER SPRITES (PIXEL ART)
-function drawMonster(m){
- const x=m.x-camX;
- const y=m.y-camY;
-
- if(m.big){
-  // BIG MONSTER
-  ctx.fillStyle="#4b0082";
-  ctx.fillRect(x-18,y-18,36,36);
-  ctx.fillStyle="#8b0000";
-  ctx.fillRect(x-12,y-6,24,12);
-  ctx.fillStyle="#fff";
-  ctx.fillRect(x-10,y-10,4,4);
-  ctx.fillRect(x+6,y-10,4,4);
-
-  // HP BAR
-  ctx.fillStyle="#000";
-  ctx.fillRect(x-18,y-26,36,5);
-  ctx.fillStyle="#f00";
-  ctx.fillRect(x-18,y-26,36*(m.hp/m.max),5);
-
- }else{
-  // SMALL MONSTER
-  ctx.fillStyle="#551a8b";
-  ctx.fillRect(x-8,y-8,16,16);
-  ctx.fillStyle="#fff";
-  ctx.fillRect(x-4,y-4,3,3);
-  ctx.fillRect(x+1,y-4,3,3);
- }
-}
-
-// ================= BUTTON =================
-const button={x:2200,y:1800,pressed:false};
-
-function drawButton(){
- if(Math.hypot(button.x-camX,button.y-camY)>900)return;
- ctx.fillStyle="#555";
- ctx.fillRect(button.x-camX-20,button.y-camY-20,40,40);
- if(button.pressed){
-  ctx.strokeStyle="#00f";
-  ctx.lineWidth=4;
-  ctx.beginPath();
-  ctx.moveTo(button.x-camX,button.y-camY);
-  ctx.lineTo(button.x-camX,button.y-camY-900);
-  ctx.stroke();
- }
-}
-
-// ================= LOOP =================
-function update(){
- const leader=units.find(u=>u.leader);
- if(leader){
-  if(keys.w)leader.y-=3;
-  if(keys.s)leader.y+=3;
-  if(keys.a)leader.x-=3;
-  if(keys.d)leader.x+=3;
-  camX=leader.x-c.width/2;
-  camY=leader.y-c.height/2;
- }
-
- units.forEach(u=>{
-  if(!u.leader){
-   u.x+=(leader.x-u.x)*0.06;
-   u.y+=(leader.y-u.y)*0.06;
-  }
- });
-
- bullets.forEach(b=>{
-  b.x+=b.dx;b.life--;
-  monsters.forEach(m=>{
-   if(Math.hypot(b.x-m.x,b.y-m.y)<(m.big?20:10)){
-    m.hp-=20;
-    b.life=0;
-   }
+  monsters.push({
+    x:camX+Math.random()*c.width,
+    y:camY+Math.random()*c.height,
+    big,
+    hp:big?350:120,
+    max:big?350:120,
+    wob:Math.random()*10
   });
- });
+}
 
- for(let i=bullets.length-1;i>=0;i--){
-  if(bullets[i].life<=0)bullets.splice(i,1);
- }
+// ================= WORLD =================
+function drawGrass(x,y){
+  for(let i=0;i<4;i++){
+    ctx.strokeStyle=`rgba(30,120,30,.8)`;
+    ctx.beginPath();
+    ctx.moveTo(x+Math.random()*20,y+20);
+    ctx.lineTo(x+10,y+5);
+    ctx.stroke();
+  }
+}
+function drawTree(x,y){
+  ctx.fillStyle="#3b2f2f";
+  ctx.fillRect(x+12,y+22,8,20);
+  ctx.shadowColor="#000";
+  ctx.shadowBlur=8;
+  ctx.fillStyle="#1f6b2f";
+  ctx.beginPath();
+  ctx.arc(x+16,y+16,18,0,Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur=0;
+}
+function drawWater(x,y){
+  ctx.fillStyle="#1e4f7a";
+  ctx.fillRect(x,y,64,64);
+  ctx.fillStyle="rgba(255,255,255,.1)";
+  ctx.fillRect(x+10,y+20,30,8);
+}
+function drawRuin(x,y){
+  ctx.fillStyle="#4a3a2a";
+  ctx.fillRect(x,y+30,50,30);
+  ctx.fillStyle="#2a2a2a";
+  ctx.fillRect(x+8,y+38,18,18);
+}
 
- for(let i=monsters.length-1;i>=0;i--){
-  const m=monsters[i];
-  m.x+=(leader.x-m.x)*(m.big?0.002:0.006);
-  m.y+=(leader.y-m.y)*(m.big?0.002:0.006);
-  if(m.hp<=0)monsters.splice(i,1);
- }
+// ================= DRAW =================
+function drawWorld(){
+  for(let x=-10;x<14;x++){
+    for(let y=-10;y<14;y++){
+      const wx=Math.floor((camX+x*64)/64);
+      const wy=Math.floor((camY+y*64)/64);
+      const px=wx*64-camX;
+      const py=wy*64-camY;
 
- if(Math.random()<0.02)spawnMonster(false);
- if(Math.random()<0.005)spawnMonster(true);
+      ctx.fillStyle="#2a5f2a";
+      ctx.fillRect(px,py,64,64);
 
- if(!button.pressed && Math.hypot(leader.x-button.x,leader.y-button.y)<40){
-  button.pressed=true;
- }
+      if((wx+wy)%7===0) drawGrass(px,py);
+      if((wx*wy)%11===0) drawTree(px,py);
+      if((wx+wy)%13===0) drawWater(px,py);
+      if((wx*wy)%17===0) drawRuin(px,py);
+    }
+  }
+}
+
+function drawMarine(u){
+  const x=u.x-camX, y=u.y-camY;
+  ctx.shadowColor="#000";
+  ctx.shadowBlur=6;
+  ctx.fillStyle=u.leader?"#ffeb3b":legionColor;
+  ctx.beginPath();
+  ctx.arc(x,y,6,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillRect(x-5,y,10,10);
+  ctx.shadowBlur=0;
+}
+
+function drawMonster(m){
+  const x=m.x-camX, y=m.y-camY;
+  ctx.shadowColor="#000";
+  ctx.shadowBlur=12;
+  ctx.fillStyle=m.big?"#3b003b":"#5a1a1a";
+  ctx.beginPath();
+  ctx.ellipse(x,y,m.big?28:14,m.big?22:12,Math.sin(m.wob)*.4,0,Math.PI*2);
+  ctx.fill();
+  ctx.fillStyle="#fff";
+  ctx.beginPath();
+  ctx.arc(x-6,y-4,3,0,Math.PI*2);
+  ctx.arc(x+6,y-4,3,0,Math.PI*2);
+  ctx.fill();
+  ctx.shadowBlur=0;
+
+  if(m.big){
+    ctx.fillStyle="#000";
+    ctx.fillRect(x-30,y-30,60,6);
+    ctx.fillStyle="#f00";
+    ctx.fillRect(x-30,y-30,60*(m.hp/m.max),6);
+  }
+}
+
+// ================= GAME LOOP =================
+function update(){
+  const l=units.find(u=>u.leader);
+  if(keys.w)l.y-=3;
+  if(keys.s)l.y+=3;
+  if(keys.a)l.x-=3;
+  if(keys.d)l.x+=3;
+
+  camX+=((l.x-c.width/2)-camX)*.08;
+  camY+=((l.y-c.height/2)-camY)*.08;
+
+  units.forEach(u=>{
+    if(!u.leader){
+      u.x+=(l.x-u.x)*.08;
+      u.y+=(l.y-u.y)*.08;
+    }
+  });
+
+  bullets.forEach(b=>{
+    b.x+=b.dx; b.life--;
+    monsters.forEach(m=>{
+      if(Math.hypot(b.x-m.x,b.y-m.y)<(m.big?26:14)){
+        m.hp-=25;
+        b.life=0;
+      }
+    });
+  });
+
+  for(let i=bullets.length-1;i>=0;i--) if(bullets[i].life<=0) bullets.splice(i,1);
+
+  monsters.forEach(m=>{
+    m.wob+=.1;
+    m.x+=(l.x-m.x)*(m.big?.002:.006);
+    m.y+=(l.y-m.y)*(m.big?.002:.006);
+  });
+
+  for(let i=monsters.length-1;i>=0;i--) if(monsters[i].hp<=0) monsters.splice(i,1);
+
+  if(Math.random()<.02) spawnMonster(false);
+  if(Math.random()<.005) spawnMonster(true);
 }
 
 function draw(){
- ctx.clearRect(0,0,c.width,c.height);
- drawGround();
+  ctx.clearRect(0,0,c.width,c.height);
+  drawWorld();
+  monsters.forEach(drawMonster);
 
- monsters.forEach(drawMonster);
+  bullets.forEach(b=>{
+    ctx.fillStyle="#ff0";
+    ctx.fillRect(b.x-camX,b.y-camY,4,2);
+  });
 
- bullets.forEach(b=>{
-  ctx.fillStyle="#ff0";
-  ctx.fillRect(b.x-camX,b.y-camY,4,2);
- });
-
- units.forEach(drawMarine);
- drawButton();
-
- const hp=units.reduce((a,b)=>a+b.hp,0)/(units.length*100);
- ctx.fillStyle="#000";
- ctx.fillRect(20,20,200,12);
- ctx.fillStyle="#0f0";
- ctx.fillRect(20,20,200*hp,12);
+  units.forEach(drawMarine);
 }
 
 function loop(){
- update();
- draw();
- requestAnimationFrame(loop);
+  if(started){ update(); draw(); }
+  requestAnimationFrame(loop);
 }
 
-// ================= START =================
-spawnSquad();
+function start(){
+  legionColor=document.getElementById("legion").value;
+  if(!legionColor) return alert("Choose a legion");
+  document.getElementById("ui").style.display="none";
+  spawnUnits();
+  started=true;
+}
+
 loop();
 </script>
 </body>
