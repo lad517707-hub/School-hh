@@ -1,27 +1,27 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
 <meta charset="UTF-8">
-<title>Horus Heresy – Legion March</title>
+<title>Legion March</title>
 <style>
-body{margin:0;background:#000;overflow:hidden;font-family:Arial}
-#ui{
- position:absolute;top:10px;left:10px;
- background:rgba(0,0,0,.85);
- color:#eee;padding:12px;
- border:1px solid #444;z-index:10
-}
-#end{
- position:absolute;inset:0;display:none;
- background:rgba(0,0,40,.92);
- color:#0ff;font-size:32px;
- align-items:center;justify-content:center;
- flex-direction:column;z-index:20
-}
+body{margin:0;overflow:hidden;background:black}
 canvas{
  image-rendering:pixelated;
  image-rendering:crisp-edges;
- cursor:crosshair
+}
+#ui{
+ position:absolute;top:10px;left:10px;
+ background:rgba(0,0,0,.8);
+ color:#fff;padding:10px;
+ font-family:Arial;border:1px solid #444;
+ z-index:10
+}
+#end{
+ position:absolute;inset:0;
+ display:none;align-items:center;
+ justify-content:center;flex-direction:column;
+ background:rgba(0,0,40,.9);
+ color:#0ff;font-size:28px;
 }
 </style>
 </head>
@@ -30,109 +30,95 @@ canvas{
 <div id="ui">
 <select id="legion">
 <option value="">— Select Legion —</option>
-<option value="dark">Dark Angels</option>
-<option value="emperor">Emperor's Children</option>
-<option value="iron">Iron Warriors</option>
-<option value="white">White Scars</option>
-<option value="wolves">Space Wolves</option>
-<option value="fists">Imperial Fists</option>
-<option value="night">Night Lords</option>
-<option value="blood">Blood Angels</option>
-<option value="hands">Iron Hands</option>
-<option value="world">World Eaters</option>
 <option value="ultra">Ultramarines</option>
+<option value="blood">Blood Angels</option>
 <option value="death">Death Guard</option>
-<option value="thousand">Thousand Sons</option>
-<option value="horus">Sons of Horus</option>
-<option value="word">Word Bearers</option>
-<option value="salamander">Salamanders</option>
-<option value="raven">Raven Guard</option>
+<option value="night">Night Lords</option>
 <option value="alpha">Alpha Legion</option>
 </select>
 <button onclick="start()">Deploy</button>
-<p style="font-size:12px">
-Click leader → WASD<br>
-Squad follows leader
-</p>
 </div>
 
 <div id="end">
 <h1>VICTORY</h1>
 <p>Orbital beam fired.</p>
-<button onclick="location.reload()">New Campaign</button>
+<button onclick="location.reload()">Restart</button>
 </div>
 
 <canvas id="c" width="420" height="240"
 style="width:1680px;height:960px"></canvas>
 
 <script>
-const c=document.getElementById("c");
-const x=c.getContext("2d");
-x.imageSmoothingEnabled=false;
+const c = document.getElementById("c");
+const x = c.getContext("2d");
+x.imageSmoothingEnabled = false;
 
-let camX=700,camY=450;
-let units=[],enemies=[],bullets=[];
-let leader=null;
-let legionColor="#ccc";
-let machine={x:700,y:-6000,active:false};
+let camX=0, camY=0;
+let leader, units=[], enemies=[], bullets=[];
+let chunks = {};
 let win=false;
 
 const keys={w:0,a:0,s:0,d:0};
-onkeydown=e=>{if(e.key in keys)keys[e.key]=1};
-onkeyup=e=>{if(e.key in keys)keys[e.key]=0};
+onkeydown=e=>keys[e.key]=1;
+onkeyup=e=>keys[e.key]=0;
 
 const legionColors={
- dark:"#1e3b2d", emperor:"#b070d6", iron:"#888",
- white:"#ddd", wolves:"#7a8fa6", fists:"#c9a400",
- night:"#1b1b3a", blood:"#8b0000", hands:"#555",
- world:"#a83232", ultra:"#2244cc", death:"#6b8f3f",
- thousand:"#3a2c7a", horus:"#2f5d50", word:"#5b1d1d",
- salamander:"#1f7a3a", raven:"#222", alpha:"#2aa6a6"
+ ultra:"#2244cc", blood:"#8b0000",
+ death:"#6b8f3f", night:"#1b1b3a",
+ alpha:"#2aa6a6"
 };
+
+const machine = { x:0, y:-6000, active:false };
 
 function start(){
  const l=document.getElementById("legion").value;
- if(!l)return;
- legionColor=legionColors[l]||"#ccc";
+ if(!l) return;
  document.getElementById("ui").style.display="none";
 
  units=[];
- for(let i=0;i<11;i++){
+ for(let i=0;i<9;i++){
   const u={
-   x:700+(i%4)*14-20,
-   y:450+Math.floor(i/4)*14,
-   offX:(i%4)*14-20,
-   offY:Math.floor(i/4)*14,
-   leader:i===5,
-   hp:100
+   x:(i%3)*12-12,
+   y:Math.floor(i/3)*12,
+   offX:(i%3)*12-12,
+   offY:Math.floor(i/3)*12,
+   leader:i===4,
+   color:legionColors[l]
   };
   units.push(u);
-  if(u.leader)leader=u;
+  if(u.leader) leader=u;
  }
- spawnEnemies();
+ camX=leader.x;
+ camY=leader.y;
  loop();
 }
 
-c.onclick=e=>{
- const r=c.getBoundingClientRect();
- const mx=(e.clientX-r.left)*(c.width/r.width);
- const my=(e.clientY-r.top)*(c.height/r.height);
- const wx=camX+(mx-c.width/2);
- const wy=camY+(my-c.height/2);
- if(Math.hypot(wx-leader.x,wy-leader.y)<12){}
-};
+/* ========= WORLD CHUNKS ========= */
 
-function spawnEnemies(){
- setInterval(()=>{
-  if(win)return;
-  const y=Math.min(...units.map(u=>u.y))-500;
-  for(let i=0;i<6;i++)
-   enemies.push({x:Math.random()*1400,y:y-Math.random()*300,hp:60});
- },8000);
+const CHUNK=400;
+
+function getChunk(cx,cy){
+ const k=cx+","+cy;
+ if(chunks[k]) return;
+ const data={
+  water:Math.random()<0.3,
+  ruins:Math.random()<0.4,
+  trees:Math.random()<0.6
+ };
+ chunks[k]=data;
 }
 
+function ensureChunks(){
+ const cx=Math.floor(camX/CHUNK);
+ const cy=Math.floor(camY/CHUNK);
+ for(let dx=-2;dx<=2;dx++)
+  for(let dy=-2;dy<=2;dy++)
+   getChunk(cx+dx,cy+dy);
+}
+
+/* ========= UPDATE ========= */
+
 function update(){
- /* LEADER MOVEMENT ONLY */
  let dx=0,dy=0;
  if(keys.w)dy--;
  if(keys.s)dy++;
@@ -145,49 +131,15 @@ function update(){
   leader.y+=dy*2.4;
  }
 
- /* FOLLOWERS MOVE IN UNISON */
  units.forEach(u=>{
   if(!u.leader){
-   const tx=leader.x+u.offX;
-   const ty=leader.y+u.offY;
-   u.x+=(tx-u.x)*0.12;
-   u.y+=(ty-u.y)*0.12;
+   u.x+=(leader.x+u.offX-u.x)*0.15;
+   u.y+=(leader.y+u.offY-u.y)*0.15;
   }
  });
 
- /* SHOOTING */
- units.forEach(u=>{
-  let t=null,d=999;
-  enemies.forEach(e=>{
-   const m=Math.hypot(e.x-u.x,e.y-u.y);
-   if(m<160&&m<d){d=m;t=e;}
-  });
-  if(t){
-   bullets.push({
-    x:u.x,y:u.y,
-    dx:(t.x-u.x)/d,
-    dy:(t.y-u.y)/d,
-    life:40
-   });
-   t.hp-=0.6;
-  }
- });
-
- bullets.forEach(b=>{
-  b.x+=b.dx*6;
-  b.y+=b.dy*6;
-  b.life--;
- });
- bullets=bullets.filter(b=>b.life>0);
-
- enemies=enemies.filter(e=>e.hp>0);
- enemies.forEach(e=>{
-  const d=Math.hypot(leader.x-e.x,leader.y-e.y);
-  e.x+=(leader.x-e.x)*0.008;
-  e.y+=(leader.y-e.y)*0.008;
- });
-
- if(Math.hypot(leader.x-machine.x,leader.y-machine.y)<30){
+ // activate machine
+ if(!win && Math.hypot(leader.x-machine.x,leader.y-machine.y)<30){
   machine.active=true;
   win=true;
   document.getElementById("end").style.display="flex";
@@ -195,7 +147,11 @@ function update(){
 
  camX+=(leader.x-camX)*0.1;
  camY+=(leader.y-camY)*0.1;
+
+ ensureChunks();
 }
+
+/* ========= DRAW ========= */
 
 function draw(){
  x.clearRect(0,0,c.width,c.height);
@@ -203,58 +159,66 @@ function draw(){
  x.translate(c.width/2,c.height/2);
  x.translate(-camX,-camY);
 
- /* MAP */
- x.fillStyle="#2a3d1a";
- x.fillRect(-2000,-8000,4000,9000);
- x.fillStyle="#1e4a7a";
- x.fillRect(200,-4000,1000,180);
+ // VOID FOG
+ const fade=Math.min(1,Math.abs(camY)/5000);
+ x.fillStyle=`rgb(${20*(1-fade)},${30*(1-fade)},${15*(1-fade)})`;
 
- x.fillStyle="#4a3728";
- for(let i=0;i<6;i++)
-  x.fillRect(300+i*200,-2000+i*300,80,60);
+ // DRAW CHUNKS
+ for(const k in chunks){
+  const [cx,cy]=k.split(",").map(Number);
+  const px=cx*CHUNK, py=cy*CHUNK;
+  const d=chunks[k];
 
- /* MACHINE */
- if(Math.abs(camY-machine.y)<800){
-  x.fillStyle="#444";
-  x.fillRect(machine.x-20,machine.y-20,40,40);
-  x.fillStyle=machine.active?"#0ff":"#800";
-  x.beginPath();
-  x.arc(machine.x,machine.y,10,0,Math.PI*2);
-  x.fill();
+  x.fillRect(px,py,CHUNK,CHUNK);
+
+  if(d.water){
+   x.fillStyle="#1e4a7a";
+   x.fillRect(px+80,py+140,240,60);
+   x.fillStyle=`rgb(${20*(1-fade)},${30*(1-fade)},${15*(1-fade)})`;
+  }
+
+  if(d.ruins){
+   x.fillStyle="#4a3728";
+   for(let i=0;i<3;i++)
+    x.fillRect(px+50+i*80,py+200,40,30);
+   x.fillStyle=`rgb(${20*(1-fade)},${30*(1-fade)},${15*(1-fade)})`;
+  }
+
+  if(d.trees){
+   x.fillStyle="#1f7a3a";
+   for(let i=0;i<6;i++)
+    x.fillRect(px+Math.random()*CHUNK,py+Math.random()*CHUNK,4,8);
+   x.fillStyle=`rgb(${20*(1-fade)},${30*(1-fade)},${15*(1-fade)})`;
+  }
  }
+
+ // MACHINE
+ x.fillStyle="#444";
+ x.fillRect(machine.x-20,machine.y-20,40,40);
+ x.fillStyle=machine.active?"#0ff":"#800";
+ x.beginPath();
+ x.arc(machine.x,machine.y,10,0,Math.PI*2);
+ x.fill();
 
  if(machine.active){
   x.strokeStyle="#0ff";
-  x.lineWidth=20;
+  x.lineWidth=16;
   x.beginPath();
   x.moveTo(machine.x,machine.y);
   x.lineTo(machine.x,machine.y-2000);
   x.stroke();
  }
 
- /* ENEMIES */
- enemies.forEach(e=>{
-  x.fillStyle="#600";
-  x.fillRect(e.x-4,e.y-4,8,8);
- });
-
- /* UNITS */
+ // UNITS
  units.forEach(u=>{
-  x.fillStyle=u.leader?"#ff0":legionColor;
+  x.fillStyle=u.leader?"#ff0":u.color;
   x.fillRect(u.x-4,u.y-4,8,8);
- });
-
- /* BULLETS */
- bullets.forEach(b=>{
-  x.strokeStyle="#f80";
-  x.beginPath();
-  x.moveTo(b.x,b.y);
-  x.lineTo(b.x-b.dx*4,b.y-b.dy*4);
-  x.stroke();
  });
 
  x.restore();
 }
+
+/* ========= LOOP ========= */
 
 function loop(){
  update();
