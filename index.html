@@ -7,7 +7,7 @@
 html,body{margin:0;overflow:hidden;background:#000;font-family:monospace}
 canvas{image-rendering:pixelated;display:block}
 #ui{position:fixed;inset:0;color:white}
-.panel{background:#111;border:1px solid #555;padding:12px;max-width:320px}
+.panel{background:#111;border:1px solid #555;padding:12px;max-width:340px}
 button,input,select{background:#222;color:#fff;border:1px solid #555;padding:6px;margin-top:6px}
 .hidden{display:none}
 </style>
@@ -39,7 +39,7 @@ button,input,select{background:#222;color:#fff;border:1px solid #555;padding:6px
 
   <div id="success" class="panel hidden">
     <h2>MISSION SUCCESS</h2>
-    <p>Extraction Complete</p>
+    <p>Extraction complete.</p>
     <button onclick="location.reload()">Return</button>
   </div>
 </div>
@@ -47,21 +47,11 @@ button,input,select{background:#222;color:#fff;border:1px solid #555;padding:6px
 <canvas id="c"></canvas>
 
 <script>
+/* ================== CORE ================== */
 const c=document.getElementById("c"),ctx=c.getContext("2d");
 function resize(){c.width=innerWidth;c.height=innerHeight}
 resize();addEventListener("resize",resize);
 
-/* ===== MAP ===== */
-const biomes=[
- {ground:"#c2b280",water:"#8ad"},
- {ground:"#1f3b2d",water:"#3a6"},
- {ground:"#223",water:"#446"},
- {ground:"#333",water:"#111"},
- {ground:"#2a4",water:"#48a"}
-];
-const map=biomes[Math.random()*biomes.length|0];
-
-/* ===== INPUT ===== */
 const keys={},mouse={x:0,y:0,down:false};
 onkeydown=e=>keys[e.key]=true;
 onkeyup=e=>keys[e.key]=false;
@@ -69,39 +59,40 @@ onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
 onmousedown=()=>mouse.down=true;
 onmouseup=()=>mouse.down=false;
 
-/* ===== STATE ===== */
-let game=false,over=false,shake=0;
-let extraction=300;
-let ship=null,shipLanding=true;
+/* ================== MAP ================== */
+const biomes=[
+ {ground:"#c2b280",water:"#8ad",grass:"#a3c06b"},
+ {ground:"#1f3b2d",water:"#3a6",grass:"#4f8"},
+ {ground:"#223",water:"#446",grass:"#6a7"},
+ {ground:"#333",water:"#111",grass:"#777"},
+ {ground:"#2a4",water:"#48a",grass:"#6f6"}
+];
+const map=biomes[Math.random()*biomes.length|0];
 
-/* ===== PLAYER ===== */
+/* ================== STATE ================== */
+let game=false,over=false,shake=0;
+let extraction=300,ship=null,shipCountdown=0;
+
+/* ================== PLAYER ================== */
 const player={
  x:0,y:0,hp:100,max:100,
  angle:0,weapon:"rifle",
- kills:0,bladeMult:1,
- reload:0
+ kills:0,bladeMult:1,name:""
 };
 
-/* ===== WORLD OBJECTS ===== */
-const trees=[],ruins=[],water=[];
-for(let i=0;i<40;i++){
- trees.push({x:(Math.random()-0.5)*3000,y:(Math.random()-0.5)*3000});
- if(i<15)ruins.push({x:(Math.random()-0.5)*3000,y:(Math.random()-0.5)*3000});
- if(i<10)water.push({x:(Math.random()-0.5)*3000,y:(Math.random()-0.5)*3000});
-}
-
-/* ===== ENTITIES ===== */
+/* ================== ENTITIES ================== */
 const enemies=[],bullets=[],blood=[],effects=[];
 
-/* ===== START ===== */
+/* ================== START ================== */
 function startGame(){
+ player.name=username.value;
  player.weapon=startWeapon.value;
  menu.classList.add("hidden");
  hud.classList.remove("hidden");
  game=true;
 }
 
-/* ===== SPAWN ===== */
+/* ================== SPAWN ================== */
 function spawnEnemy(){
  enemies.push({
   x:player.x+(Math.random()-0.5)*900,
@@ -110,52 +101,42 @@ function spawnEnemy(){
  });
 }
 
-/* ===== WEAPONS ===== */
-function fire(){
- if(player.reload>0)return;
- shake=10;
- bullets.push({
-  x:player.x,y:player.y,
+/* ================== WEAPONS ================== */
+function fireRifle(){
+ shake=6;
+ bullets.push({x:player.x,y:player.y,
   dx:Math.cos(player.angle),
   dy:Math.sin(player.angle),
-  life:40,
-  kill:false
- });
+  life:50,damage:12});
 }
 
-function hammer(){
- effects.push({x:player.x,y:player.y,r:10,life:15});
+function powerHammer(){
+ effects.push({x:player.x,y:player.y,r:0});
  enemies.forEach(e=>{
-  if(Math.hypot(e.x-player.x,e.y-player.y)<70){
+  if(Math.hypot(e.x-player.x,e.y-player.y)<80){
    e.hp-=4;
   }
  });
 }
 
-function rotary(){
- if(player.reload>0)return;
- player.reload=240;
- for(let i=0;i<3;i++){
-  bullets.push({
-   x:player.x,y:player.y,
+function rotaryCannon(){
+ for(let i=0;i<3;i++)
+  bullets.push({x:player.x,y:player.y,
    dx:Math.cos(player.angle),
    dy:Math.sin(player.angle),
-   life:30,
-   kill:true
-  });
- }
- shake=14;
+   life:40,damage:100});
 }
 
-function blade(){
+function arkBlade(){
+ effects.push({arc:true});
  enemies.forEach(e=>{
-  if(Math.hypot(e.x-player.x,e.y-player.y)<40){
-   e.hp-=6*player.bladeMult;
+  if(Math.hypot(e.x-player.x,e.y-player.y)<60){
+   e.hp-=8*player.bladeMult;
   }
  });
 }
 
-/* ===== UPDATE ===== */
+/* ================== UPDATE ================== */
 function update(){
  if(!game||over)return;
 
@@ -164,38 +145,39 @@ function update(){
  if(keys.a)player.x-=3;
  if(keys.d)player.x+=3;
 
+ if(keys["1"])player.weapon="rifle";
+ if(keys["2"])player.weapon="hammer";
+ if(keys["3"])player.weapon="rotary";
+ if(keys["4"])player.weapon="blade";
+
  player.angle=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
 
  if(mouse.down){
-  if(player.weapon==="rifle")fire();
-  if(player.weapon==="hammer")hammer();
-  if(player.weapon==="rotary")rotary();
-  if(player.weapon==="blade")blade();
+  if(player.weapon==="rifle")fireRifle();
+  if(player.weapon==="hammer")powerHammer();
+  if(player.weapon==="rotary")rotaryCannon();
+  if(player.weapon==="blade")arkBlade();
  }
-
- if(player.reload>0)player.reload--;
 
  bullets.forEach(b=>{
   b.x+=b.dx*10;b.y+=b.dy*10;b.life--;
   enemies.forEach(e=>{
    if(Math.hypot(b.x-e.x,b.y-e.y)<14){
-    e.hp=b.kill?0:e.hp-14;
-    b.life=0;
-    for(let i=0;i<5;i++)
-     blood.push({x:e.x,y:e.y,dx:(Math.random()-0.5)*2,dy:(Math.random()-0.5)*2,life:20});
+    e.hp-=b.damage;b.life=0;
+    blood.push({x:e.x,y:e.y,life:20});
    }
   });
  });
 
- bullets.filter(b=>b.life>0);
+ for(let i=bullets.length-1;i>=0;i--)
+  if(bullets[i].life<=0)bullets.splice(i,1);
 
  enemies.forEach(e=>{
-  let tx=ship&& !shipLanding?ship.x:player.x;
-  let ty=ship&& !shipLanding?ship.y:player.y;
-  let dx=tx-e.x,dy=ty-e.y,d=Math.hypot(dx,dy);
+  let target=ship||player;
+  let dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy);
   e.x+=dx/d*1.2;e.y+=dy/d*1.2;
-  if(d<18 && (!ship||shipLanding))player.hp-=0.3;
-  if(ship&&!shipLanding&&Math.hypot(e.x-ship.x,e.y-ship.y)<22)ship.hp-=0.5;
+  if(d<18&&target===player)player.hp-=0.4;
+  if(d<18&&ship)ship.hp-=0.3;
  });
 
  for(let i=enemies.length-1;i>=0;i--){
@@ -206,38 +188,32 @@ function update(){
   }
  }
 
- effects.forEach(e=>{e.r+=4;e.life--});
- effects.filter(e=>e.life>0);
-
- blood.forEach(b=>{b.x+=b.dx;b.y+=b.dy;b.life--});
- blood.filter(b=>b.life>0);
+ blood.forEach(b=>b.life--);
+ effects.forEach(e=>e.r+=4);
 
  if(Math.random()<0.03)spawnEnemy();
 
  extraction-=1/60;
  if(extraction<=0&&!ship){
-  ship={x:player.x+300,y:player.y+300,hp:1200};
-  shipLanding=true;
+  ship={x:player.x+400,y:player.y+400,hp:1000};
  }
 
- if(ship){
-  if(shipLanding){
-   ship.y-=0.5;
-   if(ship.y<player.y+200)shipLanding=false;
-  }
-  if(ship.hp<=0){
-   alert("MISSION FAILED");
-   location.reload();
+ if(ship && Math.hypot(player.x-ship.x,player.y-ship.y)<30){
+  shipCountdown+=1/60;
+  if(shipCountdown>10){
+   success.classList.remove("hidden");
+   game=false;
   }
  }
 
  if(player.hp<=0){
+  over=true;
   alert("MISSION FAILED");
   location.reload();
  }
 }
 
-/* ===== DRAW ===== */
+/* ================== DRAW ================== */
 function draw(){
  ctx.setTransform(1,0,0,1,0,0);
  ctx.clearRect(0,0,c.width,c.height);
@@ -248,117 +224,61 @@ function draw(){
 
  ctx.translate(c.width/2-player.x+sx,c.height/2-player.y+sy);
 
- // ground
  ctx.fillStyle=map.ground;
- ctx.fillRect(player.x-3000,player.y-3000,6000,6000);
+ ctx.fillRect(player.x-2500,player.y-2500,5000,5000);
 
- // water
  ctx.fillStyle=map.water;
- water.forEach(w=>ctx.fillRect(w.x,w.y,120,80));
+ for(let i=0;i<25;i++)
+  ctx.fillRect(i*200-800,i*150-600,60,40);
 
- // ruins
- ctx.fillStyle="#555";
- ruins.forEach(r=>ctx.fillRect(r.x,r.y,60,40));
+ ctx.fillStyle=map.grass;
+ for(let i=0;i<120;i++)
+  ctx.fillRect(player.x+(Math.random()-0.5)*1200,
+               player.y+(Math.random()-0.5)*1200,2,6);
 
- // trees
- trees.forEach(t=>{
-  ctx.fillStyle="#0004";
-  ctx.beginPath();ctx.ellipse(t.x,t.y+18,14,6,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#1b5";
-  ctx.beginPath();ctx.arc(t.x,t.y,18,0,Math.PI*2);ctx.fill();
- });
-
- // enemies
  enemies.forEach(e=>{
-  ctx.fillStyle="#0004";
-  ctx.beginPath();ctx.ellipse(e.x,e.y+16,12,5,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="rgba(0,0,0,0.4)";
+  ctx.beginPath();ctx.ellipse(e.x,e.y+10,10,4,0,0,Math.PI*2);ctx.fill();
   ctx.fillStyle="#3f3";
   ctx.fillRect(e.x-8,e.y-8,16,16);
   ctx.fillStyle="#f00";
   ctx.fillRect(e.x-10,e.y-16,20*(e.hp/e.max),3);
  });
 
- // effects
- effects.forEach(e=>{
-  ctx.strokeStyle="#0ff";
-  ctx.beginPath();ctx.arc(e.x,e.y,e.r,0,Math.PI*2);ctx.stroke();
- });
-
- // blood
  ctx.fillStyle="#7f0";
  blood.forEach(b=>ctx.fillRect(b.x,b.y,3,3));
 
- // bullets
- ctx.fillStyle="#ff0";
- bullets.forEach(b=>ctx.fillRect(b.x,b.y,4,2));
+ bullets.forEach(b=>{
+  ctx.fillStyle="#ff0";
+  ctx.fillRect(b.x,b.y,4,2);
+ });
 
- // player shadow
- ctx.fillStyle="#0004";
- ctx.beginPath();ctx.ellipse(player.x,player.y+12,10,4,0,0,Math.PI*2);ctx.fill();
+ ctx.fillStyle="rgba(0,0,0,0.5)";
+ ctx.beginPath();ctx.ellipse(player.x,player.y+12,12,4,0,0,Math.PI*2);ctx.fill();
 
- // player
  ctx.save();
  ctx.translate(player.x,player.y);
  ctx.rotate(player.angle);
  ctx.fillStyle="#ccc";
  ctx.fillRect(-6,-6,12,12);
- ctx.fillRect(6,-2,12,4);
+ ctx.fillRect(6,-2,10,4);
  ctx.restore();
 
- // ship
  if(ship){
-  ctx.fillStyle="#0005";
-  ctx.beginPath();ctx.ellipse(ship.x,ship.y+26,30,10,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#888";
+  ctx.fillStyle="rgba(0,0,0,0.5)";
+  ctx.beginPath();ctx.ellipse(ship.x,ship.y+20,30,8,0,0,Math.PI*2);ctx.fill();
+  ctx.fillStyle="#999";
   ctx.fillRect(ship.x-20,ship.y-20,40,40);
-  ctx.fillStyle="#0af";
-  ctx.fillRect(ship.x-6,ship.y+20,12,8);
  }
 
  ctx.setTransform(1,0,0,1,0,0);
-
  hp.innerText=`HP: ${player.hp|0}`;
  weapon.innerText=`Weapon: ${player.weapon}`;
  timer.innerText=`Extraction: ${extraction|0}s`;
 }
 
-/* ===== LOOP ===== */
-function loop(){update();draw();requestAnimationFrame(loop)}
-loop();
+/* ================== LOOP ================== */
+function loop(){update();draw();requestAnimationFrame(loop)}loop();
 </script>
 </body>
 </html>
-🔥 WHAT YOU NOW HAVE
-You now have a real gameplay loop:
-
-Tactile gunplay
-
-Impact feedback (shake, blood, shadows)
-
-Weapon variety
-
-Extraction pressure
-
-Environmental storytelling
-
-If you want next:
-
-Sprite sheets
-
-Boss encounters
-
-Multiplayer sync
-
-Inventory UI
-
-Sound + music
-
-Tell me which one next, and I’ll extend this code — not break it.
-
-
-I prefer this response
-
-
-
-
-
