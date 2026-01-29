@@ -4,68 +4,113 @@
 <meta charset="UTF-8">
 <title>Pixel Extraction</title>
 <style>
-html,body{margin:0;overflow:hidden;background:#000;font-family:monospace;color:white}
-canvas{image-rendering:pixelated}
-#ui{position:absolute;top:10px;left:10px}
-#menu{position:absolute;inset:0;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
-button,input{font-family:monospace;font-size:14px}
-#inventory{position:absolute;bottom:10px;right:10px;border:2px solid white;padding:6px}
+html,body{
+ margin:0;
+ overflow:hidden;
+ background:#000;
+ font-family:monospace;
+ color:white;
+}
+canvas{
+ image-rendering:pixelated;
+ display:block;
+}
+#menu{
+ position:absolute;
+ inset:0;
+ background:#000c;
+ display:flex;
+ flex-direction:column;
+ justify-content:center;
+ align-items:center;
+ gap:10px;
+}
+#ui{
+ position:absolute;
+ top:10px;
+ left:10px;
+}
+#inventory{
+ position:absolute;
+ bottom:10px;
+ right:10px;
+ border:2px solid white;
+ padding:6px;
+}
+button,input,select{
+ font-family:monospace;
+ font-size:14px;
+}
 </style>
 </head>
 <body>
 
 <div id="menu">
 <h2>PIXEL EXTRACTION</h2>
-<input id="nameInput" placeholder="Username">
-<select id="weaponSelect">
+<input id="username" placeholder="Username">
+<select id="weapon">
 <option>Rifle</option>
 <option>Rapid Rotary Cannon</option>
 <option>Ark Blade</option>
 <option>Power Hammer</option>
 <option>Phasma Pack</option>
 </select>
-<button onclick="startGame()">START</button>
-<button onclick="alert('Multiplayer groundwork only')">MULTIPLAYER</button>
+<button onclick="start()">START</button>
 </div>
 
 <div id="ui"></div>
-<div id="inventory">Weapon</div>
+<div id="inventory"></div>
 <canvas id="c"></canvas>
 
 <script>
-const c = document.getElementById("c"), ctx = c.getContext("2d");
-c.width = innerWidth; c.height = innerHeight;
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
+c.width=innerWidth;
+c.height=innerHeight;
 
 let shake=0;
-let mapType = Math.floor(Math.random()*5);
-let entities=[], bullets=[], particles=[];
-let started=false, extraction=false, defendTimer=0, liftoff=0;
-
-const player={
- x:0,y:0,hp:100,maxHp:100,
- weapon:"Rifle",
- speed:2,
- kills:0
-};
-
-const ship={x:600,y:400,hp:1000,active:false};
+let started=false;
+let entities=[];
+let bullets=[];
+let particles=[];
+let mapType=Math.floor(Math.random()*5);
 
 const keys={};
 onkeydown=e=>keys[e.key]=true;
 onkeyup=e=>keys[e.key]=false;
 
-function startGame(){
- player.weapon=document.getElementById("weaponSelect").value;
+const mouse={x:0,y:0};
+onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
+
+const player={
+ x:0,y:0,
+ hp:100,maxHp:100,
+ speed:2,
+ weapon:"Rifle",
+ kills:0
+};
+
+const ship={
+ x:600,y:400,
+ hp:1000,
+ active:false,
+ defend:0,
+ lift:0
+};
+
+function start(){
+ player.weapon=document.getElementById("weapon").value;
+ document.getElementById("inventory").innerText=player.weapon;
  document.getElementById("menu").style.display="none";
  started=true;
  generateMap();
- spawnWave();
- setTimeout(()=>{ship.active=true},300000);
+ spawnMonsters();
+ setTimeout(()=>ship.active=true,300000);
 }
 
 function generateMap(){
  entities=[];
- for(let i=0;i<200;i++){
+ for(let i=0;i<220;i++){
   entities.push({
    x:Math.random()*2000-1000,
    y:Math.random()*2000-1000,
@@ -74,32 +119,36 @@ function generateMap(){
  }
 }
 
-function spawnWave(){
- for(let i=0;i<20;i++){
+function spawnMonsters(){
+ for(let i=0;i<18;i++){
   entities.push({
    type:"monster",
    x:Math.random()*800-400,
    y:Math.random()*800-400,
-   hp:40,maxHp:40
+   hp:50,maxHp:50
   });
  }
 }
 
+onclick=()=>{
+ if(!started)return;
+ shoot();
+};
+
 function shoot(){
  if(player.weapon==="Phasma Pack")return;
+ let a=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
  bullets.push({
-  x:player.x,y:player.y,
-  dx:Math.cos(angle)*6,
-  dy:Math.sin(angle)*6
+  x:player.x,
+  y:player.y,
+  dx:Math.cos(a)*6,
+  dy:Math.sin(a)*6
  });
- shake=5;
+ shake=6;
 }
-
-let angle=0;
 
 function update(){
  if(!started)return;
- angle=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
 
  if(keys.w)player.y-=player.speed;
  if(keys.s)player.y+=player.speed;
@@ -112,7 +161,8 @@ function update(){
  } else player.speed=2;
 
  bullets.forEach(b=>{
-  b.x+=b.dx; b.y+=b.dy;
+  b.x+=b.dx;
+  b.y+=b.dy;
   entities.forEach(e=>{
    if(e.type==="monster" && Math.hypot(b.x-e.x,b.y-e.y)<12){
     e.hp-=20;
@@ -124,71 +174,89 @@ function update(){
  entities=entities.filter(e=>!(e.type==="monster"&&e.hp<=0));
 
  if(ship.active){
-  defendTimer+=1/60;
-  if(defendTimer>10 && keys.e){
-   liftoff+=1/60;
-   if(liftoff>5){alert("MISSION SUCCESS");location.reload();}
+  ship.defend+=1/60;
+  if(ship.defend>10 && keys.e){
+   ship.lift+=1/60;
+   if(ship.lift>5){
+    alert("MISSION SUCCESS");
+    location.reload();
+   }
   }
  }
 
- if(player.hp<=0){alert("MISSION FAILED");location.reload();}
-}
-
-function drawEntity(e){
- ctx.save();
- ctx.translate(e.x-player.x+c.width/2,e.y-player.y+c.height/2);
- ctx.fillStyle="#0008";
- ctx.fillRect(-6,6,12,4);
- if(e.type==="monster"){
-  ctx.fillStyle="#552200";
-  ctx.fillRect(-8,-8,16,16);
-  ctx.fillStyle="lime";
-  ctx.fillRect(-10,-14,20*(e.hp/e.maxHp),3);
- } else {
-  ctx.fillStyle={
-   tree:"#2a5",
-   rock:"#777",
-   water:"#248",
-   ruin:"#666",
-   mountain:"#aaa"
-  }[e.t];
-  ctx.fillRect(-8,-8,16,16);
+ if(player.hp<=0){
+  alert("MISSION FAILED");
+  location.reload();
  }
- ctx.restore();
 }
 
-function drawPlayer(){
+function draw(){
+ ctx.setTransform(1,0,0,1,0,0);
+ ctx.clearRect(0,0,c.width,c.height);
+
+ let sx=0,sy=0;
+ if(shake>0){
+  sx=(Math.random()-0.5)*shake;
+  sy=(Math.random()-0.5)*shake;
+  shake--;
+ }
+ ctx.translate(sx,sy);
+ ctx.translate(
+  Math.floor(c.width/2-player.x),
+  Math.floor(c.height/2-player.y)
+ );
+
+ entities.forEach(e=>{
+  ctx.save();
+  ctx.translate(e.x,e.y);
+  ctx.fillStyle="#0008";
+  ctx.fillRect(-6,6,12,4);
+
+  if(e.type==="monster"){
+   ctx.fillStyle="#552200";
+   ctx.fillRect(-8,-8,16,16);
+   ctx.fillStyle="lime";
+   ctx.fillRect(-10,-14,20*(e.hp/e.maxHp),3);
+  } else {
+   ctx.fillStyle={
+    tree:"#2a5",
+    rock:"#777",
+    water:"#248",
+    ruin:"#666",
+    mountain:"#aaa"
+   }[e.t];
+   ctx.fillRect(-8,-8,16,16);
+  }
+  ctx.restore();
+ });
+
+ bullets.forEach(b=>{
+  ctx.fillStyle="yellow";
+  ctx.fillRect(b.x,b.y,3,3);
+ });
+
+ particles.forEach(p=>{
+  ctx.fillStyle=p.c;
+  ctx.fillRect(p.x,p.y,2,2);
+  p.life--;
+ });
+
+ particles=particles.filter(p=>p.life>0);
+
  ctx.save();
- ctx.translate(c.width/2,c.height/2);
+ ctx.translate(player.x,player.y);
  ctx.fillStyle="#0008";
  ctx.fillRect(-6,8,12,4);
  ctx.fillStyle="#3af";
  ctx.fillRect(-6,-10,12,20);
  ctx.restore();
-}
 
-function draw(){
- ctx.clearRect(0,0,c.width,c.height);
- if(shake>0){ctx.translate(Math.random()*shake,Math.random()*shake);shake--;}
-
- entities.forEach(drawEntity);
- bullets.forEach(b=>{
-  ctx.fillStyle="yellow";
-  ctx.fillRect(b.x-player.x+c.width/2,b.y-player.y+c.height/2,3,3);
- });
-
- drawPlayer();
-
- // UI
+ ctx.setTransform(1,0,0,1,0,0);
  ctx.fillStyle="red";
  ctx.fillRect(20,20,200*(player.hp/player.maxHp),10);
  ctx.strokeStyle="white";
  ctx.strokeRect(20,20,200,10);
 }
-
-const mouse={x:0,y:0};
-onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
-onclick=shoot;
 
 function loop(){
  update();
