@@ -2,283 +2,200 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>DROPZONE PROTOCOL</title>
+<title>Pixel Extraction</title>
 <style>
-html,body{margin:0;overflow:hidden;background:#000;font-family:monospace}
-canvas{image-rendering:pixelated;display:block}
-#ui{position:fixed;inset:0;color:white}
-.panel{background:#111;border:1px solid #555;padding:12px;max-width:340px}
-button,input,select{background:#222;color:#fff;border:1px solid #555;padding:6px;margin-top:6px}
-.hidden{display:none}
+html,body{margin:0;overflow:hidden;background:#000;font-family:monospace;color:white}
+canvas{image-rendering:pixelated}
+#ui{position:absolute;top:10px;left:10px}
+#menu{position:absolute;inset:0;background:#000d;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:10px}
+button,input{font-family:monospace;font-size:14px}
+#inventory{position:absolute;bottom:10px;right:10px;border:2px solid white;padding:6px}
 </style>
 </head>
 <body>
 
-<div id="ui">
-  <div id="menu" class="panel">
-    <h2>DROPZONE PROTOCOL</h2>
-    <label>Username</label><br>
-    <input id="username" value="Marine"><br>
-
-    <label>Starting Weapon</label><br>
-    <select id="startWeapon">
-      <option value="rifle">Rifle</option>
-      <option value="hammer">Power Hammer</option>
-      <option value="rotary">Rotary Cannon</option>
-      <option value="blade">Ark Blade</option>
-    </select><br>
-
-    <button onclick="startGame()">Single Player</button>
-  </div>
-
-  <div id="hud" class="hidden">
-    <div id="hp"></div>
-    <div id="weapon"></div>
-    <div id="timer"></div>
-  </div>
-
-  <div id="success" class="panel hidden">
-    <h2>MISSION SUCCESS</h2>
-    <p>Extraction complete.</p>
-    <button onclick="location.reload()">Return</button>
-  </div>
+<div id="menu">
+<h2>PIXEL EXTRACTION</h2>
+<input id="nameInput" placeholder="Username">
+<select id="weaponSelect">
+<option>Rifle</option>
+<option>Rapid Rotary Cannon</option>
+<option>Ark Blade</option>
+<option>Power Hammer</option>
+<option>Phasma Pack</option>
+</select>
+<button onclick="startGame()">START</button>
+<button onclick="alert('Multiplayer groundwork only')">MULTIPLAYER</button>
 </div>
 
+<div id="ui"></div>
+<div id="inventory">Weapon</div>
 <canvas id="c"></canvas>
 
 <script>
-/* ================== CORE ================== */
-const c=document.getElementById("c"),ctx=c.getContext("2d");
-function resize(){c.width=innerWidth;c.height=innerHeight}
-resize();addEventListener("resize",resize);
+const c = document.getElementById("c"), ctx = c.getContext("2d");
+c.width = innerWidth; c.height = innerHeight;
 
-const keys={},mouse={x:0,y:0,down:false};
-onkeydown=e=>keys[e.key]=true;
-onkeyup=e=>keys[e.key]=false;
-onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
-onmousedown=()=>mouse.down=true;
-onmouseup=()=>mouse.down=false;
+let shake=0;
+let mapType = Math.floor(Math.random()*5);
+let entities=[], bullets=[], particles=[];
+let started=false, extraction=false, defendTimer=0, liftoff=0;
 
-/* ================== MAP ================== */
-const biomes=[
- {ground:"#c2b280",water:"#8ad",grass:"#a3c06b"},
- {ground:"#1f3b2d",water:"#3a6",grass:"#4f8"},
- {ground:"#223",water:"#446",grass:"#6a7"},
- {ground:"#333",water:"#111",grass:"#777"},
- {ground:"#2a4",water:"#48a",grass:"#6f6"}
-];
-const map=biomes[Math.random()*biomes.length|0];
-
-/* ================== STATE ================== */
-let game=false,over=false,shake=0;
-let extraction=300,ship=null,shipCountdown=0;
-
-/* ================== PLAYER ================== */
 const player={
- x:0,y:0,hp:100,max:100,
- angle:0,weapon:"rifle",
- kills:0,bladeMult:1,name:""
+ x:0,y:0,hp:100,maxHp:100,
+ weapon:"Rifle",
+ speed:2,
+ kills:0
 };
 
-/* ================== ENTITIES ================== */
-const enemies=[],bullets=[],blood=[],effects=[];
+const ship={x:600,y:400,hp:1000,active:false};
 
-/* ================== START ================== */
+const keys={};
+onkeydown=e=>keys[e.key]=true;
+onkeyup=e=>keys[e.key]=false;
+
 function startGame(){
- player.name=username.value;
- player.weapon=startWeapon.value;
- menu.classList.add("hidden");
- hud.classList.remove("hidden");
- game=true;
+ player.weapon=document.getElementById("weaponSelect").value;
+ document.getElementById("menu").style.display="none";
+ started=true;
+ generateMap();
+ spawnWave();
+ setTimeout(()=>{ship.active=true},300000);
 }
 
-/* ================== SPAWN ================== */
-function spawnEnemy(){
- enemies.push({
-  x:player.x+(Math.random()-0.5)*900,
-  y:player.y+(Math.random()-0.5)*900,
-  hp:80,max:80
- });
-}
-
-/* ================== WEAPONS ================== */
-function fireRifle(){
- shake=6;
- bullets.push({x:player.x,y:player.y,
-  dx:Math.cos(player.angle),
-  dy:Math.sin(player.angle),
-  life:50,damage:12});
-}
-
-function powerHammer(){
- effects.push({x:player.x,y:player.y,r:0});
- enemies.forEach(e=>{
-  if(Math.hypot(e.x-player.x,e.y-player.y)<80){
-   e.hp-=4;
-  }
- });
-}
-
-function rotaryCannon(){
- for(let i=0;i<3;i++)
-  bullets.push({x:player.x,y:player.y,
-   dx:Math.cos(player.angle),
-   dy:Math.sin(player.angle),
-   life:40,damage:100});
-}
-
-function arkBlade(){
- effects.push({arc:true});
- enemies.forEach(e=>{
-  if(Math.hypot(e.x-player.x,e.y-player.y)<60){
-   e.hp-=8*player.bladeMult;
-  }
- });
-}
-
-/* ================== UPDATE ================== */
-function update(){
- if(!game||over)return;
-
- if(keys.w)player.y-=3;
- if(keys.s)player.y+=3;
- if(keys.a)player.x-=3;
- if(keys.d)player.x+=3;
-
- if(keys["1"])player.weapon="rifle";
- if(keys["2"])player.weapon="hammer";
- if(keys["3"])player.weapon="rotary";
- if(keys["4"])player.weapon="blade";
-
- player.angle=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
-
- if(mouse.down){
-  if(player.weapon==="rifle")fireRifle();
-  if(player.weapon==="hammer")powerHammer();
-  if(player.weapon==="rotary")rotaryCannon();
-  if(player.weapon==="blade")arkBlade();
+function generateMap(){
+ entities=[];
+ for(let i=0;i<200;i++){
+  entities.push({
+   x:Math.random()*2000-1000,
+   y:Math.random()*2000-1000,
+   t:["tree","rock","water","ruin","mountain"][Math.floor(Math.random()*5)]
+  });
  }
+}
+
+function spawnWave(){
+ for(let i=0;i<20;i++){
+  entities.push({
+   type:"monster",
+   x:Math.random()*800-400,
+   y:Math.random()*800-400,
+   hp:40,maxHp:40
+  });
+ }
+}
+
+function shoot(){
+ if(player.weapon==="Phasma Pack")return;
+ bullets.push({
+  x:player.x,y:player.y,
+  dx:Math.cos(angle)*6,
+  dy:Math.sin(angle)*6
+ });
+ shake=5;
+}
+
+let angle=0;
+
+function update(){
+ if(!started)return;
+ angle=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
+
+ if(keys.w)player.y-=player.speed;
+ if(keys.s)player.y+=player.speed;
+ if(keys.a)player.x-=player.speed;
+ if(keys.d)player.x+=player.speed;
+
+ if(keys[" "] && player.weapon==="Phasma Pack"){
+  player.speed=4;
+  particles.push({x:player.x,y:player.y,c:"orange",life:10});
+ } else player.speed=2;
 
  bullets.forEach(b=>{
-  b.x+=b.dx*10;b.y+=b.dy*10;b.life--;
-  enemies.forEach(e=>{
-   if(Math.hypot(b.x-e.x,b.y-e.y)<14){
-    e.hp-=b.damage;b.life=0;
-    blood.push({x:e.x,y:e.y,life:20});
+  b.x+=b.dx; b.y+=b.dy;
+  entities.forEach(e=>{
+   if(e.type==="monster" && Math.hypot(b.x-e.x,b.y-e.y)<12){
+    e.hp-=20;
+    particles.push({x:e.x,y:e.y,c:"#00ff00",life:10});
    }
   });
  });
 
- for(let i=bullets.length-1;i>=0;i--)
-  if(bullets[i].life<=0)bullets.splice(i,1);
+ entities=entities.filter(e=>!(e.type==="monster"&&e.hp<=0));
 
- enemies.forEach(e=>{
-  let target=ship||player;
-  let dx=target.x-e.x,dy=target.y-e.y,d=Math.hypot(dx,dy);
-  e.x+=dx/d*1.2;e.y+=dy/d*1.2;
-  if(d<18&&target===player)player.hp-=0.4;
-  if(d<18&&ship)ship.hp-=0.3;
- });
-
- for(let i=enemies.length-1;i>=0;i--){
-  if(enemies[i].hp<=0){
-   player.kills++;
-   if(player.kills%15===0)player.bladeMult*=2;
-   enemies.splice(i,1);
+ if(ship.active){
+  defendTimer+=1/60;
+  if(defendTimer>10 && keys.e){
+   liftoff+=1/60;
+   if(liftoff>5){alert("MISSION SUCCESS");location.reload();}
   }
  }
 
- blood.forEach(b=>b.life--);
- effects.forEach(e=>e.r+=4);
-
- if(Math.random()<0.03)spawnEnemy();
-
- extraction-=1/60;
- if(extraction<=0&&!ship){
-  ship={x:player.x+400,y:player.y+400,hp:1000};
- }
-
- if(ship && Math.hypot(player.x-ship.x,player.y-ship.y)<30){
-  shipCountdown+=1/60;
-  if(shipCountdown>10){
-   success.classList.remove("hidden");
-   game=false;
-  }
- }
-
- if(player.hp<=0){
-  over=true;
-  alert("MISSION FAILED");
-  location.reload();
- }
+ if(player.hp<=0){alert("MISSION FAILED");location.reload();}
 }
 
-/* ================== DRAW ================== */
-function draw(){
- ctx.setTransform(1,0,0,1,0,0);
- ctx.clearRect(0,0,c.width,c.height);
-
- let sx=(Math.random()-0.5)*shake;
- let sy=(Math.random()-0.5)*shake;
- shake*=0.8;
-
- ctx.translate(c.width/2-player.x+sx,c.height/2-player.y+sy);
-
- ctx.fillStyle=map.ground;
- ctx.fillRect(player.x-2500,player.y-2500,5000,5000);
-
- ctx.fillStyle=map.water;
- for(let i=0;i<25;i++)
-  ctx.fillRect(i*200-800,i*150-600,60,40);
-
- ctx.fillStyle=map.grass;
- for(let i=0;i<120;i++)
-  ctx.fillRect(player.x+(Math.random()-0.5)*1200,
-               player.y+(Math.random()-0.5)*1200,2,6);
-
- enemies.forEach(e=>{
-  ctx.fillStyle="rgba(0,0,0,0.4)";
-  ctx.beginPath();ctx.ellipse(e.x,e.y+10,10,4,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#3f3";
-  ctx.fillRect(e.x-8,e.y-8,16,16);
-  ctx.fillStyle="#f00";
-  ctx.fillRect(e.x-10,e.y-16,20*(e.hp/e.max),3);
- });
-
- ctx.fillStyle="#7f0";
- blood.forEach(b=>ctx.fillRect(b.x,b.y,3,3));
-
- bullets.forEach(b=>{
-  ctx.fillStyle="#ff0";
-  ctx.fillRect(b.x,b.y,4,2);
- });
-
- ctx.fillStyle="rgba(0,0,0,0.5)";
- ctx.beginPath();ctx.ellipse(player.x,player.y+12,12,4,0,0,Math.PI*2);ctx.fill();
-
+function drawEntity(e){
  ctx.save();
- ctx.translate(player.x,player.y);
- ctx.rotate(player.angle);
- ctx.fillStyle="#ccc";
- ctx.fillRect(-6,-6,12,12);
- ctx.fillRect(6,-2,10,4);
- ctx.restore();
-
- if(ship){
-  ctx.fillStyle="rgba(0,0,0,0.5)";
-  ctx.beginPath();ctx.ellipse(ship.x,ship.y+20,30,8,0,0,Math.PI*2);ctx.fill();
-  ctx.fillStyle="#999";
-  ctx.fillRect(ship.x-20,ship.y-20,40,40);
+ ctx.translate(e.x-player.x+c.width/2,e.y-player.y+c.height/2);
+ ctx.fillStyle="#0008";
+ ctx.fillRect(-6,6,12,4);
+ if(e.type==="monster"){
+  ctx.fillStyle="#552200";
+  ctx.fillRect(-8,-8,16,16);
+  ctx.fillStyle="lime";
+  ctx.fillRect(-10,-14,20*(e.hp/e.maxHp),3);
+ } else {
+  ctx.fillStyle={
+   tree:"#2a5",
+   rock:"#777",
+   water:"#248",
+   ruin:"#666",
+   mountain:"#aaa"
+  }[e.t];
+  ctx.fillRect(-8,-8,16,16);
  }
-
- ctx.setTransform(1,0,0,1,0,0);
- hp.innerText=`HP: ${player.hp|0}`;
- weapon.innerText=`Weapon: ${player.weapon}`;
- timer.innerText=`Extraction: ${extraction|0}s`;
+ ctx.restore();
 }
 
-/* ================== LOOP ================== */
-function loop(){update();draw();requestAnimationFrame(loop)}loop();
+function drawPlayer(){
+ ctx.save();
+ ctx.translate(c.width/2,c.height/2);
+ ctx.fillStyle="#0008";
+ ctx.fillRect(-6,8,12,4);
+ ctx.fillStyle="#3af";
+ ctx.fillRect(-6,-10,12,20);
+ ctx.restore();
+}
+
+function draw(){
+ ctx.clearRect(0,0,c.width,c.height);
+ if(shake>0){ctx.translate(Math.random()*shake,Math.random()*shake);shake--;}
+
+ entities.forEach(drawEntity);
+ bullets.forEach(b=>{
+  ctx.fillStyle="yellow";
+  ctx.fillRect(b.x-player.x+c.width/2,b.y-player.y+c.height/2,3,3);
+ });
+
+ drawPlayer();
+
+ // UI
+ ctx.fillStyle="red";
+ ctx.fillRect(20,20,200*(player.hp/player.maxHp),10);
+ ctx.strokeStyle="white";
+ ctx.strokeRect(20,20,200,10);
+}
+
+const mouse={x:0,y:0};
+onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
+onclick=shoot;
+
+function loop(){
+ update();
+ draw();
+ requestAnimationFrame(loop);
+}
+loop();
 </script>
 </body>
 </html>
