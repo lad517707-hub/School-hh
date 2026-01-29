@@ -4,42 +4,27 @@
 <meta charset="UTF-8">
 <title>Dropzone Protocol</title>
 <style>
-html,body{margin:0;overflow:hidden;background:#1a1a1a;font-family:monospace}
+html,body{margin:0;overflow:hidden;background:#000;font-family:monospace}
 canvas{image-rendering:pixelated;display:block}
-#ui{
- position:fixed;inset:0;color:white;pointer-events:none
-}
-button,input{
- pointer-events:auto;
- background:#222;color:#fff;border:1px solid #555;
- padding:8px;margin:4px
-}
-.panel{
- background:#111;border:1px solid #555;padding:10px
-}
+#ui{position:fixed;inset:0;color:white}
+.panel{background:#111;border:1px solid #555;padding:10px}
+button{background:#222;color:#fff;border:1px solid #555;padding:6px}
 </style>
 </head>
 <body>
 
 <div id="ui">
- <div id="menu" class="panel">
-  <h2>DROPZONE PROTOCOL</h2>
-  <input id="name" placeholder="Username"><br>
-  <button onclick="startSingle()">Single Player</button>
-  <button onclick="openMulti()">Multiplayer</button>
- </div>
-
- <div id="multi" class="panel" style="display:none">
-  <input id="party" placeholder="Party Name">
-  <input id="code" placeholder="Join Code">
-  <button onclick="createParty()">Create</button>
-  <button onclick="joinParty()">Join</button>
+ <div id="loadout" class="panel">
+  <h3>Select Loadout (15s)</h3>
+  <button onclick="gun='rifle'">Rifle</button>
+  <button onclick="gun='shotgun'">Shotgun</button>
+  <button onclick="gun='heavy'">Heavy</button>
+  <div id="countdown"></div>
  </div>
 
  <div id="hud" style="display:none">
   <div id="hp"></div>
   <div id="kills"></div>
-  <div id="timer"></div>
  </div>
 </div>
 
@@ -51,9 +36,15 @@ const c=document.getElementById("c"),ctx=c.getContext("2d");
 function resize(){c.width=innerWidth;c.height=innerHeight}
 resize();addEventListener("resize",resize);
 
-let game=false;
-let extractionTimer=300;
-let ship=null;
+/* ================= MAPS ================= */
+const maps=[
+ {ground:"#c2b280",water:"#aee",trees:"#7c9a3f"}, // desert
+ {ground:"#1f3b2d",water:"#3a6",trees:"#0f0"},   // forest
+ {ground:"#3a3a3a",water:"#222",trees:"#555"},  // ruins
+ {ground:"#223",water:"#446",trees:"#335"},     // alien
+ {ground:"#2a4",water:"#48a",trees:"#1a3"}      // swamp
+];
+const map=maps[Math.random()*maps.length|0];
 
 /* ================= INPUT ================= */
 const keys={},mouse={x:0,y:0,down:false};
@@ -64,42 +55,33 @@ onmousedown=()=>mouse.down=true;
 onmouseup=()=>mouse.down=false;
 
 /* ================= PLAYER ================= */
-const player={
- x:0,y:0,hp:100,max:100,kills:0,
- gun:"rifle"
-};
+let gun="rifle";
+const player={x:0,y:0,hp:100,max:100,kills:0,angle:0};
 
-/* ================= ENEMIES ================= */
-const enemies=[];
+/* ================= GAME STATE ================= */
+let game=false,prep=15;
+
+/* ================= ENTITIES ================= */
+const bullets=[],blood=[],enemies=[];
+
+/* ================= ENEMY ================= */
 function spawnEnemy(){
  enemies.push({
-  x:(Math.random()-0.5)*1000,
-  y:(Math.random()-0.5)*1000,
-  hp:40,
-  target:"player"
+  x:player.x+(Math.random()-0.5)*800,
+  y:player.y+(Math.random()-0.5)*800,
+  hp:60,max:60
  });
 }
 
-/* ================= SHIP ================= */
-function spawnShip(){
- ship={
-  x:player.x,y:player.y,
-  hp:player.max*10,
-  timer:10
- };
- enemies.forEach(e=>e.target="ship");
-}
-
-/* ================= BULLETS ================= */
-const bullets=[];
+/* ================= SHOOT ================= */
 function shoot(){
- let spread=player.gun==="shotgun"?5:1;
- for(let i=0;i<spread;i++){
+ let count=gun==="shotgun"?5:1;
+ for(let i=0;i<count;i++){
   bullets.push({
    x:player.x,y:player.y,
-   dx:Math.cos(player.angle)+(Math.random()-0.5)*0.2,
-   dy:Math.sin(player.angle)+(Math.random()-0.5)*0.2,
-   dmg:player.gun==="heavy"?30:10,
+   dx:Math.cos(player.angle)+(Math.random()-0.5)*0.3,
+   dy:Math.sin(player.angle)+(Math.random()-0.5)*0.3,
+   dmg:gun==="heavy"?25:10,
    life:40
   });
  }
@@ -115,14 +97,15 @@ function update(){
  if(keys.d)player.x+=3;
 
  player.angle=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
-
  if(mouse.down)shoot();
 
  bullets.forEach(b=>{
-  b.x+=b.dx*8;b.y+=b.dy*8;b.life--;
+  b.x+=b.dx*7;b.y+=b.dy*7;b.life--;
   enemies.forEach(e=>{
-   if(Math.hypot(b.x-e.x,b.y-e.y)<12){
+   if(Math.hypot(b.x-e.x,b.y-e.y)<14){
     e.hp-=b.dmg;b.life=0;
+    for(let i=0;i<5;i++)
+     blood.push({x:b.x,y:b.y,dx:(Math.random()-0.5)*2,dy:(Math.random()-0.5)*2,life:20});
     if(e.hp<=0)player.kills++;
    }
   });
@@ -132,24 +115,20 @@ function update(){
   if(bullets[i].life<=0)bullets.splice(i,1);
 
  enemies.forEach(e=>{
-  let t=e.target==="ship"&&ship?ship:player;
-  let dx=t.x-e.x,dy=t.y-e.y,d=Math.hypot(dx,dy);
+  let dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy);
   e.x+=dx/d*1.2;e.y+=dy/d*1.2;
   if(d<16){
-   if(t===player)player.hp-=0.2;
-   else ship.hp-=0.3;
+   player.hp-=0.3;
+   for(let i=0;i<3;i++)
+    blood.push({x:player.x,y:player.y,dx:(Math.random()-0.5)*2,dy:(Math.random()-0.5)*2,life:15});
   }
  });
 
- if(Math.random()<0.03)spawnEnemy();
+ blood.forEach(b=>{b.x+=b.dx;b.y+=b.dy;b.life--});
+ for(let i=blood.length-1;i>=0;i--)
+  if(blood[i].life<=0)blood.splice(i,1);
 
- extractionTimer-=1/60;
- if(extractionTimer<=0&&!ship)spawnShip();
- if(ship){
-  ship.timer-=1/60;
-  if(ship.hp<=0)end("MISSION FAILED");
-  if(ship.timer<=0)end("EXTRACTED");
- }
+ if(Math.random()<0.03)spawnEnemy();
 }
 
 /* ================= DRAW ================= */
@@ -158,8 +137,13 @@ function draw(){
  ctx.translate(c.width/2-player.x,c.height/2-player.y);
 
  // ground
- ctx.fillStyle="#2c2c2c";
+ ctx.fillStyle=map.ground;
  ctx.fillRect(player.x-2000,player.y-2000,4000,4000);
+
+ // water patches
+ ctx.fillStyle=map.water;
+ for(let i=0;i<40;i++)
+  ctx.fillRect((i*200)%800-400,(i*300)%800-400,60,40);
 
  // enemies
  enemies.forEach(e=>{
@@ -167,17 +151,22 @@ function draw(){
   ctx.beginPath();
   ctx.ellipse(e.x,e.y,10,14,0,0,Math.PI*2);
   ctx.fill();
+  ctx.strokeStyle="#000";
+  for(let i=0;i<6;i++)
+   ctx.strokeRect(e.x+(i-3)*4,e.y+10,2,6);
+
+  // enemy HP bar
+  ctx.fillStyle="#f00";
+  ctx.fillRect(e.x-12,e.y-20,24*(e.hp/e.max),3);
  });
 
  // bullets
  ctx.fillStyle="#ff0";
  bullets.forEach(b=>ctx.fillRect(b.x,b.y,3,2));
 
- // ship
- if(ship){
-  ctx.fillStyle="#666";
-  ctx.fillRect(ship.x-20,ship.y-20,40,40);
- }
+ // blood
+ ctx.fillStyle="#800";
+ blood.forEach(b=>ctx.fillRect(b.x,b.y,2,2));
 
  // player
  ctx.save();
@@ -190,34 +179,25 @@ function draw(){
 
  ctx.setTransform(1,0,0,1,0,0);
 
- document.getElementById("hp").innerText=`HP: ${Math.max(0,player.hp|0)}`;
+ document.getElementById("hp").innerText=`HP: ${player.hp|0}`;
  document.getElementById("kills").innerText=`Kills: ${player.kills}`;
- document.getElementById("timer").innerText=
-  ship?`Ship HP: ${ship.hp|0}`:`Extraction in ${extractionTimer|0}`;
 }
 
 /* ================= LOOP ================= */
-function loop(){update();draw();requestAnimationFrame(loop)}loop();
-
-/* ================= UI ================= */
-function startSingle(){
- game=true;
- document.getElementById("menu").style.display="none";
- document.getElementById("hud").style.display="block";
+function loop(){
+ if(prep>0){
+  prep-=1/60;
+  document.getElementById("countdown").innerText=`Starting in ${prep|0}`;
+  if(prep<=0){
+   game=true;
+   document.getElementById("loadout").style.display="none";
+   document.getElementById("hud").style.display="block";
+  }
+ }else update();
+ draw();
+ requestAnimationFrame(loop);
 }
-
-function openMulti(){
- document.getElementById("menu").style.display="none";
- document.getElementById("multi").style.display="block";
-}
-
-function createParty(){startSingle()}
-function joinParty(){startSingle()}
-
-function end(text){
- alert(text);
- location.reload();
-}
+loop();
 </script>
 </body>
 </html>
