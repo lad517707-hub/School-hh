@@ -6,47 +6,44 @@
 <style>
 html,body{margin:0;overflow:hidden;background:#000;font-family:monospace}
 canvas{image-rendering:pixelated;display:block}
-#ui{position:fixed;inset:0;color:white}
-.panel{background:#111;border:1px solid #555;padding:10px}
+#ui{position:fixed;inset:0;color:white;pointer-events:none}
+.panel{background:#111;border:1px solid #555;padding:10px;pointer-events:auto}
 button{background:#222;color:#fff;border:1px solid #555;padding:6px}
 </style>
 </head>
 <body>
 
 <div id="ui">
- <div id="loadout" class="panel">
-  <h3>Select Loadout (15s)</h3>
-  <button onclick="gun='rifle'">Rifle</button>
-  <button onclick="gun='shotgun'">Shotgun</button>
-  <button onclick="gun='heavy'">Heavy</button>
-  <div id="countdown"></div>
+ <div id="menu" class="panel">
+  <h2>DROPZONE PROTOCOL</h2>
+  <button onclick="start()">Start Mission</button>
  </div>
 
  <div id="hud" style="display:none">
   <div id="hp"></div>
-  <div id="kills"></div>
+  <div id="weapon"></div>
  </div>
 </div>
 
 <canvas id="c"></canvas>
 
 <script>
-/* ================= SETUP ================= */
+/* ===== SETUP ===== */
 const c=document.getElementById("c"),ctx=c.getContext("2d");
 function resize(){c.width=innerWidth;c.height=innerHeight}
 resize();addEventListener("resize",resize);
 
-/* ================= MAPS ================= */
+/* ===== MAPS ===== */
 const maps=[
- {ground:"#c2b280",water:"#aee",trees:"#7c9a3f"}, // desert
- {ground:"#1f3b2d",water:"#3a6",trees:"#0f0"},   // forest
- {ground:"#3a3a3a",water:"#222",trees:"#555"},  // ruins
- {ground:"#223",water:"#446",trees:"#335"},     // alien
- {ground:"#2a4",water:"#48a",trees:"#1a3"}      // swamp
+ {ground:"#c2b280",water:"#9ad"}, // desert
+ {ground:"#1f3b2d",water:"#3a6"}, // forest
+ {ground:"#2a4",water:"#48a"},   // swamp
+ {ground:"#223",water:"#446"},   // alien
+ {ground:"#333",water:"#111"}    // ruins
 ];
 const map=maps[Math.random()*maps.length|0];
 
-/* ================= INPUT ================= */
+/* ===== INPUT ===== */
 const keys={},mouse={x:0,y:0,down:false};
 onkeydown=e=>keys[e.key]=true;
 onkeyup=e=>keys[e.key]=false;
@@ -54,17 +51,22 @@ onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
 onmousedown=()=>mouse.down=true;
 onmouseup=()=>mouse.down=false;
 
-/* ================= PLAYER ================= */
-let gun="rifle";
-const player={x:0,y:0,hp:100,max:100,kills:0,angle:0};
+/* ===== GAME STATE ===== */
+let game=false,gameOver=false;
+let extractionTimer=180;
+let ship=null;
 
-/* ================= GAME STATE ================= */
-let game=false,prep=15;
+/* ===== PLAYER ===== */
+const player={
+ x:0,y:0,hp:100,max:100,
+ angle:0,kills:0,
+ weapon:1,bladeMult:1
+};
 
-/* ================= ENTITIES ================= */
-const bullets=[],blood=[],enemies=[];
+/* ===== ENTITIES ===== */
+const enemies=[],bullets=[],blood=[];
 
-/* ================= ENEMY ================= */
+/* ===== SPAWN ===== */
 function spawnEnemy(){
  enemies.push({
   x:player.x+(Math.random()-0.5)*800,
@@ -73,40 +75,62 @@ function spawnEnemy(){
  });
 }
 
-/* ================= SHOOT ================= */
+/* ===== WEAPONS ===== */
 function shoot(){
- let count=gun==="shotgun"?5:1;
- for(let i=0;i<count;i++){
-  bullets.push({
-   x:player.x,y:player.y,
-   dx:Math.cos(player.angle)+(Math.random()-0.5)*0.3,
-   dy:Math.sin(player.angle)+(Math.random()-0.5)*0.3,
-   dmg:gun==="heavy"?25:10,
-   life:40
-  });
+ if(player.weapon===1){
+  bullets.push({x:player.x,y:player.y,dx:Math.cos(player.angle),dy:Math.sin(player.angle),life:40,kill:false});
+ }
+
+ if(player.weapon===3){
+  for(let i=0;i<3;i++)
+   bullets.push({x:player.x,y:player.y,dx:Math.cos(player.angle),dy:Math.sin(player.angle),life:30,kill:true});
  }
 }
 
-/* ================= UPDATE ================= */
+function hammer(){
+ enemies.forEach(e=>{
+  if(Math.hypot(e.x-player.x,e.y-player.y)<60){
+   e.hp-=3;
+  }
+ });
+}
+
+function blade(){
+ enemies.forEach(e=>{
+  if(Math.hypot(e.x-player.x,e.y-player.y)<40){
+   e.hp-=5*player.bladeMult;
+  }
+ });
+}
+
+/* ===== UPDATE ===== */
 function update(){
- if(!game)return;
+ if(!game||gameOver)return;
 
  if(keys.w)player.y-=3;
  if(keys.s)player.y+=3;
  if(keys.a)player.x-=3;
  if(keys.d)player.x+=3;
 
+ if(keys["1"])player.weapon=1;
+ if(keys["2"])player.weapon=2;
+ if(keys["3"])player.weapon=3;
+ if(keys["4"])player.weapon=4;
+
  player.angle=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
- if(mouse.down)shoot();
+
+ if(mouse.down){
+  if(player.weapon===1||player.weapon===3)shoot();
+  if(player.weapon===2)hammer();
+  if(player.weapon===4)blade();
+ }
 
  bullets.forEach(b=>{
-  b.x+=b.dx*7;b.y+=b.dy*7;b.life--;
+  b.x+=b.dx*8;b.y+=b.dy*8;b.life--;
   enemies.forEach(e=>{
-   if(Math.hypot(b.x-e.x,b.y-e.y)<14){
-    e.hp-=b.dmg;b.life=0;
-    for(let i=0;i<5;i++)
-     blood.push({x:b.x,y:b.y,dx:(Math.random()-0.5)*2,dy:(Math.random()-0.5)*2,life:20});
-    if(e.hp<=0)player.kills++;
+   if(Math.hypot(b.x-e.x,b.y-e.y)<12){
+    e.hp= b.kill?0:e.hp-10;
+    b.life=0;
    }
   });
  });
@@ -116,59 +140,65 @@ function update(){
 
  enemies.forEach(e=>{
   let dx=player.x-e.x,dy=player.y-e.y,d=Math.hypot(dx,dy);
-  e.x+=dx/d*1.2;e.y+=dy/d*1.2;
-  if(d<16){
-   player.hp-=0.3;
-   for(let i=0;i<3;i++)
-    blood.push({x:player.x,y:player.y,dx:(Math.random()-0.5)*2,dy:(Math.random()-0.5)*2,life:15});
-  }
+  e.x+=dx/d*1.1;e.y+=dy/d*1.1;
+  if(d<18)player.hp-=0.3;
  });
+
+ for(let i=enemies.length-1;i>=0;i--){
+  if(enemies[i].hp<=0){
+   for(let b=0;b<6;b++)
+    blood.push({x:enemies[i].x,y:enemies[i].y,dx:(Math.random()-0.5)*2,dy:(Math.random()-0.5)*2,life:20});
+   player.kills++;
+   if(player.kills%15===0)player.bladeMult*=2;
+   enemies.splice(i,1);
+  }
+ }
 
  blood.forEach(b=>{b.x+=b.dx;b.y+=b.dy;b.life--});
  for(let i=blood.length-1;i>=0;i--)
   if(blood[i].life<=0)blood.splice(i,1);
 
  if(Math.random()<0.03)spawnEnemy();
+
+ extractionTimer-=1/60;
+ if(extractionTimer<=0&&!ship)
+  ship={x:player.x+200,y:player.y+200,hp:1000};
+
+ if(player.hp<=0){
+  gameOver=true;
+  alert("MISSION FAILED");
+  location.reload();
+ }
 }
 
-/* ================= DRAW ================= */
+/* ===== DRAW ===== */
 function draw(){
  ctx.clearRect(0,0,c.width,c.height);
  ctx.translate(c.width/2-player.x,c.height/2-player.y);
 
- // ground
  ctx.fillStyle=map.ground;
  ctx.fillRect(player.x-2000,player.y-2000,4000,4000);
 
- // water patches
  ctx.fillStyle=map.water;
- for(let i=0;i<40;i++)
-  ctx.fillRect((i*200)%800-400,(i*300)%800-400,60,40);
+ for(let i=0;i<30;i++)
+  ctx.fillRect(i*200-600,i*150-600,60,40);
 
- // enemies
  enemies.forEach(e=>{
-  ctx.fillStyle="#300";
+  ctx.fillStyle="#3f3";
   ctx.beginPath();
   ctx.ellipse(e.x,e.y,10,14,0,0,Math.PI*2);
   ctx.fill();
   ctx.strokeStyle="#000";
   for(let i=0;i<6;i++)
-   ctx.strokeRect(e.x+(i-3)*4,e.y+10,2,6);
+   ctx.strokeRect(e.x+(i-3)*4,e.y+12,2,6);
 
-  // enemy HP bar
   ctx.fillStyle="#f00";
   ctx.fillRect(e.x-12,e.y-20,24*(e.hp/e.max),3);
  });
 
- // bullets
- ctx.fillStyle="#ff0";
- bullets.forEach(b=>ctx.fillRect(b.x,b.y,3,2));
-
- // blood
- ctx.fillStyle="#800";
+ ctx.fillStyle="#7f0";
  blood.forEach(b=>ctx.fillRect(b.x,b.y,2,2));
 
- // player
  ctx.save();
  ctx.translate(player.x,player.y);
  ctx.rotate(player.angle);
@@ -177,27 +207,37 @@ function draw(){
  ctx.fillRect(0,-2,14,4);
  ctx.restore();
 
+ if(ship){
+  ctx.fillStyle="#888";
+  ctx.fillRect(ship.x-20,ship.y-20,40,40);
+
+  // arrow
+  const dx=ship.x-player.x,dy=ship.y-player.y;
+  const a=Math.atan2(dy,dx);
+  ctx.save();
+  ctx.translate(player.x,player.y);
+  ctx.rotate(a);
+  ctx.fillStyle="#0af";
+  ctx.fillRect(20,-2,10,4);
+  ctx.restore();
+ }
+
  ctx.setTransform(1,0,0,1,0,0);
 
  document.getElementById("hp").innerText=`HP: ${player.hp|0}`;
- document.getElementById("kills").innerText=`Kills: ${player.kills}`;
+ document.getElementById("weapon").innerText=
+  ["","Rifle","Power Hammer","Rotary Cannon","Ark Blade"][player.weapon];
 }
 
-/* ================= LOOP ================= */
-function loop(){
- if(prep>0){
-  prep-=1/60;
-  document.getElementById("countdown").innerText=`Starting in ${prep|0}`;
-  if(prep<=0){
-   game=true;
-   document.getElementById("loadout").style.display="none";
-   document.getElementById("hud").style.display="block";
-  }
- }else update();
- draw();
- requestAnimationFrame(loop);
+/* ===== LOOP ===== */
+function loop(){update();draw();requestAnimationFrame(loop)}loop();
+
+/* ===== START ===== */
+function start(){
+ document.getElementById("menu").style.display="none";
+ document.getElementById("hud").style.display="block";
+ game=true;
 }
-loop();
 </script>
 </body>
 </html>
