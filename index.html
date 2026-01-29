@@ -2,203 +2,197 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Top-Down Drop Trooper</title>
+<title>Pixel Drop Trooper</title>
 <style>
-html,body{margin:0;overflow:hidden;background:#050505}
-canvas{display:block}
+html,body{margin:0;overflow:hidden;background:#000}
+canvas{image-rendering:pixelated;display:block}
 </style>
 </head>
 <body>
 <canvas id="c"></canvas>
 <script>
-/* ================== SETUP ================== */
-const c = document.getElementById("c");
-const ctx = c.getContext("2d");
-resize();
-window.addEventListener("resize",resize);
-function resize(){c.width=innerWidth;c.height=innerHeight;}
+/* ================= SETUP ================= */
+const c=document.getElementById("c");
+const ctx=c.getContext("2d");
+function resize(){c.width=innerWidth;c.height=innerHeight}
+resize();addEventListener("resize",resize);
 
-let camX=0,camY=0,shake=0;
+const TILE=32;
+let camX=0,camY=0;
 
-/* ================== INPUT ================== */
-const keys={}, mouse={x:0,y:0,down:false};
-addEventListener("keydown",e=>keys[e.key]=true);
-addEventListener("keyup",e=>keys[e.key]=false);
+/* ================= INPUT ================= */
+const keys={},mouse={x:0,y:0,down:false};
+addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
+addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
 addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
 addEventListener("mousedown",()=>mouse.down=true);
 addEventListener("mouseup",()=>mouse.down=false);
 
-/* ================== PLAYER ================== */
+/* ================= PLAYER ================= */
 const player={
- x:0,y:0,angle:0,
- speed:3,
- ammo:30,mag:30,reload:0
+ x:0,y:0,hp:100,max:100,
+ speed:3,angle:0
 };
 
-/* ================== BULLETS ================== */
-const bullets=[];
+/* ================= BIOMES ================= */
+const biomes=[
+ {name:"Desert", ground:"#c9a44c", detail:"#b08d3c", water:null},
+ {name:"Forest", ground:"#2e6b2e", detail:"#1f4f1f", water:"#1e4f7a"},
+ {name:"Ice", ground:"#dce6f0", detail:"#bcd2e8", water:"#9fd3ff"},
+ {name:"Volcanic", ground:"#3a3a3a", detail:"#5a1a1a", water:"#ff4500"},
+ {name:"Swamp", ground:"#3a5f3a", detail:"#2f4f2f", water:"#2e8b8b"}
+];
+const biome=biomes[Math.floor(Math.random()*biomes.length)];
 
-/* ================== ENEMIES ================== */
-const enemies=[];
-function spawnEnemy(big=false){
- enemies.push({
-  x:player.x+(Math.random()-0.5)*1200,
-  y:player.y+(Math.random()-0.5)*1200,
-  hp:big?300:100,
-  max:big?300:100,
-  speed:big?0.6:1.2,
-  r:big?26:14
+/* ================= TERRAIN ================= */
+function drawTerrain(){
+ for(let x=-12;x<18;x++){
+  for(let y=-12;y<18;y++){
+   const wx=Math.floor((camX+x*TILE)/TILE);
+   const wy=Math.floor((camY+y*TILE)/TILE);
+   const px=wx*TILE-camX;
+   const py=wy*TILE-camY;
+
+   ctx.fillStyle=biome.ground;
+   ctx.fillRect(px,py,TILE,TILE);
+
+   if((wx*wy)%7===0){
+    ctx.fillStyle=biome.detail;
+    ctx.fillRect(px+6,py+6,20,20);
+   }
+
+   if(biome.water && (wx+wy)%13===0){
+    ctx.fillStyle=biome.water;
+    ctx.fillRect(px,py+20,TILE,12);
+   }
+  }
+ }
+}
+
+/* ================= BULLETS ================= */
+const bullets=[];
+function shoot(){
+ bullets.push({
+  x:player.x,y:player.y,
+  dx:Math.cos(player.angle)*10,
+  dy:Math.sin(player.angle)*10,
+  life:50
  });
 }
 
-/* ================== STRATAGEMS ================== */
-const strikes=[];
-addEventListener("keydown",e=>{
- if(e.key==="1"){
-  strikes.push({x:player.x,y:player.y,t:120});
- }
-});
+/* ================= ENEMIES ================= */
+const enemies=[];
+function spawnSpider(){
+ enemies.push({
+  x:player.x+(Math.random()-0.5)*800,
+  y:player.y+(Math.random()-0.5)*800,
+  hp:60
+ });
+}
 
-/* ================== UPDATE ================== */
+function drawSpider(e){
+ const x=e.x-camX,y=e.y-camY;
+ ctx.fillStyle="#2b0000";
+ ctx.fillRect(x-6,y-6,12,12);
+
+ ctx.fillStyle="#ff0000";
+ ctx.fillRect(x-4,y-8,2,2);
+ ctx.fillRect(x+2,y-8,2,2);
+
+ ctx.strokeStyle="#1a0000";
+ for(let i=0;i<8;i++){
+  ctx.beginPath();
+  ctx.moveTo(x,y);
+  ctx.lineTo(
+   x+Math.cos(i)*14,
+   y+Math.sin(i)*14
+  );
+  ctx.stroke();
+ }
+}
+
+/* ================= UPDATE ================= */
 function update(){
- /* movement */
  if(keys.w)player.y-=player.speed;
  if(keys.s)player.y+=player.speed;
  if(keys.a)player.x-=player.speed;
  if(keys.d)player.x+=player.speed;
 
- const mx = mouse.x-c.width/2;
- const my = mouse.y-c.height/2;
- player.angle = Math.atan2(my,mx);
+ const mx=mouse.x-c.width/2;
+ const my=mouse.y-c.height/2;
+ player.angle=Math.atan2(my,mx);
 
- camX += (player.x-camX)*0.1;
- camY += (player.y-camY)*0.1;
+ camX+=(player.x-c.width/2-camX)*0.1;
+ camY+=(player.y-c.height/2-camY)*0.1;
 
- /* shooting */
- if(mouse.down && player.reload<=0){
-  if(player.ammo>0){
-   bullets.push({
-    x:player.x,y:player.y,
-    dx:Math.cos(player.angle+ (Math.random()-0.5)*0.1)*10,
-    dy:Math.sin(player.angle+ (Math.random()-0.5)*0.1)*10,
-    life:60
-   });
-   player.ammo--;
-   shake=6;
-  }else{
-   player.reload=90;
-  }
- }
+ if(mouse.down) shoot();
 
- if(player.reload>0){
-  player.reload--;
-  if(player.reload===0) player.ammo=player.mag;
- }
-
- /* bullets */
- for(let i=bullets.length-1;i>=0;i--){
-  const b=bullets[i];
-  b.x+=b.dx; b.y+=b.dy; b.life--;
+ bullets.forEach(b=>{
+  b.x+=b.dx;b.y+=b.dy;b.life--;
   enemies.forEach(e=>{
-   if(Math.hypot(b.x-e.x,b.y-e.y)<e.r){
-    e.hp-=25; b.life=0;
+   if(Math.hypot(b.x-e.x,b.y-e.y)<10){
+    e.hp-=20;b.life=0;
    }
   });
-  if(b.life<=0) bullets.splice(i,1);
- }
-
- /* enemies */
- enemies.forEach(e=>{
-  const dx=player.x-e.x, dy=player.y-e.y;
-  const d=Math.hypot(dx,dy);
-  e.x+=dx/d*e.speed;
-  e.y+=dy/d*e.speed;
  });
 
- for(let i=enemies.length-1;i>=0;i--){
+ for(let i=bullets.length-1;i>=0;i--)
+  if(bullets[i].life<=0) bullets.splice(i,1);
+
+ enemies.forEach(e=>{
+  const dx=player.x-e.x,dy=player.y-e.y;
+  const d=Math.hypot(dx,dy);
+  e.x+=dx/d*1.2;
+  e.y+=dy/d*1.2;
+  if(d<18) player.hp-=0.2;
+ });
+
+ for(let i=enemies.length-1;i>=0;i--)
   if(enemies[i].hp<=0) enemies.splice(i,1);
- }
 
- if(Math.random()<0.03) spawnEnemy(false);
- if(Math.random()<0.006) spawnEnemy(true);
-
- /* strikes */
- for(let i=strikes.length-1;i>=0;i--){
-  const s=strikes[i]; s.t--;
-  if(s.t===0){
-   shake=30;
-   enemies.forEach(e=>{
-    if(Math.hypot(e.x-s.x,e.y-s.y)<260) e.hp=0;
-   });
-  }
-  if(s.t<-30) strikes.splice(i,1);
- }
-
- shake*=0.9;
+ if(Math.random()<0.02) spawnSpider();
 }
 
-/* ================== DRAW ================== */
+/* ================= DRAW ================= */
 function draw(){
  ctx.clearRect(0,0,c.width,c.height);
  ctx.save();
- ctx.translate(
-  c.width/2-camX+(Math.random()-0.5)*shake,
-  c.height/2-camY+(Math.random()-0.5)*shake
- );
+ ctx.translate(c.width/2-camX,c.height/2-camY);
 
- /* ground */
- ctx.fillStyle="#1e2a1e";
- ctx.fillRect(camX-2000,camY-2000,4000,4000);
+ drawTerrain();
+ enemies.forEach(drawSpider);
 
- /* enemies */
- enemies.forEach(e=>{
-  ctx.fillStyle="#552222";
-  ctx.beginPath();
-  ctx.arc(e.x,e.y,e.r,0,Math.PI*2);
-  ctx.fill();
-  ctx.fillStyle="#000";
-  ctx.fillRect(e.x-e.r,e.y-e.r-8,e.r*2,5);
-  ctx.fillStyle="#f00";
-  ctx.fillRect(e.x-e.r,e.y-e.r-8,e.r*2*(e.hp/e.max),5);
- });
-
- /* bullets */
  bullets.forEach(b=>{
-  ctx.strokeStyle="#ff0";
-  ctx.beginPath();
-  ctx.moveTo(b.x,b.y);
-  ctx.lineTo(b.x-b.dx,b.y-b.dy);
-  ctx.stroke();
+  ctx.fillStyle="#ffff00";
+  ctx.fillRect(b.x,b.y,4,2);
  });
 
- /* player */
+ // player
  ctx.save();
  ctx.translate(player.x,player.y);
  ctx.rotate(player.angle);
- ctx.fillStyle="#ccc";
- ctx.fillRect(-8,-8,16,16);
- ctx.fillRect(0,-2,18,4);
+ ctx.fillStyle="#cccccc";
+ ctx.fillRect(-6,-6,12,12);
+ ctx.fillRect(0,-2,14,4);
  ctx.restore();
-
- /* strikes */
- strikes.forEach(s=>{
-  if(s.t>0){
-   ctx.strokeStyle="#0ff";
-   ctx.beginPath();
-   ctx.arc(s.x,s.y,20,0,Math.PI*2);
-   ctx.stroke();
-  }
- });
 
  ctx.restore();
 
- /* UI */
- ctx.fillStyle="#fff";
- ctx.fillText(`Ammo: ${player.ammo}${player.reload>0?" (reloading)":""}`,20,30);
- ctx.fillText("Stratagem: [1] Orbital Strike",20,50);
+ // UI
+ ctx.fillStyle="#000";
+ ctx.fillRect(20,20,200,12);
+ ctx.fillStyle="#00ff00";
+ ctx.fillRect(20,20,200*(player.hp/player.max),12);
+ ctx.strokeStyle="#fff";
+ ctx.strokeRect(20,20,200,12);
+
+ // inventory
+ ctx.strokeStyle="#fff";
+ ctx.strokeRect(c.width-68,c.height-68,48,48);
+ ctx.fillText("INV",c.width-64,c.height-18);
 }
 
-/* ================== LOOP ================== */
+/* ================= LOOP ================= */
 function loop(){
  update(); draw();
  requestAnimationFrame(loop);
