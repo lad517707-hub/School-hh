@@ -2,202 +2,222 @@
 <html>
 <head>
 <meta charset="UTF-8">
-<title>Pixel Drop Trooper</title>
+<title>Dropzone Protocol</title>
 <style>
-html,body{margin:0;overflow:hidden;background:#000}
+html,body{margin:0;overflow:hidden;background:#1a1a1a;font-family:monospace}
 canvas{image-rendering:pixelated;display:block}
+#ui{
+ position:fixed;inset:0;color:white;pointer-events:none
+}
+button,input{
+ pointer-events:auto;
+ background:#222;color:#fff;border:1px solid #555;
+ padding:8px;margin:4px
+}
+.panel{
+ background:#111;border:1px solid #555;padding:10px
+}
 </style>
 </head>
 <body>
+
+<div id="ui">
+ <div id="menu" class="panel">
+  <h2>DROPZONE PROTOCOL</h2>
+  <input id="name" placeholder="Username"><br>
+  <button onclick="startSingle()">Single Player</button>
+  <button onclick="openMulti()">Multiplayer</button>
+ </div>
+
+ <div id="multi" class="panel" style="display:none">
+  <input id="party" placeholder="Party Name">
+  <input id="code" placeholder="Join Code">
+  <button onclick="createParty()">Create</button>
+  <button onclick="joinParty()">Join</button>
+ </div>
+
+ <div id="hud" style="display:none">
+  <div id="hp"></div>
+  <div id="kills"></div>
+  <div id="timer"></div>
+ </div>
+</div>
+
 <canvas id="c"></canvas>
+
 <script>
 /* ================= SETUP ================= */
-const c=document.getElementById("c");
-const ctx=c.getContext("2d");
+const c=document.getElementById("c"),ctx=c.getContext("2d");
 function resize(){c.width=innerWidth;c.height=innerHeight}
 resize();addEventListener("resize",resize);
 
-const TILE=32;
-let camX=0,camY=0;
+let game=false;
+let extractionTimer=300;
+let ship=null;
 
 /* ================= INPUT ================= */
 const keys={},mouse={x:0,y:0,down:false};
-addEventListener("keydown",e=>keys[e.key.toLowerCase()]=true);
-addEventListener("keyup",e=>keys[e.key.toLowerCase()]=false);
-addEventListener("mousemove",e=>{mouse.x=e.clientX;mouse.y=e.clientY});
-addEventListener("mousedown",()=>mouse.down=true);
-addEventListener("mouseup",()=>mouse.down=false);
+onkeydown=e=>keys[e.key]=true;
+onkeyup=e=>keys[e.key]=false;
+onmousemove=e=>{mouse.x=e.clientX;mouse.y=e.clientY};
+onmousedown=()=>mouse.down=true;
+onmouseup=()=>mouse.down=false;
 
 /* ================= PLAYER ================= */
 const player={
- x:0,y:0,hp:100,max:100,
- speed:3,angle:0
+ x:0,y:0,hp:100,max:100,kills:0,
+ gun:"rifle"
 };
 
-/* ================= BIOMES ================= */
-const biomes=[
- {name:"Desert", ground:"#c9a44c", detail:"#b08d3c", water:null},
- {name:"Forest", ground:"#2e6b2e", detail:"#1f4f1f", water:"#1e4f7a"},
- {name:"Ice", ground:"#dce6f0", detail:"#bcd2e8", water:"#9fd3ff"},
- {name:"Volcanic", ground:"#3a3a3a", detail:"#5a1a1a", water:"#ff4500"},
- {name:"Swamp", ground:"#3a5f3a", detail:"#2f4f2f", water:"#2e8b8b"}
-];
-const biome=biomes[Math.floor(Math.random()*biomes.length)];
+/* ================= ENEMIES ================= */
+const enemies=[];
+function spawnEnemy(){
+ enemies.push({
+  x:(Math.random()-0.5)*1000,
+  y:(Math.random()-0.5)*1000,
+  hp:40,
+  target:"player"
+ });
+}
 
-/* ================= TERRAIN ================= */
-function drawTerrain(){
- for(let x=-12;x<18;x++){
-  for(let y=-12;y<18;y++){
-   const wx=Math.floor((camX+x*TILE)/TILE);
-   const wy=Math.floor((camY+y*TILE)/TILE);
-   const px=wx*TILE-camX;
-   const py=wy*TILE-camY;
-
-   ctx.fillStyle=biome.ground;
-   ctx.fillRect(px,py,TILE,TILE);
-
-   if((wx*wy)%7===0){
-    ctx.fillStyle=biome.detail;
-    ctx.fillRect(px+6,py+6,20,20);
-   }
-
-   if(biome.water && (wx+wy)%13===0){
-    ctx.fillStyle=biome.water;
-    ctx.fillRect(px,py+20,TILE,12);
-   }
-  }
- }
+/* ================= SHIP ================= */
+function spawnShip(){
+ ship={
+  x:player.x,y:player.y,
+  hp:player.max*10,
+  timer:10
+ };
+ enemies.forEach(e=>e.target="ship");
 }
 
 /* ================= BULLETS ================= */
 const bullets=[];
 function shoot(){
- bullets.push({
-  x:player.x,y:player.y,
-  dx:Math.cos(player.angle)*10,
-  dy:Math.sin(player.angle)*10,
-  life:50
- });
-}
-
-/* ================= ENEMIES ================= */
-const enemies=[];
-function spawnSpider(){
- enemies.push({
-  x:player.x+(Math.random()-0.5)*800,
-  y:player.y+(Math.random()-0.5)*800,
-  hp:60
- });
-}
-
-function drawSpider(e){
- const x=e.x-camX,y=e.y-camY;
- ctx.fillStyle="#2b0000";
- ctx.fillRect(x-6,y-6,12,12);
-
- ctx.fillStyle="#ff0000";
- ctx.fillRect(x-4,y-8,2,2);
- ctx.fillRect(x+2,y-8,2,2);
-
- ctx.strokeStyle="#1a0000";
- for(let i=0;i<8;i++){
-  ctx.beginPath();
-  ctx.moveTo(x,y);
-  ctx.lineTo(
-   x+Math.cos(i)*14,
-   y+Math.sin(i)*14
-  );
-  ctx.stroke();
+ let spread=player.gun==="shotgun"?5:1;
+ for(let i=0;i<spread;i++){
+  bullets.push({
+   x:player.x,y:player.y,
+   dx:Math.cos(player.angle)+(Math.random()-0.5)*0.2,
+   dy:Math.sin(player.angle)+(Math.random()-0.5)*0.2,
+   dmg:player.gun==="heavy"?30:10,
+   life:40
+  });
  }
 }
 
 /* ================= UPDATE ================= */
 function update(){
- if(keys.w)player.y-=player.speed;
- if(keys.s)player.y+=player.speed;
- if(keys.a)player.x-=player.speed;
- if(keys.d)player.x+=player.speed;
+ if(!game)return;
 
- const mx=mouse.x-c.width/2;
- const my=mouse.y-c.height/2;
- player.angle=Math.atan2(my,mx);
+ if(keys.w)player.y-=3;
+ if(keys.s)player.y+=3;
+ if(keys.a)player.x-=3;
+ if(keys.d)player.x+=3;
 
- camX+=(player.x-c.width/2-camX)*0.1;
- camY+=(player.y-c.height/2-camY)*0.1;
+ player.angle=Math.atan2(mouse.y-c.height/2,mouse.x-c.width/2);
 
- if(mouse.down) shoot();
+ if(mouse.down)shoot();
 
  bullets.forEach(b=>{
-  b.x+=b.dx;b.y+=b.dy;b.life--;
+  b.x+=b.dx*8;b.y+=b.dy*8;b.life--;
   enemies.forEach(e=>{
-   if(Math.hypot(b.x-e.x,b.y-e.y)<10){
-    e.hp-=20;b.life=0;
+   if(Math.hypot(b.x-e.x,b.y-e.y)<12){
+    e.hp-=b.dmg;b.life=0;
+    if(e.hp<=0)player.kills++;
    }
   });
  });
 
  for(let i=bullets.length-1;i>=0;i--)
-  if(bullets[i].life<=0) bullets.splice(i,1);
+  if(bullets[i].life<=0)bullets.splice(i,1);
 
  enemies.forEach(e=>{
-  const dx=player.x-e.x,dy=player.y-e.y;
-  const d=Math.hypot(dx,dy);
-  e.x+=dx/d*1.2;
-  e.y+=dy/d*1.2;
-  if(d<18) player.hp-=0.2;
+  let t=e.target==="ship"&&ship?ship:player;
+  let dx=t.x-e.x,dy=t.y-e.y,d=Math.hypot(dx,dy);
+  e.x+=dx/d*1.2;e.y+=dy/d*1.2;
+  if(d<16){
+   if(t===player)player.hp-=0.2;
+   else ship.hp-=0.3;
+  }
  });
 
- for(let i=enemies.length-1;i>=0;i--)
-  if(enemies[i].hp<=0) enemies.splice(i,1);
+ if(Math.random()<0.03)spawnEnemy();
 
- if(Math.random()<0.02) spawnSpider();
+ extractionTimer-=1/60;
+ if(extractionTimer<=0&&!ship)spawnShip();
+ if(ship){
+  ship.timer-=1/60;
+  if(ship.hp<=0)end("MISSION FAILED");
+  if(ship.timer<=0)end("EXTRACTED");
+ }
 }
 
 /* ================= DRAW ================= */
 function draw(){
  ctx.clearRect(0,0,c.width,c.height);
- ctx.save();
- ctx.translate(c.width/2-camX,c.height/2-camY);
+ ctx.translate(c.width/2-player.x,c.height/2-player.y);
 
- drawTerrain();
- enemies.forEach(drawSpider);
+ // ground
+ ctx.fillStyle="#2c2c2c";
+ ctx.fillRect(player.x-2000,player.y-2000,4000,4000);
 
- bullets.forEach(b=>{
-  ctx.fillStyle="#ffff00";
-  ctx.fillRect(b.x,b.y,4,2);
+ // enemies
+ enemies.forEach(e=>{
+  ctx.fillStyle="#300";
+  ctx.beginPath();
+  ctx.ellipse(e.x,e.y,10,14,0,0,Math.PI*2);
+  ctx.fill();
  });
+
+ // bullets
+ ctx.fillStyle="#ff0";
+ bullets.forEach(b=>ctx.fillRect(b.x,b.y,3,2));
+
+ // ship
+ if(ship){
+  ctx.fillStyle="#666";
+  ctx.fillRect(ship.x-20,ship.y-20,40,40);
+ }
 
  // player
  ctx.save();
  ctx.translate(player.x,player.y);
  ctx.rotate(player.angle);
- ctx.fillStyle="#cccccc";
+ ctx.fillStyle="#ccc";
  ctx.fillRect(-6,-6,12,12);
  ctx.fillRect(0,-2,14,4);
  ctx.restore();
 
- ctx.restore();
+ ctx.setTransform(1,0,0,1,0,0);
 
- // UI
- ctx.fillStyle="#000";
- ctx.fillRect(20,20,200,12);
- ctx.fillStyle="#00ff00";
- ctx.fillRect(20,20,200*(player.hp/player.max),12);
- ctx.strokeStyle="#fff";
- ctx.strokeRect(20,20,200,12);
-
- // inventory
- ctx.strokeStyle="#fff";
- ctx.strokeRect(c.width-68,c.height-68,48,48);
- ctx.fillText("INV",c.width-64,c.height-18);
+ document.getElementById("hp").innerText=`HP: ${Math.max(0,player.hp|0)}`;
+ document.getElementById("kills").innerText=`Kills: ${player.kills}`;
+ document.getElementById("timer").innerText=
+  ship?`Ship HP: ${ship.hp|0}`:`Extraction in ${extractionTimer|0}`;
 }
 
 /* ================= LOOP ================= */
-function loop(){
- update(); draw();
- requestAnimationFrame(loop);
+function loop(){update();draw();requestAnimationFrame(loop)}loop();
+
+/* ================= UI ================= */
+function startSingle(){
+ game=true;
+ document.getElementById("menu").style.display="none";
+ document.getElementById("hud").style.display="block";
 }
-loop();
+
+function openMulti(){
+ document.getElementById("menu").style.display="none";
+ document.getElementById("multi").style.display="block";
+}
+
+function createParty(){startSingle()}
+function joinParty(){startSingle()}
+
+function end(text){
+ alert(text);
+ location.reload();
+}
 </script>
 </body>
 </html>
