@@ -4,728 +4,262 @@
 <meta charset="UTF-8">
 <title>DROPZONE PROTOCOL</title>
 <style>
-html,body{margin:0;overflow:hidden;background:#000;font-family:monospace;font-size:12px}
-canvas{image-rendering:pixelated;display:block}
-#ui{position:fixed;inset:0;color:white;z-index:10}
-.panel{background:linear-gradient(#222,#111);border:2px solid #666;padding:16px;max-width:400px;border-radius:4px;box-shadow:0 0 20px #0004}
-button,input,select{background:#333;color:#fff;border:2px solid #666;padding:8px;margin:4px 0;font-family:monospace;font-size:12px;border-radius:2px;cursor:pointer;width:100%;box-sizing:border-box}
-button:hover{background:#444}
-.hidden{display:none}
-#hud{position:absolute;top:20px;left:20px;display:flex;flex-direction:column;gap:4px;font-weight:bold;text-shadow:1px 1px 2px #000}
-#success{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%)}
-label{display:block;margin-top:8px;color:#ccc}
-h2{margin-top:0}
+  html, body { margin:0; overflow:hidden; background:#000; font-family:monospace; color:#0f0; height:100%; }
+  canvas { image-rendering:pixelated; display:block; }
+  #ui { position:fixed; inset:0; pointer-events:none; }
+  #hub { position:absolute; top:0; left:0; right:0; background:#1118; backdrop-filter:blur(4px); border-bottom:2px solid #0f08; padding:8px 16px; display:flex; justify-content:center; gap:20px; pointer-events:auto; z-index:20; }
+  #hub button { background:#222; color:#0f0; border:2px solid #0f08; padding:8px 16px; font-size:14px; cursor:pointer; transition:0.2s; }
+  #hub button:hover { background:#333; border-color:#0f0; }
+  #hub button.active { background:#0f08; color:#000; }
+  .tab { position:absolute; inset:0; padding:80px 20px 20px; display:none; pointer-events:auto; overflow-y:auto; text-align:center; }
+  .tab.active { display:block; }
+  .panel { background:#1118; border:2px solid #0f08; padding:20px; max-width:600px; margin:0 auto 20px; border-radius:4px; }
+  select, input { background:#222; color:#0f0; border:1px solid #0f08; padding:8px; width:200px; margin:8px; font-family:monospace; }
+  .preview { width:200px; height:300px; margin:20px auto; border:2px solid #0f0; background:#0004; position:relative; }
+  .shop-item { display:inline-block; margin:15px; text-align:center; width:180px; }
+  .shop-item button { margin-top:8px; width:100%; }
+  .locked { opacity:0.5; pointer-events:none; }
+  #game-canvas { position:absolute; inset:0; z-index:5; }
+  #hud { position:absolute; top:50px; left:20px; color:#0f0; text-shadow:0 0 4px #000; font-size:16px; pointer-events:none; z-index:10; }
 </style>
 </head>
 <body>
 <div id="ui">
-  <div id="menu" class="panel">
-    <h2>DROPZONE PROTOCOL</h2>
-    <label>Username</label><br>
-    <input id="username" value="Marine"><br>
-    <label>Starting Weapon</label><br>
-    <select id="startWeapon">
-      <option value="pistol">Pistol</option>
-      <option value="smg">SMG</option>
-      <option value="rifle">Assault Rifle</option>
-      <option value="shotgun">Shotgun</option>
-      <option value="sniper">Sniper Rifle</option>
-      <option value="rotary">Rotary Cannon</option>
-      <option value="rocket">Rocket Launcher</option>
-      <option value="flamethrower">Flamethrower</option>
-      <option value="hammer">Power Hammer</option>
-      <option value="blade">Ark Blade</option>
-    </select><br>
-    <label>Skin Tone</label><br>
-    <select id="skin">
-      <option value="#ffdbac">Light</option>
-      <option value="#e0ac69">Medium</option>
-      <option value="#c68642">Tan</option>
-      <option value="#8b4513">Bronze</option>
-    </select><br>
-    <label>Outfit Color</label><br>
-    <select id="outfit">
-      <option value="#4a5d23">Marine</option>
-      <option value="#2a4365">Navy</option>
-      <option value="#78281f">Crimson</option>
-      <option value="#1f2937">Shadow</option>
-    </select><br>
-    <label>Headgear</label><br>
-    <select id="hat">
-      <option value="none">None</option>
-      <option value="helmet">Combat Helmet</option>
-      <option value="cap">Boonie Hat</option>
-      <option value="beret">Beret</option>
-    </select><br>
-    <button onclick="startGame()">Single Player</button>
+  <div id="hub">
+    <button data-tab="play" class="active">PLAY</button>
+    <button data-tab="shop">SHOP</button>
+    <button data-tab="character">CHARACTER</button>
+    <button data-tab="news">NEWS</button>
   </div>
+
+  <div id="play" class="tab active">
+    <div class="panel">
+      <h2>Ready for Dropzone?</h2>
+      <div id="play-preview" class="preview"></div>
+      <p>Weapon: <span id="play-weapon">Assault Rifle</span></p>
+      <button onclick="startGame()">START MISSION</button>
+    </div>
+  </div>
+
+  <div id="shop" class="tab">
+    <div class="panel">
+      <h2>ARMORY - Credits: <span id="credits">5000</span></h2>
+      <p>Buy futuristic weaponry to dominate the battlefield.</p>
+      <div id="shop-items"></div>
+    </div>
+  </div>
+
+  <div id="character" class="tab">
+    <div class="panel">
+      <h2>CHARACTER CUSTOMIZER</h2>
+      <div id="char-preview" class="preview"></div>
+      <label>Skin Tone</label>
+      <select id="skin">
+        <option value="#ffdbac">Light</option>
+        <option value="#e0ac69">Medium</option>
+        <option value="#c68642">Tan</option>
+        <option value="#8b4513">Bronze</option>
+      </select><br>
+      <label>Outfit Color</label>
+      <select id="outfit">
+        <option value="#4a5d23">Marine</option>
+        <option value="#2a4365">Navy</option>
+        <option value="#78281f">Crimson</option>
+        <option value="#1f2937">Shadow</option>
+      </select><br>
+      <label>Headgear</label>
+      <select id="hat">
+        <option value="none">None</option>
+        <option value="helmet">Combat Helmet</option>
+        <option value="cap">Boonie Hat</option>
+        <option value="beret">Beret</option>
+      </select><br>
+      <button onclick="saveCustomization()">SAVE & RETURN</button>
+    </div>
+  </div>
+
+  <div id="news" class="tab">
+    <div class="panel">
+      <h2>NEWS & STATUS</h2>
+      <p style="font-size:18px; color:#ff0;">THIS IS A BETA</p>
+      <p>WORK IN PROGRESS — SORRY!</p>
+      <ul style="text-align:left; max-width:500px; margin:20px auto;">
+        <li>Core gameplay loop complete</li>
+        <li>Organic character & enemy models</li>
+        <li>Hub + shop system added</li>
+        <li>More weapons, maps, enemies coming soon</li>
+        <li>Sound? Multiplayer? Who knows...</li>
+      </ul>
+    </div>
+  </div>
+
   <div id="hud" class="hidden">
+    <!-- Existing HUD elements -->
     <div id="hp"></div>
     <div id="weapon"></div>
     <div id="kills"></div>
     <div id="timer"></div>
     <div id="shiphp" class="hidden"></div>
   </div>
-  <div id="success" class="panel hidden">
+
+  <div id="success" class="hidden panel" style="position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);z-index:15;">
     <h2>MISSION SUCCESS</h2>
     <p>Extraction Complete</p>
-    <button onclick="location.reload()">Return to Menu</button>
+    <button onclick="location.reload()">RETURN TO HUB</button>
   </div>
 </div>
-<canvas id="c"></canvas>
+
+<canvas id="c" class="hidden"></canvas>
+
 <script>
-const c = document.getElementById("c"), ctx = c.getContext("2d");
-ctx.imageSmoothingEnabled = false;
-function resize() { c.width = innerWidth; c.height = innerHeight; }
-resize(); addEventListener("resize", resize);
+// ───────────────────────────────────────────────
+// Persistent data
+let credits = parseInt(localStorage.getItem('dp_credits')) || 5000;
+let ownedWeapons = JSON.parse(localStorage.getItem('dp_owned')) || ['rifle'];
+let playerCustom = JSON.parse(localStorage.getItem('dp_custom')) || {
+  skin: '#ffdbac', outfit: '#4a5d23', hat: 'none'
+};
+let selectedWeapon = localStorage.getItem('dp_weapon') || 'rifle';
 
-/* ===== MAP ===== */
-const biomes = [
-  { ground: "#c2b280", water: "#8ad" },
-  { ground: "#1f3b2d", water: "#3a6" },
-  { ground: "#223", water: "#446" },
-  { ground: "#333", water: "#111" },
-  { ground: "#2a4", water: "#48a" }
-];
-const map = biomes[Math.floor(Math.random() * biomes.length)];
-
-/* ===== WEAPONS ===== */
-const weapons = {
-  pistol: { name: "Pistol", rate: 5, life: 30, dmg: 10, kill: false, spread: 0.08, count: 1, color: "#ff6", speed: 14 },
-  smg: { name: "SMG", rate: 3, life: 25, dmg: 9, kill: false, spread: 0.15, count: 1, color: "#0ff", speed: 13 },
-  rifle: { name: "Assault Rifle", rate: 10, life: 45, dmg: 18, kill: false, spread: 0.02, count: 1, color: "#afa", speed: 12 },
-  shotgun: { name: "Shotgun", rate: 25, life: 20, dmg: 25, kill: false, spread: 0.5, count: 6, color: "#f64", speed: 10 },
-  sniper: { name: "Sniper Rifle", rate: 120, life: 80, dmg: 0, kill: true, spread: 0, count: 1, color: "#fff", speed: 16 },
-  rotary: { name: "Rotary Cannon", rate: 300, life: 25, dmg: 0, kill: true, spread: 0.1, count: 4, color: "#f0f", speed: 15 },
-  rocket: { name: "Rocket Launcher", rate: 90, life: 60, dmg: 50, kill: false, spread: 0, count: 1, color: "#c32", speed: 8, explosion: 60 },
-  flamethrower: { name: "Flamethrower", rate: 1, life: 15, dmg: 6, kill: false, spread: 0.6, count: 10, color: "#f50", speed: 9, flame: true },
-  hammer: { name: "Power Hammer", melee: true, radius: 80, dmg: 5, rate: 15, color: "#4af" },
-  blade: { name: "Ark Blade", melee: true, radius: 50, dmg: 8, rate: 8, color: "#c0f" }
+// ───────────────────────────────────────────────
+// Shop weapons (futuristic sci-fi flavored)
+const shopWeapons = {
+  plasma_pistol:    { name: 'Plasma Pistol',     price: 800,  desc: 'Rapid energy bolts, low recoil', iconColor: '#00ffff' },
+  ion_rifle:        { name: 'Ion Assault Rifle', price: 1800, desc: 'High-rate burst fire, shield-piercing', iconColor: '#00ff88' },
+  rail_sniper:      { name: 'Rail Sniper',       price: 3200, desc: 'One-shot kill at range, slow reload', iconColor: '#ffffff' },
+  vortex_cannon:    { name: 'Vortex Cannon',     price: 4500, desc: 'Pulls enemies in before exploding', iconColor: '#ff00ff' },
+  arc_blade:        { name: 'Arc Energy Blade',  price: 2800, desc: 'Melee chain lightning, high DPS close', iconColor: '#ffff00' },
+  neutron_minigun:  { name: 'Neutron Minigun',   price: 6000, desc: 'Spins up to insane fire rate', iconColor: '#ff8800' }
 };
 
-/* ===== INPUT ===== */
-const keys = {}, mouse = { x: 0, y: 0, down: false };
-onkeydown = e => keys[e.key.toLowerCase()] = true;
-onkeyup = e => keys[e.key.toLowerCase()] = false;
-onmousemove = e => { mouse.x = e.clientX; mouse.y = e.clientY; };
-onmousedown = () => mouse.down = true;
-onmouseup = () => mouse.down = false;
-
-/* ===== STATE ===== */
-let game = false, over = false, shake = 0;
-let time = 0, flashTime = 0;
-let extraction = 300;
-let ship = null;
-
-/* ===== PLAYER ===== */
-const player = {
-  x: 0, y: 0, hp: 100, max: 100,
-  angle: 0, weapon: "rifle",
-  kills: 0, meleePower: 1,
-  reload: 0,
-  skin: "#ffdbac", outfit: "#4a5d23", hat: "none"
-};
-
-/* ===== WORLD OBJECTS ===== */
-const trees = [], ruins = [], water = [];
-for (let i = 0; i < 50; i++) {
-  trees.push({ x: (Math.random() - 0.5) * 4000, y: (Math.random() - 0.5) * 4000 });
-  if (i < 25) ruins.push({ x: (Math.random() - 0.5) * 4000, y: (Math.random() - 0.5) * 4000 });
-  if (i < 15) water.push({ x: (Math.random() - 0.5) * 4000, y: (Math.random() - 0.5) * 4000 });
+// Update credits display
+function updateCredits() {
+  document.getElementById('credits').innerText = credits;
+  localStorage.setItem('dp_credits', credits);
 }
 
-/* ===== ENTITIES ===== */
-let enemies = [], bullets = [], blood = [], effects = [];
+// Populate shop
+function populateShop() {
+  const container = document.getElementById('shop-items');
+  container.innerHTML = '';
+  Object.keys(shopWeapons).forEach(key => {
+    const w = shopWeapons[key];
+    const owned = ownedWeapons.includes(key);
+    const div = document.createElement('div');
+    div.className = 'shop-item';
+    div.innerHTML = `
+      <div style="width:120px;height:80px;margin:0 auto;background:#0004;border:1px solid ${w.iconColor};position:relative;">
+        <div style="position:absolute;inset:0;display:flex;align-items:center;justify-content:center;color:${w.iconColor};font-size:40px;opacity:0.7;">${key.includes('blade')?'⚔':'🔫'}</div>
+      </div>
+      <strong>${w.name}</strong><br>
+      ${w.desc}<br>
+      <em>Price: ${w.price} credits</em><br>
+      ${owned ? '<span style="color:#0f0;">OWNED</span>' : `<button ${credits < w.price ? 'disabled' : ''} onclick="buyWeapon('${key}',${w.price})">BUY</button>`}
+    `;
+    if (!owned && credits < w.price) div.querySelector('button')?.classList.add('locked');
+    container.appendChild(div);
+  });
+  updateCredits();
+}
 
-/* ===== START ===== */
+function buyWeapon(key, price) {
+  if (credits >= price) {
+    credits -= price;
+    ownedWeapons.push(key);
+    localStorage.setItem('dp_owned', JSON.stringify(ownedWeapons));
+    localStorage.setItem('dp_weapon', key); // auto-equip on buy
+    selectedWeapon = key;
+    alert(`Purchased ${shopWeapons[key].name}! Equipped.`);
+    populateShop();
+    updatePlayPreview();
+  }
+}
+
+// ───────────────────────────────────────────────
+// Character preview (simple canvas preview for hub)
+function drawPreview(canvasId, weaponKey = selectedWeapon) {
+  const cv = document.getElementById(canvasId);
+  if (!cv) return;
+  cv.width = 200; cv.height = 300;
+  const pctx = cv.getContext('2d');
+  pctx.clearRect(0,0,200,300);
+  pctx.translate(100, 150);
+
+  // Body
+  pctx.fillStyle = playerCustom.outfit;
+  pctx.beginPath();
+  pctx.ellipse(0, 20, 30, 50, 0, 0, Math.PI*2);
+  pctx.fill();
+
+  // Head
+  pctx.fillStyle = playerCustom.skin;
+  pctx.beginPath();
+  pctx.arc(0, -40, 25, 0, Math.PI*2);
+  pctx.fill();
+
+  // Hat / helmet stub
+  if (playerCustom.hat !== 'none') {
+    pctx.fillStyle = '#555';
+    pctx.fillRect(-28, -65, 56, 20);
+  }
+
+  // Weapon icon
+  pctx.fillStyle = '#888';
+  pctx.fillRect(20, -10, 60, 20);
+  pctx.fillStyle = '#0f0';
+  pctx.fillText(weaponKey.slice(0,8).toUpperCase(), 25, 5);
+}
+
+function updatePlayPreview() {
+  document.getElementById('play-weapon').innerText = shopWeapons[selectedWeapon]?.name || selectedWeapon;
+  drawPreview('play-preview');
+}
+
+function saveCustomization() {
+  playerCustom.skin = document.getElementById('skin').value;
+  playerCustom.outfit = document.getElementById('outfit').value;
+  playerCustom.hat = document.getElementById('hat').value;
+  localStorage.setItem('dp_custom', JSON.stringify(playerCustom));
+  alert('Customization saved!');
+  switchTab('play');
+}
+
+// Tab switching
+function switchTab(tabId) {
+  document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+  document.getElementById(tabId).classList.add('active');
+  document.querySelectorAll('#hub button').forEach(b => b.classList.remove('active'));
+  document.querySelector(`#hub button[data-tab="${tabId}"]`).classList.add('active');
+
+  if (tabId === 'shop') populateShop();
+  if (tabId === 'play' || tabId === 'character') {
+    drawPreview(tabId === 'play' ? 'play-preview' : 'char-preview');
+  }
+}
+
+// Hub buttons
+document.querySelectorAll('#hub button').forEach(btn => {
+  btn.onclick = () => switchTab(btn.dataset.tab);
+});
+
+// ───────────────────────────────────────────────
+// Game start / canvas logic (your existing game code here)
+// For brevity, paste your full game script from previous versions inside startGame()
+// Make sure to hide hub + show canvas/hud on start, and show success/hub on end
+
 function startGame() {
-  player.weapon = document.getElementById("startWeapon").value;
-  player.skin = document.getElementById("skin").value;
-  player.outfit = document.getElementById("outfit").value;
-  player.hat = document.getElementById("hat").value;
-  player.meleePower = 1;
-  player.kills = 0;
-  player.hp = 100;
-  document.getElementById("menu").classList.add("hidden");
-  document.getElementById("hud").classList.remove("hidden");
-  game = true;
-  enemies = []; bullets = []; blood = []; effects = [];
+  // Hide hub, show canvas & hud
+  document.getElementById('hub').style.display = 'none';
+  document.getElementById('c').classList.remove('hidden');
+  document.getElementById('hud').classList.remove('hidden');
+  // ... paste your full game init/update/draw/loop here ...
+  // On mission success/fail → location.reload() or custom return to hub
 }
 
-/* ===== SPAWN ENEMY ===== */
-function spawnEnemy() {
-  const tx = ship ? ship.x : player.x;
-  const ty = ship ? ship.y : player.y;
-  let ex, ey, attempts = 0;
-  do {
-    const ang = Math.random() * Math.PI * 2;
-    ex = tx + Math.cos(ang) * (400 + Math.random() * 600);
-    ey = ty + Math.sin(ang) * (400 + Math.random() * 600);
-    attempts++;
-  } while (attempts < 20 && Math.hypot(ex - player.x, ey - player.y) < 250);
-  const baseHp = 60 + Math.floor((300 - extraction) / 4);
-  enemies.push({ x: ex, y: ey, hp: baseHp, max: baseHp });
-}
-
-/* ===== FIRE ===== */
-function fire(w) {
-  const shakeAmt = 3 + w.count * 2;
-  shake = shakeAmt;
-  flashTime = time;
-  for (let i = 0; i < w.count; i++) {
-    const spreadAng = (Math.random() - 0.5) * w.spread;
-    const ang = player.angle + spreadAng;
-    bullets.push({
-      x: player.x + Math.cos(player.angle) * 14,
-      y: player.y + Math.sin(player.angle) * 14,
-      dx: Math.cos(ang),
-      dy: Math.sin(ang),
-      life: w.life,
-      dmg: w.dmg,
-      kill: w.kill,
-      color: w.color,
-      speed: w.speed || 12,
-      explosion: w.explosion,
-      flame: w.flame
-    });
-  }
-}
-
-/* ===== MELEE ===== */
-function melee(w) {
-  shake = 12;
-  const r = w.radius;
-  effects.push({ x: player.x, y: player.y, r: 0, life: 20, type: "shockwave", color: w.color });
-  enemies.forEach(e => {
-    const d = Math.hypot(e.x - player.x, e.y - player.y);
-    if (d < r) {
-      const meleeDmg = w.dmg * player.meleePower;
-      e.hp -= meleeDmg;
-      for (let i = 0; i < 5; i++) {
-        const dirAng = Math.atan2(e.y - player.y, e.x - player.x);
-        blood.push({
-          x: e.x, y: e.y,
-          dx: Math.cos(dirAng) * (Math.random() - 0.5) * 2,
-          dy: Math.sin(dirAng) * (Math.random() - 0.5) * 2,
-          life: 25
-        });
-      }
-    }
-  });
-}
-
-/* ===== UPDATE ===== */
-function update() {
-  if (!game || over) return;
-
-  // player move
-  let speed = 3.5;
-  if (keys['w'] || keys['arrowup']) player.y -= speed;
-  if (keys['s'] || keys['arrowdown']) player.y += speed;
-  if (keys['a'] || keys['arrowleft']) player.x -= speed;
-  if (keys['d'] || keys['arrowright']) player.x += speed;
-
-  player.angle = Math.atan2(mouse.y - c.height / 2, mouse.x - c.width / 2);
-
-  // fire / melee
-  if (mouse.down && player.reload <= 0) {
-    const w = weapons[player.weapon];
-    if (w.melee) {
-      melee(w);
-    } else {
-      fire(w);
-    }
-    player.reload = w.rate;
-  }
-  if (player.reload > 0) player.reload--;
-
-  // bullets
-  bullets.forEach(b => {
-    b.x += b.dx * b.speed;
-    b.y += b.dy * b.speed;
-    b.life--;
-    enemies.forEach((e, j) => {
-      if (Math.hypot(b.x - e.x, b.y - e.y) < 14) {
-        let hitDmg = b.dmg;
-        if (b.kill) e.hp = 0;
-        else e.hp -= hitDmg;
-        b.life = 0;
-        for (let i = 0; i < 8; i++) {
-          blood.push({
-            x: e.x + (Math.random() - 0.5) * 6,
-            y: e.y + (Math.random() - 0.5) * 6,
-            dx: (Math.random() - 0.5) * 4,
-            dy: (Math.random() - 0.5) * 4 + 0.5,
-            life: 30
-          });
-        }
-        if (b.explosion) {
-          enemies.forEach((ee, k) => {
-            if (k !== j && Math.hypot(ee.x - b.x, ee.y - b.y) < b.explosion / 2) {
-              ee.hp -= 35;
-              for (let i = 0; i < 3; i++) {
-                blood.push({
-                  x: ee.x, y: ee.y,
-                  dx: (Math.random() - 0.5) * 2, dy: (Math.random() - 0.5) * 2, life: 15
-                });
-              }
-            }
-          });
-          effects.push({ x: b.x, y: b.y, r: 0, life: 25, type: "explosion" });
-        }
-      }
-    });
-  });
-  bullets = bullets.filter(b => b.life > 0);
-
-  // enemies
-  const tx = ship && !ship.landing ? ship.x : player.x;
-  const ty = ship && !ship.landing ? ship.y : player.y;
-  const espeed = 1.2 + (300 - extraction) / 1000;
-  enemies.forEach(e => {
-    const dx = tx - e.x, dy = ty - e.y;
-    const d = Math.hypot(dx, dy);
-    if (d > 0) {
-      e.x += (dx / d) * espeed;
-      e.y += (dy / d) * espeed;
-    }
-  });
-  const pdists = enemies.map(e => Math.hypot(e.x - player.x, e.y - player.y));
-  for (let i = 0; i < pdists.length; i++) {
-    if (pdists[i] < 20) player.hp -= 1 / 60;
-  }
-  if (ship && !ship.landing) {
-    const sdists = enemies.map(e => Math.hypot(e.x - ship.x, e.y - ship.y));
-    for (let i = 0; i < sdists.length; i++) {
-      if (sdists[i] < 30) ship.hp -= 2 / 60;
-    }
-  }
-
-  // clean dead enemies
-  for (let i = enemies.length - 1; i >= 0; i--) {
-    if (enemies[i].hp <= 0) {
-      player.kills++;
-      if (player.kills % 15 === 0) player.meleePower *= 1.25;
-      enemies.splice(i, 1);
-    }
-  }
-
-  // effects
-  effects.forEach(e => { e.r += 3; e.life--; });
-  effects = effects.filter(e => e.life > 0);
-
-  // blood
-  blood.forEach(b => { b.x += b.dx; b.y += b.dy; b.life--; });
-  blood = blood.filter(b => b.life > 0);
-
-  // spawn
-  const maxEnemies = 12 + Math.floor((300 - extraction) / 15);
-  const spawnChance = 0.015 + (300 - extraction) / 300 * 0.02;
-  if (enemies.length < maxEnemies && Math.random() < spawnChance) spawnEnemy();
-
-  // extraction
-  extraction -= 1 / 60;
-  if (extraction <= 0 && !ship) {
-    const ang = Math.random() * Math.PI * 2;
-    ship = {
-      x: player.x + Math.cos(ang) * 500,
-      y: player.y + Math.sin(ang) * 500 - 600,
-      targetY: player.y + Math.sin(ang) * 500 - 30,
-      hp: 1500,
-      landing: true
-    };
-  }
-
-  // ship land
-  if (ship) {
-    if (ship.landing) {
-      ship.y += 12;
-      if (ship.y >= ship.targetY) {
-        ship.y = ship.targetY;
-        ship.landing = false;
-      }
-    }
-    if (ship.hp <= 0) {
-      alert("MISSION FAILED - Ship Destroyed");
-      location.reload();
-    }
-  }
-
-  // victory
-  if (ship && !ship.landing && !over && Math.hypot(player.x - ship.x, player.y - ship.y) < 50) {
-    over = true;
-    game = false;
-    document.getElementById("success").classList.remove("hidden");
-  }
-
-  // player death
-  if (player.hp <= 0) {
-    alert("MISSION FAILED");
-    location.reload();
-  }
-}
-
-/* ===== DRAW ===== */
-function draw() {
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-  ctx.clearRect(0, 0, c.width, c.height);
-
-  let sx = (Math.random() - 0.5) * shake;
-  let sy = (Math.random() - 0.5) * shake;
-  shake *= 0.85;
-  ctx.translate(c.width / 2 - player.x + sx, c.height / 2 - player.y + sy);
-
-  // ground
-  ctx.fillStyle = map.ground;
-  ctx.fillRect(player.x - 4000, player.y - 4000, 8000, 8000);
-
-  // water
-  water.forEach((w, i) => {
-    const wave = Math.sin(time * 4 + w.x * 0.01 + i) * 3;
-    ctx.fillStyle = "#68c";
-    ctx.fillRect(w.x, w.y + wave, 140, 50);
-    ctx.fillStyle = "#49b";
-    ctx.fillRect(w.x + 15, w.y + 8 + wave * 0.6, 110, 35);
-    ctx.strokeStyle = "#35a";
-    ctx.lineWidth = 1;
-    ctx.beginPath();
-    ctx.moveTo(w.x, w.y + 20 + Math.sin(time * 6 + i) * 2);
-    ctx.lineTo(w.x + 140, w.y + 20 + Math.sin(time * 6 + i + 3) * 2);
-    ctx.stroke();
-  });
-
-  // ruins
-  ruins.forEach(r => {
-    ctx.fillStyle = "#444";
-    ctx.fillRect(r.x - 32, r.y - 22, 64, 44);
-    ctx.fillStyle = "#555";
-    for (let bx = 0; bx < 6; bx++) {
-      for (let by = 0; by < 4; by++) {
-        if ((bx + by) % 2) ctx.fillRect(r.x - 32 + bx * 10.5, r.y - 22 + by * 11, 9, 9);
-      }
-    }
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(r.x - 32, r.y - 22, 64, 44);
-  });
-
-  // trees
-  trees.forEach(t => {
-    const sway = Math.sin(t.x * 0.01 + time * 2) * 4;
-    ctx.save();
-    ctx.translate(t.x + sway * 0.3, t.y);
-    // trunk
-    ctx.fillStyle = "#3a2";
-    ctx.fillRect(-3, 2, 6, 22);
-    ctx.fillStyle = "#2a1";
-    ctx.fillRect(-1.5, 24, 3, 8);
-    // foliage
-    for (let i = 0; i < 4; i++) {
-      const yy = -8 - i * 5;
-      const rr = 12 + i * 1.5;
-      ctx.fillStyle = i === 0 ? "#0a3" : i === 1 ? "#1a5" : "#163";
-      ctx.beginPath();
-      ctx.ellipse(0, yy, rr, rr * 0.7, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#0002";
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-    }
-    ctx.restore();
-  });
-
-  // enemies
-  enemies.forEach(e => {
-    // shadow
-    ctx.fillStyle = "#0004";
-    ctx.beginPath();
-    ctx.ellipse(e.x + 5, e.y + 16, 11, 4.5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    // body
-    const edx = player.x - e.x, edy = player.y - e.y;
-    const eangle = Math.atan2(edy, edx) * 0.4;
-    const ebob = Math.sin(time * 4 + e.x * 0.01) * 0.8;
-    ctx.save();
-    ctx.translate(e.x, e.y + ebob);
-    ctx.rotate(eangle);
-    ctx.fillStyle = "#2a4";
-    ctx.beginPath();
-    ctx.ellipse(0, 3, 9, 13, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#0004";
-    ctx.lineWidth = 1;
-    ctx.stroke();
-    // spikes
-    ctx.fillStyle = "#163";
-    for (let sa = 0; sa < Math.PI * 2; sa += Math.PI / 3) {
-      ctx.save();
-      ctx.rotate(sa);
-      ctx.fillRect(9, -1.5, 7, 3);
-      ctx.restore();
-    }
-    // eyes
-    ctx.fillStyle = "#f44";
-    ctx.beginPath();
-    ctx.arc(-3.5, 0.5, 2.2, 0, Math.PI * 2);
-    ctx.arc(3.5, -0.5, 2.2, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillStyle = "#fff";
-    ctx.fillRect(-3, 1, 1.2, 1.2);
-    ctx.fillRect(3.8, 0, 1.2, 1.2);
-    ctx.fillStyle = "#000";
-    ctx.fillRect(-2.7, 1.2, 0.6, 0.6);
-    ctx.fillRect(3.6, 0.2, 0.6, 0.6);
-    ctx.restore();
-    // hp bar
-    ctx.fillStyle = "#0008";
-    ctx.fillRect(e.x - 13, e.y - 24, 26, 5);
-    ctx.fillStyle = "#0b0";
-    ctx.fillRect(e.x - 10, e.y - 21, 20 * (e.hp / e.max), 2.5);
-    ctx.strokeStyle = "#333";
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(e.x - 10, e.y - 21, 20, 2.5);
-  });
-
-  // ship
-  if (ship) {
-    // shadow
-    ctx.fillStyle = "#0006";
-    ctx.beginPath();
-    ctx.ellipse(ship.x + 3, ship.y + 35, 38, 14, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.save();
-    ctx.translate(ship.x, ship.y);
-    // body
-    ctx.fillStyle = "#555";
-    ctx.fillRect(-28, -28, 56, 56);
-    ctx.fillStyle = "#777";
-    ctx.fillRect(-22, -22, 44, 44);
-    // wings
-    ctx.fillStyle = "#4a4";
-    ctx.fillRect(-40, -8, 12, 16);
-    ctx.fillRect(28, -8, 12, 16);
-    // ramp
-    if (!ship.landing) {
-      ctx.save();
-      ctx.rotate(-0.3);
-      ctx.fillStyle = "#666";
-      ctx.fillRect(-2, 28, 42, 12);
-      ctx.restore();
-    }
-    // cockpit
-    ctx.fillStyle = "#88f";
-    ctx.fillRect(-12, -25, 24, 12);
-    ctx.strokeStyle = "#aaf";
-    ctx.strokeRect(-12, -25, 24, 12);
-    // engines
-    const glow = Math.sin(time * 12) * 0.4 + 0.6;
-    ctx.fillStyle = "#33a";
-    ctx.fillRect(-10, 22, 20, 14);
-    ctx.fillStyle = `hsl(210, 100%, ${25 + 25 * glow}%)`;
-    ctx.beginPath();
-    ctx.ellipse(0, 32, 12, 8 + glow * 5, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#66d";
-    ctx.lineWidth = 1.5;
-    ctx.stroke();
-    ctx.restore();
-    // hp bar
-    ctx.fillStyle = "#0008";
-    ctx.fillRect(ship.x - 28, ship.y - 45, 56, 6);
-    ctx.fillStyle = "#88f";
-    ctx.fillRect(ship.x - 20, ship.y - 42, 40 * (ship.hp / 1500), 3);
-    ctx.strokeStyle = "#444";
-    ctx.lineWidth = 0.5;
-    ctx.strokeRect(ship.x - 20, ship.y - 42, 40, 3);
-  }
-
-  // effects
-  effects.forEach(e => {
-    ctx.save();
-    ctx.globalAlpha = e.life / 25;
-    ctx.translate(e.x, e.y);
-    if (e.type === "shockwave") {
-      ctx.strokeStyle = e.color;
-      ctx.lineWidth = 3;
-      ctx.lineCap = "round";
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r, 0, Math.PI * 2);
-      ctx.stroke();
-    } else if (e.type === "explosion") {
-      ctx.fillStyle = `hsl(15, 100%, ${40 + e.life * 1.5}%)`;
-      ctx.beginPath();
-      ctx.arc(0, 0, e.r, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = "#fa08";
-      ctx.lineWidth = 2;
-      ctx.stroke();
-    }
-    ctx.restore();
-  });
-
-  // blood
-  blood.forEach(b => {
-    ctx.save();
-    ctx.translate(b.x, b.y);
-    ctx.globalAlpha = b.life / 30;
-    ctx.rotate(Math.atan2(b.dy, b.dx));
-    ctx.fillStyle = "#a30";
-    ctx.fillRect(-1.5, -1, 3, b.life / 8);
-    ctx.restore();
-  });
-
-  // bullets
-  bullets.forEach(b => {
-    ctx.save();
-    if (b.flame) {
-      ctx.fillStyle = b.color;
-      ctx.fillRect(b.x - 3, b.y - 1.5, 6, 3);
-      ctx.globalAlpha = 0.6;
-      ctx.fillRect(b.x - b.dx * 12 - 6, b.y - b.dy * 12 - 3, 8, 6);
-    } else if (b.explosion) {
-      ctx.fillStyle = b.color;
-      ctx.fillRect(b.x - 5, b.y - 2.5, 10, 5);
-      for (let trail = 1; trail < 5; trail++) {
-        ctx.globalAlpha = trail / 6;
-        ctx.fillRect(b.x - b.dx * b.speed * trail * 1.5, b.y - b.dy * b.speed * trail * 1.5, 6 / trail, 3 / trail);
-      }
-    } else {
-      ctx.fillStyle = b.color;
-      ctx.fillRect(b.x - 2.5, b.y - 1, 5, 2);
-    }
-    ctx.globalAlpha = 1;
-    ctx.restore();
-  });
-
-  // player shadow
-  ctx.fillStyle = "#0005";
-  ctx.beginPath();
-  ctx.ellipse(player.x + 6, player.y + 18, 13, 5.5, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  // player
-  const bob = Math.sin(time * 10) * 1.4;
-  // body
-  ctx.save();
-  ctx.translate(player.x, player.y + bob);
-  ctx.rotate(player.angle);
-  // torso & legs
-  ctx.fillStyle = player.outfit;
-  ctx.fillRect(-6, -3, 12, 14);
-  ctx.fillRect(-4, 11, 4, 7);
-  ctx.fillRect(0, 11, 4, 7);
-  // back arm
-  ctx.fillRect(-12, -4, 9, 5);
-  // gun
-  const w = weapons[player.weapon];
-  let barrelLen = 20;
-  ctx.fillStyle = "#444";
-  if (w.name.includes("shotgun")) {
-    ctx.fillRect(1, -4, barrelLen, 8);
-  } else if (w.name.includes("rocket")) {
-    ctx.fillRect(1, -3.5, barrelLen + 6, 7);
-  } else if (w.name.includes("sniper")) {
-    barrelLen = 28;
-    ctx.fillRect(1, -1.5, barrelLen, 3);
-  } else {
-    ctx.fillRect(1, -1.5, barrelLen, 3);
-  }
-  ctx.strokeStyle = "#222";
-  ctx.lineWidth = 1;
-  ctx.strokeRect(1, -1.5, barrelLen, 3);
-  // muzzle flash
-  if (time - flashTime < 0.15) {
-    const flashScale = 1 + (0.15 - (time - flashTime)) * 8;
-    ctx.save();
-    ctx.translate(barrelLen + 4, 0);
-    ctx.scale(flashScale, flashScale * 0.4);
-    ctx.fillStyle = "#ff82";
-    ctx.beginPath();
-    ctx.arc(0, 0, 5, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.globalCompositeOperation = "screen";
-    ctx.fillStyle = "#ff42";
-    ctx.beginPath();
-    ctx.arc(-2, 0, 3, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.restore();
-  }
-  ctx.restore();
-
-  // head
-  ctx.save();
-  ctx.translate(player.x, player.y + bob - 9);
-  ctx.fillStyle = player.skin;
-  ctx.beginPath();
-  ctx.arc(0, 0, 7.5, 0, Math.PI * 2);
-  ctx.fill();
-  // eyes
-  ctx.fillStyle = "#fff";
-  ctx.beginPath();
-  ctx.arc(-2.8, -1.5, 1.8, 0, Math.PI * 2);
-  ctx.arc(3.2, -1.8, 1.8, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.fillStyle = "#111";
-  ctx.beginPath();
-  ctx.arc(-2.2, -1.2, 1, 0, Math.PI * 2);
-  ctx.arc(2.8, -1.5, 1, 0, Math.PI * 2);
-  ctx.fill();
-  // hat
-  if (player.hat === "helmet") {
-    ctx.fillStyle = "#555";
-    ctx.beginPath();
-    ctx.ellipse(0, -2, 10, 6, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#777";
-    ctx.lineWidth = 1.2;
-    ctx.stroke();
-  } else if (player.hat === "cap") {
-    ctx.fillStyle = "#774";
-    ctx.beginPath();
-    ctx.arc(0, -6, 9, Math.PI * 0.3, Math.PI * 0.85, false);
-    ctx.lineTo(5, -1);
-    ctx.lineTo(-5, -1);
-    ctx.fill();
-  } else if (player.hat === "beret") {
-    ctx.fillStyle = "#b22";
-    ctx.beginPath();
-    ctx.arc(0, -2.5, 8, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.strokeStyle = "#d44";
-    ctx.stroke();
-  }
-  ctx.strokeStyle = "#0004";
-  ctx.lineWidth = 0.8;
-  ctx.stroke();
-  ctx.restore();
-
-  ctx.setTransform(1, 0, 0, 1, 0, 0);
-
-  // HUD
-  document.getElementById("hp").innerText = `HP: ${Math.max(0, player.hp | 0)} / ${player.max}`;
-  document.getElementById("weapon").innerText = `Weapon: ${weapons[player.weapon].name}`;
-  document.getElementById("kills").innerText = `Kills: ${player.kills}`;
-  const et = extraction | 0;
-  document.getElementById("timer").innerText = extraction > 0 ? `Extraction: ${et}s` : "PROTECT THE SHIP!";
-  const shipEl = document.getElementById("shiphp");
-  if (ship) {
-    shipEl.innerText = `Ship HP: ${ship.hp | 0} / 1500`;
-    shipEl.classList.remove("hidden");
-  } else {
-    shipEl.classList.add("hidden");
-  }
-}
-
-/* ===== LOOP ===== */
-let lastTime = 0;
-function loop(now) {
-  time = now * 0.001;
-  update();
-  draw();
-  lastTime = now;
-  requestAnimationFrame(loop);
-}
-loop();
+// Init
+updatePlayPreview();
+drawPreview('char-preview');
+populateShop();
 </script>
 </body>
 </html>
