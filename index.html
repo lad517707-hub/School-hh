@@ -2,192 +2,301 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>BLACKOUT - SEGA Style Horror</title>
+<title>BLACKOUT MAZE - SEGA Pixel Horror</title>
 <style>
   body { margin:0; background:#000; overflow:hidden; font-family:'Courier New',monospace; color:#0f0; }
   #game { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); image-rendering:pixelated; box-shadow:0 0 40px #000; }
-  #hud { position:absolute; top:8px; left:8px; font-size:14px; text-shadow:0 0 4px #000; pointer-events:none; }
-  #msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:32px; color:#f00; background:rgba(0,0,0,0.6); opacity:0; transition:opacity 0.5s; pointer-events:none; }
+  #hud { position:absolute; top:8px; left:8px; font-size:14px; text-shadow:0 0 4px #000; pointer-events:none; color:#00ff88; }
+  #msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:32px; color:#f00; background:rgba(0,0,0,0.8); opacity:0; transition:opacity 0.5s; pointer-events:none; font-weight:bold; text-shadow:0 0 8px #f00; }
+  #minimap { position:absolute; top:8px; right:8px; width:96px; height:70px; background:rgba(0,0,0,0.7); border:2px solid #0f0; display:none; image-rendering:pixelated; pointer-events:none; }
 </style>
 </head>
 <body>
 
 <canvas id="game" width="320" height="224"></canvas>
 <div id="hud">BREAKERS: <span id="count">0</span>/5</div>
+<canvas id="minimap" width="96" height="70"></canvas>
 <div id="msg"></div>
 
 <script>
 // ────────────────────────────────
-// SEGA GENESIS STYLE SETUP
+// SEGA GENESIS MAZE HORROR
 // ────────────────────────────────
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-canvas.style.width = '960px';  // ×3 upscale for modern screens
+const minimapCtx = document.getElementById('minimap').getContext('2d');
+canvas.style.width = '960px';
 canvas.style.height = '672px';
 
+const TILE = 16;
+const MAP_W = 20;
+const MAP_H = 14;
+
 const PAL = {
-  bg: '#0c1428',
-  floor: '#1c2c48',
-  wallDark: '#102038',
-  wallLight: '#24486c',
+  bg: '#081020',
+  floor: '#1a2840',
+  wall: '#304860',
+  locker: '#486880',
   breaker: '#ff8800',
   player: '#40e0d0',
   monster: '#8b0000',
-  light: '#ffff88'
+  light: '#ffff88',
+  ui: '#00ff88'
 };
 
-let cameraX = 0;
-let player = { x: 80, y: 160, vx: 0, facing: 1 };
-let monster = { x: -200, y: 160, active: false };
+// Maze layout - school corridors & rooms
+const map = [
+  "####################",
+  "#.....#............#",
+  "#.###.#.###.###....#",
+  "#.....#............#",
+  "#####.#.###.###.B..#",
+  "#.....#............#",
+  "#.....#.B..#.......#",
+  "######.###.###.....#",
+  "#.................B#",
+  "#.###.#.............#",
+  "#.....#.###.###.B..#",
+  "#####...#.........#",
+  "#..................#",
+  "####################"
+];
+
+let player = { x: 1, y: 1 };
+let monster = { x: 18, y: 12, timer: 0 };
 let breakers = [];
 let activated = 0;
 let gameOver = false;
 let won = false;
 let flashlight = false;
+let showMap = false;
 
-// Generate long hallway level
-for (let i = 0; i < 40; i++) {
-  // Occasional breaker placement
-  if (i % 7 === 3 || i % 7 === 6) {
-    breakers.push({ x: 200 + i * 180, y: 140, active: false });
+// Find breakers
+for (let y = 0; y < MAP_H; y++) {
+  for (let x = 0; x < MAP_W; x++) {
+    if (map[y][x] === 'B') breakers.push({x, y, active: false});
   }
 }
 
-// Controls
 const keys = {};
 window.addEventListener('keydown', e => {
   keys[e.key.toLowerCase()] = true;
   if (e.key === ' ') {
     flashlight = !flashlight;
-    showMsg(flashlight ? 'FLASHLIGHT ON' : 'FLASHLIGHT OFF', '#0f0', 800);
+    showMsg(flashlight ? 'FLASHLIGHT ON' : 'FLASHLIGHT OFF', '#ffff00');
+  }
+  if (e.key.toLowerCase() === 'shift') {
+    showMap = !showMap;
+    document.getElementById('minimap').style.display = showMap ? 'block' : 'none';
+  }
+  if (e.key.toLowerCase() === 'e') {
+    activateBreaker();
   }
 });
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
-// ────────────────────────────────
-// GAME LOGIC
-// ────────────────────────────────
-function update() {
-  if (gameOver || won) return;
+function isWalkable(x, y) {
+  return x >= 0 && x < MAP_W && y >= 0 && y < MAP_H && map[y][x] !== '#';
+}
 
-  // Player movement (smooth Genesis-style run)
-  player.vx = 0;
-  if (keys['arrowleft'] || keys['a']) { player.vx = -2.8; player.facing = -1; }
-  if (keys['arrowright'] || keys['d']) { player.vx = 2.8; player.facing = 1; }
-  player.x += player.vx;
-
-  // Camera follows player (with slight lead)
-  if (player.vx > 0 && player.x > cameraX + 200) cameraX += (player.x - (cameraX + 200)) * 0.08;
-  if (player.vx < 0 && player.x < cameraX + 80) cameraX += (player.x - (cameraX + 80)) * 0.08;
-
-  // Monster chases slowly (faster if flashlight on)
-  if (Math.abs(player.x - monster.x) < 600 || flashlight) monster.active = true;
-  if (monster.active) {
-    monster.x += (player.x > monster.x ? 1.1 : -1.1) * (flashlight ? 1.4 : 1);
-  }
-
-  // Breaker activation (press SPACE near one)
-  if (keys[' ']) {
-    breakers.forEach(b => {
-      if (!b.active && Math.abs(b.x - player.x) < 40 && Math.abs(b.y - player.y) < 40) {
+function activateBreaker() {
+  for (let b of breakers) {
+    if (!b.active) {
+      const dx = Math.abs(b.x - player.x);
+      const dy = Math.abs(b.y - player.y);
+      if (dx + dy <= 2) {  // Adjacent or same tile
         b.active = true;
         activated++;
         document.getElementById('count').textContent = activated;
-        showMsg('BREAKER ACTIVATED!', '#ffff00', 1200);
+        showMsg('BREAKER POPPED!', PAL.ui);
         if (activated >= 5) {
           won = true;
-          showMsg('POWER ON!\nYOU ESCAPED THE SCHOOL', '#00ff00', 6000);
+          showMsg('POWER RESTORED!\nSCHOOL LIT UP', '#00ff00', 5000);
         }
+        return;
       }
-    });
-  }
-
-  // Monster catch
-  if (Math.abs(monster.x - player.x) < 30 && Math.abs(monster.y - player.y) < 40) {
-    gameOver = true;
-    showMsg('CAUGHT BY THE SHADOW', '#ff0000', 9999);
+    }
   }
 }
 
-function showMsg(text, color, duration = 2000) {
-  const msg = document.getElementById('msg');
-  msg.textContent = text;
-  msg.style.color = color;
-  msg.style.opacity = 1;
-  setTimeout(() => { msg.style.opacity = 0; }, duration);
+function update() {
+  if (gameOver || won) return;
+
+  // Player movement
+  let dx = 0, dy = 0;
+  if (keys['w'] || keys['arrowup']) dy = -1;
+  if (keys['s'] || keys['arrowdown']) dy = 1;
+  if (keys['a'] || keys['arrowleft']) dx = -1;
+  if (keys['d'] || keys['arrowright']) dx = 1;
+
+  if (dx || dy) {
+    if (isWalkable(player.x + dx, player.y + dy)) {
+      player.x += dx;
+      player.y += dy;
+    }
+  }
+
+  // Monster AI - chases if in flashlight or close
+  monster.timer++;
+  if (monster.timer > 12) {
+    monster.timer = 0;
+    if (flashlight && dist(player.x, player.y, monster.x, monster.y) < 6 ||
+        dist(player.x, player.y, monster.x, monster.y) < 3) {
+      let tx = player.x > monster.x ? 1 : -1;
+      let ty = player.y > monster.y ? 1 : -1;
+      if (Math.random() < 0.6) tx = 0; else ty = 0;  // prefer horizontal
+      if (isWalkable(monster.x + tx, monster.y + ty)) {
+        monster.x += tx;
+        monster.y += ty;
+      }
+    }
+  }
+
+  // Caught!
+  if (dist(player.x, player.y, monster.x, monster.y) < 1.5) {
+    jumpscare();
+  }
+}
+
+function dist(x1,y1,x2,y2) {
+  return Math.sqrt((x1-x2)**2 + (y1-y2)**2);
+}
+
+function jumpscare() {
+  gameOver = true;
+  showMsg('JUMPSCARE!\nCAUGHT IN THE DARK', '#ff0000', 9999);
+  // Scream beep
+  try {
+    const a = new AudioContext();
+    const o = a.createOscillator(); o.type = 'sawtooth';
+    o.frequency.setValueAtTime(200, a.currentTime);
+    o.connect(a.destination); o.start(); o.stop(a.currentTime + 0.6);
+  } catch(e) {}
+}
+
+function showMsg(text, color = '#ffff00', duration = 1500) {
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.style.color = color;
+  el.style.opacity = 1;
+  setTimeout(() => el.style.opacity = 0, duration);
 }
 
 // ────────────────────────────────
-// RENDER (16-bit style)
+// RENDER
 // ────────────────────────────────
 function render() {
   ctx.fillStyle = PAL.bg;
   ctx.fillRect(0, 0, 320, 224);
 
-  // Parallax background (distant lockers/walls)
-  ctx.fillStyle = PAL.wallDark;
-  for (let i = -5; i < 15; i++) {
-    let wx = (i * 140 - cameraX * 0.3) % 700 - 100;
-    ctx.fillRect(wx, 80, 90, 100);
-  }
+  const camX = player.x * TILE - 160;
+  const camY = player.y * TILE - 112;
 
-  // Floor & near walls
-  ctx.fillStyle = PAL.floor;
-  ctx.fillRect(0, 180, 320, 44);
-
-  ctx.fillStyle = PAL.wallLight;
-  for (let i = -3; i < 20; i++) {
-    let wx = (i * 220 - cameraX * 0.8) % 800 - 150;
-    ctx.fillRect(wx, 100, 100, 100);
+  // Draw map tiles
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const tile = map[y][x];
+      const sx = x * TILE - camX;
+      const sy = y * TILE - camY;
+      if (sx > -TILE && sx < 320 + TILE && sy > -TILE && sy < 224 + TILE) {
+        if (tile === '#') {
+          // Wall detail (lockers)
+          ctx.fillStyle = PAL.locker;
+          ctx.fillRect(sx, sy, TILE, TILE);
+          ctx.fillStyle = PAL.wall;
+          ctx.fillRect(sx + 4, sy + 4, TILE - 8, TILE - 8);
+        } else {
+          // Floor tiles
+          ctx.fillStyle = PAL.floor;
+          ctx.fillRect(sx, sy, TILE, TILE);
+          ctx.fillStyle = '#203850';
+          ctx.fillRect(sx + (x%2)*4, sy + (y%2)*4, 6, 6);
+        }
+      }
+    }
   }
 
   // Breakers
   breakers.forEach(b => {
-    let sx = b.x - cameraX;
-    if (sx > -60 && sx < 380) {
+    const sx = b.x * TILE - camX;
+    const sy = b.y * TILE - camY;
+    if (sx > -TILE && sx < 320 + TILE && sy > -TILE && sy < 224 + TILE) {
       ctx.fillStyle = b.active ? '#00ff88' : PAL.breaker;
-      ctx.fillRect(sx - 12, b.y - 24, 24, 48);
-      ctx.fillStyle = '#000';
-      ctx.fillRect(sx - 6, b.y - 12, 12, 24);
+      ctx.fillRect(sx - 2, sy - 2, TILE + 4, TILE + 4);
+      ctx.fillStyle = '#442200';
+      ctx.fillRect(sx + 2, sy + 2, TILE - 4, TILE - 4);
     }
   });
 
-  // Player (simple Genesis sprite feel)
-  let px = player.x - cameraX;
+  // Player sprite (SEGA style kid)
+  const px = player.x * TILE - camX;
+  const py = player.y * TILE - camY;
   ctx.fillStyle = PAL.player;
-  ctx.fillRect(px - 12, player.y - 40, 24, 48);  // body
-  ctx.fillRect(px - 10, player.y - 52, 20, 20); // head
+  ctx.fillRect(px - 6, py - 10, 12, 20);  // body
+  ctx.fillRect(px - 4, py - 16, 8, 8);   // head
   ctx.fillStyle = '#000';
-  ctx.fillRect(px - 4 + player.facing * 6, player.y - 46, 6, 6); // eye
+  ctx.fillRect(px - 1, py - 13, 2, 2);   // eye
 
-  // Monster (only visible if close or flashlight)
-  let mx = monster.x - cameraX;
-  if (flashlight || Math.abs(mx - px) < 100 || monster.active) {
+  // Monster sprite (shadow beast)
+  const mx = monster.x * TILE - camX;
+  const my = monster.y * TILE - camY;
+  if (flashlight || dist(player.x, player.y, monster.x, monster.y) < 5) {
     ctx.fillStyle = PAL.monster;
-    ctx.fillRect(mx - 18, monster.y - 50, 36, 60);
+    ctx.fillRect(mx - 8, my - 12, 16, 24);
     ctx.fillStyle = '#ff4444';
-    ctx.fillRect(mx - 10, monster.y - 38, 8, 10);
-    ctx.fillRect(mx + 2, monster.y - 38, 8, 10);  // glowing eyes
+    ctx.fillRect(mx - 5, my - 6, 4, 5);   // eyes
+    ctx.fillRect(mx + 1, my - 6, 4, 5);
   }
 
-  // Flashlight beam (cone)
+  // Flashlight (radial reveal)
   if (flashlight) {
-    ctx.globalAlpha = 0.25;
-    ctx.fillStyle = PAL.light;
-    ctx.beginPath();
-    ctx.moveTo(px, player.y - 20);
-    ctx.lineTo(px + player.facing * 180, player.y - 80);
-    ctx.lineTo(px + player.facing * 180, player.y + 40);
-    ctx.closePath();
-    ctx.fill();
-    ctx.globalAlpha = 1;
+    const grad = ctx.createRadialGradient(px, py, 0, px, py, 120);
+    grad.addColorStop(0, 'rgba(255,255,255,0.4)');
+    grad.addColorStop(0.4, 'rgba(100,150,200,0.2)');
+    grad.addColorStop(1, 'rgba(0,0,0,1)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0, 0, 320, 224);
+  } else {
+    // Pitch black
+    ctx.fillStyle = 'rgba(0,0,0,0.95)';
+    ctx.fillRect(0, 0, 320, 224);
+    // Tiny ambient glow
+    ctx.fillStyle = 'rgba(20,30,50,0.3)';
+    ctx.fillRect(px-20, py-20, 40, 40);
   }
 
-  // CRT scanlines (optional retro filter)
-  ctx.fillStyle = 'rgba(0,0,0,0.12)';
-  for (let y = 0; y < 224; y += 4) {
-    ctx.fillRect(0, y, 320, 2);
+  // Scanlines
+  ctx.fillStyle = 'rgba(0,0,0,0.15)';
+  for (let y = 0; y < 224; y += 3) ctx.fillRect(0, y, 320, 1);
+
+  renderMinimap();
+}
+
+function renderMinimap() {
+  minimapCtx.fillStyle = '#000';
+  minimapCtx.fillRect(0, 0, 96, 70);
+
+  const MM_SCALE = 4;  // 20x14 maze -> 80x56 + borders
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      minimapCtx.fillStyle = map[y][x] === '#' ? '#444' : '#111';
+      minimapCtx.fillRect(x * MM_SCALE, y * MM_SCALE, MM_SCALE, MM_SCALE);
+    }
   }
+
+  // Player
+  minimapCtx.fillStyle = '#0f0';
+  minimapCtx.fillRect(player.x * MM_SCALE, player.y * MM_SCALE, MM_SCALE, MM_SCALE);
+
+  // Monster
+  minimapCtx.fillStyle = '#f00';
+  minimapCtx.fillRect(monster.x * MM_SCALE, monster.y * MM_SCALE, MM_SCALE, MM_SCALE);
+
+  // Breakers
+  breakers.forEach(b => {
+    minimapCtx.fillStyle = b.active ? '#0f0' : '#ff0';
+    minimapCtx.fillRect(b.x * MM_SCALE + 1, b.y * MM_SCALE + 1, MM_SCALE-2, MM_SCALE-2);
+  });
 }
 
 function loop() {
@@ -196,13 +305,13 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-showMsg('RUN RIGHT →\nFind 5 breakers\nSPACE = Activate / Flashlight', '#0f0', 5000);
+showMsg('Navigate the maze\nFind 5 breakers (E to pop)\nSPACE=Light  SHIFT=Map\nAvoid the shadow!', PAL.ui, 6000);
 loop();
 </script>
 
 <h3 style="text-align:center; color:#0f0; margin:20px; font-family:Courier New;">
-  Controls: ← → (or A D) to move   SPACE to toggle flashlight / pop breaker<br>
-  Survive the dark school blackout, Elias — the shadow is always watching...
+  WASD/Arrows: Move | E: Pop Breaker (when close) | SPACE: Flashlight | SHIFT: Minimap<br>
+  SEGA-style maze horror — explore the dark school, Elias! 🏫🔦👹
 </h3>
 
 </body>
