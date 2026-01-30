@@ -2,72 +2,31 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8" />
-<title>School Blackout - Pixel Horror</title>
+<title>School Blackout - Scroll Horror</title>
 <style>
   body {
-    margin: 0;
-    padding: 0;
-    height: 100vh;
-    background: #000;
-    overflow: hidden;
-    font-family: 'Courier New', Courier, monospace;
-    color: #0f0;
-    image-rendering: pixelated;
+    margin: 0; padding: 0; height: 100vh; background: #000; overflow: hidden;
+    font-family: 'Courier New', monospace; color: #0f0; image-rendering: pixelated;
   }
-  #game {
-    position: relative;
-    width: 100%;
-    height: 100%;
-  }
-  #canvas {
-    image-rendering: pixelated;
-    width: 100%;
-    height: 100%;
-    background: #111;
-  }
+  #game { position: relative; width: 100%; height: 100%; }
+  #canvas { width: 100%; height: 100%; image-rendering: pixelated; background: #111; }
   #ui {
-    position: absolute;
-    top: 10px;
-    left: 10px;
-    color: #0f0;
-    font-size: 18px;
-    text-shadow: 0 0 5px #0f0;
-    pointer-events: none;
+    position: absolute; top: 10px; left: 10px; font-size: 18px;
+    text-shadow: 0 0 5px #0f0; pointer-events: none; z-index: 5;
+  }
+  #mapOverlay {
+    position: absolute; inset: 0; background: rgba(0,0,0,0.85);
+    color: #0f0; font-size: 14px; padding: 20px; display: none; z-index: 10;
+    white-space: pre; font-family: monospace; overflow: auto;
   }
   #message {
-    position: absolute;
-    inset: 0;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    font-size: 60px;
-    color: red;
-    text-shadow: 0 0 20px red;
-    background: rgba(0,0,0,0.7);
-    pointer-events: none;
-    opacity: 0;
-    transition: opacity 0.4s;
+    position: absolute; inset: 0; display: flex; align-items: center; justify-content: center;
+    font-size: 60px; color: red; text-shadow: 0 0 20px red; background: rgba(0,0,0,0.7);
+    pointer-events: none; opacity: 0; transition: opacity 0.4s; z-index: 8;
   }
   #jumpscare {
-    position: absolute;
-    inset: 0;
-    background: #f00 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><text x="50%" y="50%" font-size="120" text-anchor="middle" dominant-baseline="middle" fill="black">GET OUT</text></svg>') center/80% no-repeat;
-    opacity: 0;
-    pointer-events: none;
-    transition: opacity 0.15s;
-  }
-  button {
-    position: absolute;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    padding: 15px 30px;
-    font-size: 24px;
-    background: #222;
-    color: #0f0;
-    border: 3px solid #0f0;
-    cursor: pointer;
-    z-index: 10;
+    position: absolute; inset: 0; background: #f00 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><text x="50%" y="50%" font-size="120" text-anchor="middle" dominant-baseline="middle" fill="black">RUN</text></svg>') center/60% no-repeat;
+    opacity: 0; pointer-events: none; transition: opacity 0.12s; z-index: 9;
   }
 </style>
 </head>
@@ -75,8 +34,9 @@
 
 <div id="game">
   <canvas id="canvas"></canvas>
-  <div id="ui">Breakers: <span id="count">0</span>/5</div>
-  <div id="message">GAME OVER</div>
+  <div id="ui">Breakers: <span id="count">0</span>/5  |  Depth: <span id="depth">0</span>m</div>
+  <div id="mapOverlay">Press SHIFT again to close</div>
+  <div id="message"></div>
   <div id="jumpscare"></div>
 </div>
 
@@ -84,67 +44,81 @@
 // ────────────────────────────────────────────────
 // CONFIG
 // ────────────────────────────────────────────────
-const TILE = 40;              // pixel size per tile
-const MAP_W = 25;             // tiles wide
-const MAP_H = 18;             // tiles tall
-const FLASHLIGHT_RADIUS = 4;  // tiles
+const TILE = 32;
+const SCREEN_TILES_W = Math.ceil(window.innerWidth / TILE) + 2;
+const SCREEN_TILES_H = Math.ceil(window.innerHeight / TILE) + 2;
 
-const map = [
-  "#########################",
-  "#.......................#",
-  "#.###.###.###.###.###...#",
-  "#.......................#",
-  "#.###.###.###.###.###...#",
-  "#.......................#",
-  "#.###.###.###.###.###...#",
-  "#.......................#",
-  "#.......................#",
-  "#.B.....B.....B.........#",
-  "#.......................#",
-  "#.....B...........B.....#",
-  "#.......................#",
-  "#.......................#",
-  "#.......................#",
-  "#.......................#",
-  "#.......................#",
-  "#########################"
-];
+const SCROLL_SPEED = 1.1;       // pixels per frame
+const PLAYER_SPEED = 2.8;       // player horizontal control speed
+const FLASHLIGHT_BASE = 5;      // tiles radius when on
+const MONSTER_SPEED = 1.4;
 
-// B = breaker location
+let depth = 0;                  // how far down the school you've gone
+let flashlightOn = false;
+let mapVisible = false;
+let gameOver = false;
+let won = false;
+let activated = 0;
+
+// ────────────────────────────────────────────────
+// ENTITIES
+// ────────────────────────────────────────────────
+const player = {
+  x: window.innerWidth / 2,
+  y: window.innerHeight * 0.75,
+  width: TILE * 0.9,
+  height: TILE * 1.4
+};
+
+const monster = {
+  x: 0, y: -200,
+  width: TILE * 1.1,
+  height: TILE * 1.3,
+  active: false,
+  vx: 0, vy: 0
+};
+
+let breakers = [];              // {x, y, collected}
+let walls = [];                 // procedural walls/lockers
 
 // ────────────────────────────────────────────────
 // SETUP
 // ────────────────────────────────────────────────
 const canvas = document.getElementById("canvas");
 const ctx = canvas.getContext("2d");
-canvas.width = MAP_W * TILE;
-canvas.height = MAP_H * TILE;
-
-let player = { x: 2, y: 2, dir: "down" };
-let monster = { x: 12, y: 8, active: false, chaseTimer: 0 };
-let breakers = [];
-let activated = 0;
-let gameOver = false;
-let won = false;
-
-// Find breaker positions
-for (let y = 0; y < MAP_H; y++) {
-  for (let x = 0; x < MAP_W; x++) {
-    if (map[y][x] === "B") {
-      breakers.push({x, y, active: false});
-    }
-  }
-}
+canvas.width = window.innerWidth;
+canvas.height = window.innerHeight;
 
 const keys = {};
-window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
-window.addEventListener("keyup",   e => keys[e.key.toLowerCase()] = false);
+window.addEventListener("keydown", e => {
+  keys[e.key.toLowerCase()] = true;
+  if (e.key === "Shift") {
+    mapVisible = !mapVisible;
+    document.getElementById("mapOverlay").style.display = mapVisible ? "block" : "none";
+  }
+  if (e.key === " ") {
+    flashlightOn = !flashlightOn;
+    showMessage(flashlightOn ? "FLASHLIGHT ON" : "FLASHLIGHT OFF", "#0f0", 800);
+  }
+});
+window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+window.addEventListener("resize", () => {
+  canvas.width = window.innerWidth;
+  canvas.height = window.innerHeight;
+  player.x = canvas.width / 2;
+});
+
+// Spawn initial content
+spawnSection(0);
+spawnBreaker();
+spawnBreaker();
 
 // ────────────────────────────────────────────────
 // GAME LOOP
 // ────────────────────────────────────────────────
 function loop() {
-  if (gameOver || won) return;
+  if (gameOver || won) return requestAnimationFrame(loop);
 
   update();
   render();
@@ -153,184 +127,210 @@ function loop() {
 }
 
 function update() {
-  // Player movement
-  let nx = player.x, ny = player.y;
+  // Auto-scroll downward
+  depth += SCROLL_SPEED;
+  player.y -= SCROLL_SPEED;           // world moves up → player feels like moving down
+  monster.y -= SCROLL_SPEED;
 
-  if (keys["w"] || keys["arrowup"])    ny--;
-  if (keys["s"] || keys["arrowdown"])  ny++;
-  if (keys["a"] || keys["arrowleft"])  nx--;
-  if (keys["d"] || keys["arrowright"]) nx++;
+  // Clean up old entities
+  breakers = breakers.filter(b => b.y > -200);
+  walls = walls.filter(w => w.y > -200);
 
-  if (nx !== player.x || ny !== player.y) {
-    if (isWalkable(nx, ny)) {
-      player.x = nx;
-      player.y = ny;
-    }
+  // Spawn new content every ~800–1400 px
+  if (depth % 900 < SCROLL_SPEED * 2) {
+    spawnSection(depth + canvas.height + 300);
+    if (Math.random() < 0.7) spawnBreaker();
   }
 
-  // Check breaker interaction
-  for (let b of breakers) {
-    if (!b.active && Math.abs(b.x - player.x) <= 1 && Math.abs(b.y - player.y) <= 1) {
-      if (Math.random() < 0.06) { // ~6% chance per frame when near
-        b.active = true;
-        activated++;
-        document.getElementById("count").textContent = activated;
+  // Player horizontal movement
+  if (keys["a"] || keys["arrowleft"])  player.x -= PLAYER_SPEED;
+  if (keys["d"] || keys["arrowright"]) player.x += PLAYER_SPEED;
+  player.x = Math.max(player.width/2, Math.min(canvas.width - player.width/2, player.x));
 
-        if (activated >= 5) {
-          won = true;
-          showMessage("POWER RESTORED\nESCAPE THE SCHOOL!", "#0f0");
-        } else {
-          showMessage("BREAKER ACTIVATED!", "#0f0", 1200);
-        }
-      }
-    }
-  }
-
-  // Monster logic (simple chase when player visible)
-  if (isInFlashlight(monster.x, monster.y)) {
+  // Monster logic
+  if (flashlightOn && distanceToPlayer(monster) < FLASHLIGHT_BASE * TILE * 1.8) {
     monster.active = true;
   }
 
   if (monster.active) {
-    monster.chaseTimer++;
-    if (monster.chaseTimer > 25) { // move every ~0.4s
-      monster.chaseTimer = 0;
+    const dx = player.x - monster.x;
+    const dy = player.y - monster.y;
+    const dist = Math.sqrt(dx*dx + dy*dy) || 1;
+    monster.vx = (dx / dist) * MONSTER_SPEED;
+    monster.vy = (dy / dist) * MONSTER_SPEED * 0.6; // slightly slower vertically
 
-      let dx = player.x - monster.x;
-      let dy = player.y - monster.y;
+    monster.x += monster.vx;
+    monster.y += monster.vy;
 
-      if (Math.abs(dx) > Math.abs(dy)) {
-        let nx = monster.x + Math.sign(dx);
-        if (isWalkable(nx, monster.y)) monster.x = nx;
-      } else {
-        let ny = monster.y + Math.sign(dy);
-        if (isWalkable(monster.x, ny)) monster.y = ny;
-      }
-    }
-
-    // Caught!
-    if (monster.x === player.x && monster.y === player.y) {
+    // Caught
+    if (distanceToPlayer(monster) < TILE * 1.1) {
       jumpscare();
     }
   }
+
+  // Collect breakers
+  for (let b of breakers) {
+    if (!b.collected && distance(player.x, player.y, b.x, b.y) < TILE * 1.4) {
+      b.collected = true;
+      activated++;
+      document.getElementById("count").textContent = activated;
+      showMessage("BREAKER ACTIVATED!", "#0f0", 1200);
+
+      if (activated >= 5) {
+        won = true;
+        showMessage("POWER RESTORED!\nYOU ESCAPED", "#0f0", 8000);
+      }
+    }
+  }
+
+  document.getElementById("depth").textContent = Math.floor(depth / 10);
 }
 
-function isWalkable(x, y) {
-  if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return false;
-  return map[y][x] !== "#";
+function spawnSection(baseY) {
+  // Add walls/lockers on sides or middle
+  const patterns = [
+    () => { walls.push({x: canvas.width*0.2, y: baseY, w: TILE*3, h: TILE*6}); },
+    () => { walls.push({x: canvas.width*0.7, y: baseY, w: TILE*4, h: TILE*5}); },
+    () => {
+      walls.push({x: canvas.width*0.3, y: baseY, w: TILE*2, h: TILE*8});
+      walls.push({x: canvas.width*0.65, y: baseY+200, w: TILE*3, h: TILE*4});
+    }
+  ];
+  patterns[Math.floor(Math.random()*patterns.length)]();
 }
 
-function isInFlashlight(mx, my) {
-  const dx = mx - player.x;
-  const dy = my - player.y;
-  return Math.sqrt(dx*dx + dy*dy) <= FLASHLIGHT_RADIUS;
+function spawnBreaker() {
+  const margin = TILE * 4;
+  const x = margin + Math.random() * (canvas.width - margin*2);
+  const y = canvas.height + 100 + Math.random() * 400 + depth;
+  breakers.push({x, y, collected: false});
+}
+
+function distanceToPlayer(obj) {
+  return distance(player.x, player.y, obj.x, obj.y);
+}
+
+function distance(x1,y1,x2,y2) {
+  const dx = x1-x2, dy = y1-y2;
+  return Math.sqrt(dx*dx + dy*dy);
 }
 
 function jumpscare() {
   gameOver = true;
   document.getElementById("jumpscare").style.opacity = 1;
-  document.getElementById("message").style.color = "red";
-  document.getElementById("message").textContent = "YOU DIED";
+  document.getElementById("message").textContent = "CAUGHT";
   document.getElementById("message").style.opacity = 1;
 
-  // Fake scream sound (browser beep)
+  // beep scream
   try {
     const audio = new AudioContext();
     const osc = audio.createOscillator();
     osc.type = "sawtooth";
-    osc.frequency.setValueAtTime(180, audio.currentTime);
+    osc.frequency.setValueAtTime(220, audio.currentTime);
+    osc.frequency.exponentialRampToValueAtTime(80, audio.currentTime + 0.5);
     osc.connect(audio.destination);
     osc.start();
-    osc.stop(audio.currentTime + 0.4);
+    osc.stop(audio.currentTime + 0.8);
   } catch(e){}
 
-  setTimeout(() => {
-    document.getElementById("jumpscare").style.opacity = 0;
-  }, 800);
+  setTimeout(() => document.getElementById("jumpscare").style.opacity = 0, 900);
 }
 
-function showMessage(text, color = "#fff", duration = 3000) {
-  const msg = document.getElementById("message");
-  msg.textContent = text;
-  msg.style.color = color;
-  msg.style.opacity = 1;
-  setTimeout(() => { msg.style.opacity = 0; }, duration);
+function showMessage(text, color = "#fff", ms = 2000) {
+  const el = document.getElementById("message");
+  el.textContent = text;
+  el.style.color = color;
+  el.style.opacity = 1;
+  setTimeout(() => el.style.opacity = 0, ms);
 }
 
 function render() {
   ctx.fillStyle = "#0a0a0a";
   ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-  // Draw map (walls & floor)
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      const tile = map[y][x];
-      const px = x * TILE;
-      const py = y * TILE;
+  // Draw floor pattern (scrolling tiles)
+  ctx.fillStyle = "#151515";
+  for (let x = 0; x < canvas.width; x += TILE*2) {
+    for (let y = (depth % TILE) - TILE; y < canvas.height; y += TILE*2) {
+      ctx.fillRect(x, y, TILE, TILE);
+    }
+  }
 
-      if (tile === "#") {
-        ctx.fillStyle = "#333";
-        ctx.fillRect(px, py, TILE, TILE);
-        ctx.strokeStyle = "#222";
-        ctx.strokeRect(px, py, TILE, TILE);
-      } else {
-        // subtle floor
-        ctx.fillStyle = "#111";
-        ctx.fillRect(px, py, TILE, TILE);
-      }
+  // Draw walls/lockers
+  ctx.fillStyle = "#444";
+  for (let w of walls) {
+    const sy = w.y - depth;
+    if (sy > -w.h && sy < canvas.height) {
+      ctx.fillRect(w.x - w.w/2, sy, w.w, w.h);
+      ctx.strokeStyle = "#222";
+      ctx.lineWidth = 4;
+      ctx.strokeRect(w.x - w.w/2, sy, w.w, w.h);
     }
   }
 
   // Draw breakers
-  ctx.fillStyle = "#ff8800";
+  ctx.fillStyle = activated >= 5 ? "#00ff00" : "#ff8800";
+  ctx.strokeStyle = "#ff8800";
+  ctx.lineWidth = 3;
   for (let b of breakers) {
-    if (!b.active) {
-      ctx.fillRect(b.x*TILE + 8, b.y*TILE + 8, TILE-16, TILE-16);
+    const sy = b.y - depth;
+    if (sy > -TILE*2 && sy < canvas.height + TILE*2) {
+      if (!b.collected) {
+        ctx.beginPath();
+        ctx.arc(b.x, sy, TILE*0.7, 0, Math.PI*2);
+        ctx.fill();
+        ctx.stroke();
+      }
     }
   }
 
-  // Draw player (simple pixel guy)
+  // Draw player (simple silhouette)
   ctx.fillStyle = "#0f0";
-  ctx.fillRect(player.x*TILE + 10, player.y*TILE + 6, TILE-20, TILE-12); // body
-  ctx.fillRect(player.x*TILE + 14, player.y*TILE + 2, TILE-28, TILE-20); // head
+  ctx.fillRect(player.x - player.width/2, player.y - player.height/2, player.width, player.height);
+  ctx.fillStyle = "#88ff88";
+  ctx.fillRect(player.x - player.width/4, player.y - player.height/2 - 10, player.width/2, 20); // head
 
-  // Draw monster (if active)
-  if (monster.active) {
+  // Draw monster
+  if (monster.active || distanceToPlayer(monster) < FLASHLIGHT_BASE * TILE * 2.5) {
     ctx.fillStyle = "#800";
-    ctx.fillRect(monster.x*TILE + 4, monster.y*TILE + 4, TILE-8, TILE-8);
+    const my = monster.y - depth;
+    ctx.fillRect(monster.x - monster.width/2, my - monster.height/2, monster.width, monster.height);
+    ctx.fillStyle = "#f00";
+    ctx.fillRect(monster.x - 8, my - 20, 16, 16); // eyes
+    ctx.fillRect(monster.x + 8, my - 20, 16, 16);
   }
 
-  // Flashlight effect (dark overlay + circle reveal)
-  ctx.save();
-  ctx.globalCompositeOperation = "destination-out";
-  ctx.beginPath();
-  ctx.arc(
-    (player.x + 0.5) * TILE,
-    (player.y + 0.5) * TILE,
-    FLASHLIGHT_RADIUS * TILE * 1.4,
-    0, Math.PI*2
-  );
-  ctx.fill();
-  ctx.restore();
+  // Flashlight / visibility
+  if (flashlightOn) {
+    ctx.save();
+    ctx.globalCompositeOperation = "destination-out";
+    const grad = ctx.createRadialGradient(player.x, player.y, 20, player.x, player.y, FLASHLIGHT_BASE * TILE * 1.6);
+    grad.addColorStop(0, "rgba(0,0,0,0)");
+    grad.addColorStop(0.7, "rgba(0,0,0,0.4)");
+    grad.addColorStop(1, "rgba(0,0,0,1)");
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+    ctx.restore();
+  } else {
+    // Very dark without flashlight
+    ctx.fillStyle = "rgba(0,0,0,0.92)";
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+  }
 
-  // Final dark vignette
-  const grad = ctx.createRadialGradient(
-    (player.x+0.5)*TILE, (player.y+0.5)*TILE,
-    FLASHLIGHT_RADIUS*TILE*0.8,
-    (player.x+0.5)*TILE, (player.y+0.5)*TILE,
-    FLASHLIGHT_RADIUS*TILE*2.5
-  );
-  grad.addColorStop(0, "rgba(0,0,0,0)");
-  grad.addColorStop(0.6, "rgba(0,0,0,0.7)");
-  grad.addColorStop(1, "rgba(0,0,0,1)");
-  ctx.fillStyle = grad;
-  ctx.fillRect(0,0,canvas.width,canvas.height);
+  // Map overlay content
+  if (mapVisible) {
+    let mapText = `Depth: ${Math.floor(depth/10)}m\nBreakers left: ${5 - activated}\n\n`;
+    mapText += "Recent breakers:\n";
+    breakers.slice(-5).reverse().forEach(b => {
+      const d = Math.floor((b.y - depth)/10);
+      mapText += `${b.collected ? "[X]" : "[ ]"} ${d > 0 ? "+" : ""}${Math.abs(d)}m ${b.collected ? " (collected)" : ""}\n`;
+    });
+    document.getElementById("mapOverlay").textContent = mapText;
+  }
 }
 
-// Start game
-showMessage("Find and activate 5 breakers...\nDon't let it catch you!", "#0f0", 5000);
+showMessage("KEEP MOVING DOWN\nCollect 5 breakers\nSPACE = Flashlight   SHIFT = Map", "#0f0", 7000);
 loop();
 </script>
-
 </body>
 </html>
