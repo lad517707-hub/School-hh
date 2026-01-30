@@ -1,341 +1,336 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-<meta charset="UTF-8">
-<title>DROPZONE PROTOCOL</title>
+<meta charset="UTF-8" />
+<title>School Blackout - Pixel Horror</title>
 <style>
-  html, body { margin:0; overflow:hidden; background:#000; font-family:monospace; color:#0f0; height:100%; }
-  #ui { position:fixed; inset:0; pointer-events:none; z-index:20; }
-  #hub { position:absolute; top:0; left:0; right:0; background:#111d; border-bottom:2px solid #0f08; padding:10px; display:flex; justify-content:center; gap:24px; pointer-events:auto; }
-  #hub button { background:#222; color:#0f0; border:2px solid #0f08; padding:8px 20px; cursor:pointer; font-size:14px; }
-  #hub button:hover { background:#333; }
-  #hub button.active { background:#0f0; color:#000; }
-  .tab { position:absolute; inset:60px 20px 20px; display:none; pointer-events:auto; overflow-y:auto; text-align:center; color:#ccc; }
-  .tab.active { display:block; }
-  .panel { background:#1118; border:2px solid #0f08; padding:24px; max-width:600px; margin:0 auto; border-radius:6px; }
-  select, button { background:#222; color:#0f0; border:1px solid #0f08; padding:10px; margin:10px; font-family:monospace; width:220px; cursor:pointer; }
-  button:hover { background:#333; }
-  .preview { width:260px; height:340px; margin:20px auto; border:2px solid #0f0; background:#0004; }
-  #hud { position:absolute; top:80px; left:20px; color:#0f0; text-shadow:1px 1px 2px #000; font-size:16px; pointer-events:none; z-index:10; }
-  #success, #fail { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); z-index:25; background:#111e; border:3px solid #f80; padding:40px; max-width:500px; text-align:center; pointer-events:auto; display:none; }
-  canvas { image-rendering:pixelated; position:absolute; inset:0; display:none; z-index:5; }
-  .hidden { display:none !important; }
+  body {
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    background: #000;
+    overflow: hidden;
+    font-family: 'Courier New', Courier, monospace;
+    color: #0f0;
+    image-rendering: pixelated;
+  }
+  #game {
+    position: relative;
+    width: 100%;
+    height: 100%;
+  }
+  #canvas {
+    image-rendering: pixelated;
+    width: 100%;
+    height: 100%;
+    background: #111;
+  }
+  #ui {
+    position: absolute;
+    top: 10px;
+    left: 10px;
+    color: #0f0;
+    font-size: 18px;
+    text-shadow: 0 0 5px #0f0;
+    pointer-events: none;
+  }
+  #message {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 60px;
+    color: red;
+    text-shadow: 0 0 20px red;
+    background: rgba(0,0,0,0.7);
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.4s;
+  }
+  #jumpscare {
+    position: absolute;
+    inset: 0;
+    background: #f00 url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" width="400" height="400"><text x="50%" y="50%" font-size="120" text-anchor="middle" dominant-baseline="middle" fill="black">GET OUT</text></svg>') center/80% no-repeat;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity 0.15s;
+  }
+  button {
+    position: absolute;
+    bottom: 20px;
+    left: 50%;
+    transform: translateX(-50%);
+    padding: 15px 30px;
+    font-size: 24px;
+    background: #222;
+    color: #0f0;
+    border: 3px solid #0f0;
+    cursor: pointer;
+    z-index: 10;
+  }
 </style>
 </head>
 <body>
 
-<div id="ui">
-  <div id="hub">
-    <button data-tab="play" class="active">PLAY</button>
-    <button data-tab="shop">SHOP</button>
-    <button data-tab="character">CHARACTER</button>
-    <button data-tab="news">NEWS</button>
-  </div>
-
-  <div id="play" class="tab active">
-    <div class="panel">
-      <h2>Dropzone Protocol</h2>
-      <canvas id="play-preview" class="preview"></canvas>
-      <p>Equipped Weapon: <strong id="equipped-name">Assault Rifle</strong></p>
-      <button onclick="startGame()">START MISSION</button>
-    </div>
-  </div>
-
-  <div id="shop" class="tab">
-    <div class="panel">
-      <h2>ARMORY (Coming Soon)</h2>
-      <p>Credits: <span id="credits">5000</span></p>
-      <p>More weapons will be available here in future updates.</p>
-    </div>
-  </div>
-
-  <div id="character" class="tab">
-    <div class="panel">
-      <h2>Customize Your Marine</h2>
-      <canvas id="char-preview" class="preview"></canvas>
-      <div>
-        <label>Skin Tone</label><br>
-        <select id="skin">
-          <option value="#ffdbac">Light</option>
-          <option value="#e0ac69">Medium</option>
-          <option value="#c68642">Tan</option>
-          <option value="#8b4513">Bronze</option>
-        </select>
-      </div>
-      <div>
-        <label>Outfit Color</label><br>
-        <select id="outfit">
-          <option value="#4a5d23">Marine</option>
-          <option value="#2a4365">Navy</option>
-          <option value="#78281f">Crimson</option>
-          <option value="#1f2937">Shadow</option>
-        </select>
-      </div>
-      <div>
-        <label>Headgear</label><br>
-        <select id="hat">
-          <option value="none">None</option>
-          <option value="helmet">Helmet</option>
-          <option value="cap">Cap</option>
-          <option value="beret">Beret</option>
-        </select>
-      </div>
-      <button onclick="saveCharacter()">SAVE & RETURN</button>
-    </div>
-  </div>
-
-  <div id="news" class="tab">
-    <div class="panel">
-      <h2>NEWS</h2>
-      <p style="font-size:28px; color:#ff4;">THIS IS A BETA</p>
-      <p style="font-size:20px;">WORK IN PROGRESS — SORRY!</p>
-    </div>
-  </div>
-
-  <div id="hud" class="hidden">
-    <div id="hp">HP: 100</div>
-    <div id="weapon">Weapon: Rifle</div>
-    <div id="kills">Kills: 0</div>
-    <div id="timer">Extraction: 300s</div>
-    <div id="shiphp" class="hidden">Ship HP: 1800</div>
-  </div>
-
-  <div id="success" class="hidden">
-    <h2>MISSION SUCCESS</h2>
-    <p>Extraction Complete</p>
-    <button onclick="returnToHub()">RETURN TO HUB</button>
-  </div>
-
-  <div id="fail" class="hidden">
-    <h2>MISSION FAILED</h2>
-    <p id="fail-reason">Critical damage taken</p>
-    <button onclick="returnToHub()">RETURN TO HUB</button>
-  </div>
+<div id="game">
+  <canvas id="canvas"></canvas>
+  <div id="ui">Breakers: <span id="count">0</span>/5</div>
+  <div id="message">GAME OVER</div>
+  <div id="jumpscare"></div>
 </div>
 
-<canvas id="c"></canvas>
-
 <script>
-// ───────────────────────────────────────────────
-// Basic persistence
-let custom = JSON.parse(localStorage.getItem('dp_custom') || '{"skin":"#ffdbac","outfit":"#4a5d23","hat":"none"}');
-document.getElementById('skin').value = custom.skin;
-document.getElementById('outfit').value = custom.outfit;
-document.getElementById('hat').value = custom.hat;
+// ────────────────────────────────────────────────
+// CONFIG
+// ────────────────────────────────────────────────
+const TILE = 40;              // pixel size per tile
+const MAP_W = 25;             // tiles wide
+const MAP_H = 18;             // tiles tall
+const FLASHLIGHT_RADIUS = 4;  // tiles
 
-// Tab switching
-document.querySelectorAll('#hub button').forEach(btn => {
-  btn.onclick = () => {
-    document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
-    document.getElementById(btn.dataset.tab).classList.add('active');
-    document.querySelectorAll('#hub button').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    updatePreviews();
-  };
-});
+const map = [
+  "#########################",
+  "#.......................#",
+  "#.###.###.###.###.###...#",
+  "#.......................#",
+  "#.###.###.###.###.###...#",
+  "#.......................#",
+  "#.###.###.###.###.###...#",
+  "#.......................#",
+  "#.......................#",
+  "#.B.....B.....B.........#",
+  "#.......................#",
+  "#.....B...........B.....#",
+  "#.......................#",
+  "#.......................#",
+  "#.......................#",
+  "#.......................#",
+  "#.......................#",
+  "#########################"
+];
 
-// Previews (simple)
-function updatePreviews() {
-  ['char-preview', 'play-preview'].forEach(id => {
-    const cv = document.getElementById(id);
-    cv.width = 260; cv.height = 340;
-    const ctx = cv.getContext('2d');
-    ctx.fillStyle = '#000';
-    ctx.fillRect(0,0,260,340);
-    ctx.save(); ctx.translate(130,170); ctx.scale(1.8,1.8);
+// B = breaker location
 
-    ctx.fillStyle = custom.outfit;
-    ctx.beginPath(); ctx.ellipse(0,10,12,20,0,0,Math.PI*2); ctx.fill();
+// ────────────────────────────────────────────────
+// SETUP
+// ────────────────────────────────────────────────
+const canvas = document.getElementById("canvas");
+const ctx = canvas.getContext("2d");
+canvas.width = MAP_W * TILE;
+canvas.height = MAP_H * TILE;
 
-    ctx.fillStyle = custom.skin;
-    ctx.beginPath(); ctx.arc(0,-18,9,0,Math.PI*2); ctx.fill();
+let player = { x: 2, y: 2, dir: "down" };
+let monster = { x: 12, y: 8, active: false, chaseTimer: 0 };
+let breakers = [];
+let activated = 0;
+let gameOver = false;
+let won = false;
 
-    if (custom.hat !== 'none') {
-      ctx.fillStyle = '#555';
-      ctx.fillRect(-12,-30,24,12);
+// Find breaker positions
+for (let y = 0; y < MAP_H; y++) {
+  for (let x = 0; x < MAP_W; x++) {
+    if (map[y][x] === "B") {
+      breakers.push({x, y, active: false});
     }
-    ctx.restore();
-  });
-  document.getElementById('equipped-name').textContent = 'Assault Rifle'; // placeholder
+  }
 }
-updatePreviews();
-
-// Save character
-function saveCharacter() {
-  custom.skin   = document.getElementById('skin').value;
-  custom.outfit = document.getElementById('outfit').value;
-  custom.hat    = document.getElementById('hat').value;
-  localStorage.setItem('dp_custom', JSON.stringify(custom));
-  updatePreviews();
-  document.querySelector('[data-tab="play"]').click();
-}
-
-// ───────────────────────────────────────────────
-// Game variables & logic
-const canvas = document.getElementById('c');
-const ctx = canvas.getContext('2d');
-let gameRunning = false;
-let shake = 0;
-let time = 0;
-
-function resize() {
-  canvas.width = window.innerWidth;
-  canvas.height = window.innerHeight;
-}
-window.addEventListener('resize', resize);
-resize();
 
 const keys = {};
-window.onkeydown   = e => keys[e.key.toLowerCase()] = true;
-window.onkeyup     = e => keys[e.key.toLowerCase()] = false;
+window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+window.addEventListener("keyup",   e => keys[e.key.toLowerCase()] = false);
 
-let player = { x: 0, y: 0, hp: 100, angle: 0 };
-let bullets = [];
-let enemies = [];
+// ────────────────────────────────────────────────
+// GAME LOOP
+// ────────────────────────────────────────────────
+function loop() {
+  if (gameOver || won) return;
 
-function startGame() {
-  // Apply customization (example usage)
-  document.getElementById('hp').textContent = `HP: ${player.hp}`;
-
-  // Reset game state
-  player.x = 0; player.y = 0; player.hp = 100;
-  bullets = []; enemies = []; shake = 0; time = 0;
-  gameRunning = true;
-
-  // Show game, hide menu
-  document.getElementById('hub').style.display = 'none';
-  document.getElementById('ui').style.pointerEvents = 'none';
-  canvas.style.display = 'block';
-  document.getElementById('hud').classList.remove('hidden');
-  document.getElementById('success').style.display = 'none';
-  document.getElementById('fail').style.display = 'none';
-
-  // Spawn some enemies for testing
-  for (let i = 0; i < 5; i++) {
-    enemies.push({
-      x: (Math.random() - 0.5) * 800,
-      y: (Math.random() - 0.5) * 800,
-      hp: 50
-    });
-  }
-}
-
-function returnToHub() {
-  gameRunning = false;
-  document.getElementById('hub').style.display = '';
-  document.getElementById('ui').style.pointerEvents = '';
-  canvas.style.display = 'none';
-  document.getElementById('hud').classList.add('hidden');
-  document.getElementById('success').style.display = 'none';
-  document.getElementById('fail').style.display = 'none';
-  document.querySelector('[data-tab="play"]').click();
-}
-
-// ───────────────────────────────────────────────
-// Core game loop
-function update(dt) {
-  if (!gameRunning) return;
-
-  time += dt;
-
-  // Player movement
-  let speed = 180;
-  if (keys['w'] || keys['arrowup'])    player.y -= speed * dt;
-  if (keys['s'] || keys['arrowdown'])  player.y += speed * dt;
-  if (keys['a'] || keys['arrowleft'])  player.x -= speed * dt;
-  if (keys['d'] || keys['arrowright']) player.x += speed * dt;
-
-  // Simple shooting (mouse click)
-  if (keys[' '] || keys['mouse']) {
-    bullets.push({
-      x: player.x,
-      y: player.y,
-      vx: Math.cos(player.angle) * 400,
-      vy: Math.sin(player.angle) * 400,
-      life: 2
-    });
-  }
-
-  // Update bullets
-  bullets = bullets.filter(b => {
-    b.x += b.vx * dt;
-    b.y += b.vy * dt;
-    b.life -= dt;
-    return b.life > 0;
-  });
-
-  // Update enemies (chase player)
-  enemies.forEach(e => {
-    let dx = player.x - e.x;
-    let dy = player.y - e.y;
-    let dist = Math.hypot(dx, dy);
-    if (dist > 0) {
-      e.x += (dx / dist) * 60 * dt;
-      e.y += (dy / dist) * 60 * dt;
-    }
-  });
-
-  // Win/lose conditions (simple example)
-  if (player.hp <= 0) {
-    gameRunning = false;
-    document.getElementById('fail-reason').textContent = "You died!";
-    document.getElementById('fail').style.display = 'block';
-  }
-  if (enemies.length === 0) {
-    gameRunning = false;
-    document.getElementById('success').style.display = 'block';
-  }
-}
-
-function draw() {
-  ctx.clearRect(0,0,canvas.width,canvas.height);
-
-  ctx.save();
-  ctx.translate(canvas.width/2, canvas.height/2);
-  ctx.translate(-player.x, -player.y);
-
-  // Ground
-  ctx.fillStyle = '#1a3';
-  ctx.fillRect(player.x - 2000, player.y - 2000, 4000, 4000);
-
-  // Player
-  ctx.fillStyle = custom.outfit;
-  ctx.fillRect(player.x - 16, player.y - 16, 32, 32);
-  ctx.fillStyle = custom.skin;
-  ctx.fillRect(player.x - 10, player.y - 24, 20, 20);
-
-  // Enemies
-  ctx.fillStyle = '#f00';
-  enemies.forEach(e => {
-    ctx.fillRect(e.x - 12, e.y - 12, 24, 24);
-  });
-
-  // Bullets
-  ctx.fillStyle = '#ff0';
-  bullets.forEach(b => {
-    ctx.fillRect(b.x - 4, b.y - 4, 8, 8);
-  });
-
-  ctx.restore();
-
-  // HUD update example
-  document.getElementById('hp').textContent = `HP: ${player.hp}`;
-  document.getElementById('kills').textContent = `Enemies left: ${enemies.length}`;
-}
-
-// ───────────────────────────────────────────────
-// Main loop
-let lastTime = 0;
-function loop(now) {
-  const dt = (now - lastTime) / 1000;
-  lastTime = now;
-
-  update(dt);
-  draw();
+  update();
+  render();
 
   requestAnimationFrame(loop);
 }
-requestAnimationFrame(loop);
+
+function update() {
+  // Player movement
+  let nx = player.x, ny = player.y;
+
+  if (keys["w"] || keys["arrowup"])    ny--;
+  if (keys["s"] || keys["arrowdown"])  ny++;
+  if (keys["a"] || keys["arrowleft"])  nx--;
+  if (keys["d"] || keys["arrowright"]) nx++;
+
+  if (nx !== player.x || ny !== player.y) {
+    if (isWalkable(nx, ny)) {
+      player.x = nx;
+      player.y = ny;
+    }
+  }
+
+  // Check breaker interaction
+  for (let b of breakers) {
+    if (!b.active && Math.abs(b.x - player.x) <= 1 && Math.abs(b.y - player.y) <= 1) {
+      if (Math.random() < 0.06) { // ~6% chance per frame when near
+        b.active = true;
+        activated++;
+        document.getElementById("count").textContent = activated;
+
+        if (activated >= 5) {
+          won = true;
+          showMessage("POWER RESTORED\nESCAPE THE SCHOOL!", "#0f0");
+        } else {
+          showMessage("BREAKER ACTIVATED!", "#0f0", 1200);
+        }
+      }
+    }
+  }
+
+  // Monster logic (simple chase when player visible)
+  if (isInFlashlight(monster.x, monster.y)) {
+    monster.active = true;
+  }
+
+  if (monster.active) {
+    monster.chaseTimer++;
+    if (monster.chaseTimer > 25) { // move every ~0.4s
+      monster.chaseTimer = 0;
+
+      let dx = player.x - monster.x;
+      let dy = player.y - monster.y;
+
+      if (Math.abs(dx) > Math.abs(dy)) {
+        let nx = monster.x + Math.sign(dx);
+        if (isWalkable(nx, monster.y)) monster.x = nx;
+      } else {
+        let ny = monster.y + Math.sign(dy);
+        if (isWalkable(monster.x, ny)) monster.y = ny;
+      }
+    }
+
+    // Caught!
+    if (monster.x === player.x && monster.y === player.y) {
+      jumpscare();
+    }
+  }
+}
+
+function isWalkable(x, y) {
+  if (x < 0 || x >= MAP_W || y < 0 || y >= MAP_H) return false;
+  return map[y][x] !== "#";
+}
+
+function isInFlashlight(mx, my) {
+  const dx = mx - player.x;
+  const dy = my - player.y;
+  return Math.sqrt(dx*dx + dy*dy) <= FLASHLIGHT_RADIUS;
+}
+
+function jumpscare() {
+  gameOver = true;
+  document.getElementById("jumpscare").style.opacity = 1;
+  document.getElementById("message").style.color = "red";
+  document.getElementById("message").textContent = "YOU DIED";
+  document.getElementById("message").style.opacity = 1;
+
+  // Fake scream sound (browser beep)
+  try {
+    const audio = new AudioContext();
+    const osc = audio.createOscillator();
+    osc.type = "sawtooth";
+    osc.frequency.setValueAtTime(180, audio.currentTime);
+    osc.connect(audio.destination);
+    osc.start();
+    osc.stop(audio.currentTime + 0.4);
+  } catch(e){}
+
+  setTimeout(() => {
+    document.getElementById("jumpscare").style.opacity = 0;
+  }, 800);
+}
+
+function showMessage(text, color = "#fff", duration = 3000) {
+  const msg = document.getElementById("message");
+  msg.textContent = text;
+  msg.style.color = color;
+  msg.style.opacity = 1;
+  setTimeout(() => { msg.style.opacity = 0; }, duration);
+}
+
+function render() {
+  ctx.fillStyle = "#0a0a0a";
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  // Draw map (walls & floor)
+  for (let y = 0; y < MAP_H; y++) {
+    for (let x = 0; x < MAP_W; x++) {
+      const tile = map[y][x];
+      const px = x * TILE;
+      const py = y * TILE;
+
+      if (tile === "#") {
+        ctx.fillStyle = "#333";
+        ctx.fillRect(px, py, TILE, TILE);
+        ctx.strokeStyle = "#222";
+        ctx.strokeRect(px, py, TILE, TILE);
+      } else {
+        // subtle floor
+        ctx.fillStyle = "#111";
+        ctx.fillRect(px, py, TILE, TILE);
+      }
+    }
+  }
+
+  // Draw breakers
+  ctx.fillStyle = "#ff8800";
+  for (let b of breakers) {
+    if (!b.active) {
+      ctx.fillRect(b.x*TILE + 8, b.y*TILE + 8, TILE-16, TILE-16);
+    }
+  }
+
+  // Draw player (simple pixel guy)
+  ctx.fillStyle = "#0f0";
+  ctx.fillRect(player.x*TILE + 10, player.y*TILE + 6, TILE-20, TILE-12); // body
+  ctx.fillRect(player.x*TILE + 14, player.y*TILE + 2, TILE-28, TILE-20); // head
+
+  // Draw monster (if active)
+  if (monster.active) {
+    ctx.fillStyle = "#800";
+    ctx.fillRect(monster.x*TILE + 4, monster.y*TILE + 4, TILE-8, TILE-8);
+  }
+
+  // Flashlight effect (dark overlay + circle reveal)
+  ctx.save();
+  ctx.globalCompositeOperation = "destination-out";
+  ctx.beginPath();
+  ctx.arc(
+    (player.x + 0.5) * TILE,
+    (player.y + 0.5) * TILE,
+    FLASHLIGHT_RADIUS * TILE * 1.4,
+    0, Math.PI*2
+  );
+  ctx.fill();
+  ctx.restore();
+
+  // Final dark vignette
+  const grad = ctx.createRadialGradient(
+    (player.x+0.5)*TILE, (player.y+0.5)*TILE,
+    FLASHLIGHT_RADIUS*TILE*0.8,
+    (player.x+0.5)*TILE, (player.y+0.5)*TILE,
+    FLASHLIGHT_RADIUS*TILE*2.5
+  );
+  grad.addColorStop(0, "rgba(0,0,0,0)");
+  grad.addColorStop(0.6, "rgba(0,0,0,0.7)");
+  grad.addColorStop(1, "rgba(0,0,0,1)");
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,canvas.width,canvas.height);
+}
+
+// Start game
+showMessage("Find and activate 5 breakers...\nDon't let it catch you!", "#0f0", 5000);
+loop();
 </script>
+
 </body>
 </html>
