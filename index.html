@@ -2,25 +2,28 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>BLACKOUT MAZE - Infinite SEGA Horror</title>
+<title>FALLOUT ECHOES - Storymode Adventure</title>
 <style>
   body { margin:0; background:#000; overflow:hidden; font-family:'Courier New',monospace; color:#0f0; }
   #game { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); image-rendering:pixelated; box-shadow:0 0 40px #000; }
   #hud { position:absolute; top:8px; left:8px; font-size:14px; text-shadow:0 0 4px #000; pointer-events:none; color:#00ff88; }
   #msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:32px; color:#f00; background:rgba(0,0,0,0.8); opacity:0; transition:opacity 0.5s; pointer-events:none; font-weight:bold; text-shadow:0 0 8px #f00; }
+  #story { position:absolute; bottom:20px; left:10%; width:80%; background:rgba(0,0,0,0.7); color:#0f0; padding:10px; font-size:14px; display:none; border:2px solid #0f0; pointer-events:auto; }
+  #story button { background:#222; color:#0f0; border:1px solid #0f0; padding:5px 10px; margin:5px; cursor:pointer; }
   #minimap { position:absolute; top:8px; right:8px; width:96px; height:70px; background:rgba(0,0,0,0.7); border:2px solid #0f0; display:none; image-rendering:pixelated; pointer-events:none; }
 </style>
 </head>
 <body>
 
 <canvas id="game" width="320" height="224"></canvas>
-<div id="hud">BREAKERS: <span id="count">0</span>/5  |  FLOOR: <span id="floor">1</span></div>
+<div id="hud">VAULT POWER: <span id="count">0</span>/5  |  PIP-BOY: <span id="quest">Escape the Vault</span></div>
 <canvas id="minimap" width="96" height="70"></canvas>
 <div id="msg"></div>
+<div id="story"></div>
 
 <script>
 // ────────────────────────────────
-// SEGA GENESIS INFINITE MAZE HORROR
+// FALLOUT ECHOES - STORYMODE GAME (Post-Apoc Adventure)
 // ────────────────────────────────
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -29,106 +32,162 @@ canvas.style.width = '960px';
 canvas.style.height = '672px';
 
 const TILE = 16;
-const MAP_W = 22;
-const MAP_H = 15;
+const MAP_W = 25;
+const MAP_H = 18;
 
 const PAL = {
-  bg: '#0a0a1a',
-  floor: '#1a1a2a',
-  wall1: '#444444',
-  wall2: '#666666',
-  wall3: '#888888',
-  locker: '#555555',
-  breakerOff: '#ff6600',
-  breakerOn: '#00ff88',
-  playerBody: '#40e0d0',
-  playerHead: '#60f0e0',
-  playerEye: '#00ffff',
-  playerShirt: '#20b0a0',
-  monsterBody: '#660000',
-  monsterHead: '#880000',
-  monsterEye: '#ff2222',
-  monsterMouth: '#ff0000',
-  lightGlow: '#ffff88',
-  ui: '#00ff88',
-  winGlow: '#ffff00'
+  bg: '#1a0a00', // wasteland brown
+  floor: '#3a1a00',
+  wall: '#6a3a10',
+  vaultWall: '#4a4a6a',
+  powerOff: '#ff6600',
+  powerOn: '#00ff88',
+  player: '#40e0d0',
+  mutant: '#228b22', // green super mutant
+  raider: '#8b4513',
+  glow: '#ffff88'
 };
 
-let cameraX = 0, cameraY = 0;
-let player = { x: 1.5, y: 1.5, vx: 0, vy: 0, facingX: 1, facingY: 0 };
-let monster = { x: 20.5, y: 13.5, vx: 0, vy: 0 };
-let breakers = [];
+let player = { x: 2.5, y: 2.5, vx: 0, vy: 0, facingX: 1, facingY: 0, health: 100, ammo: 20 };
+let enemies = [];
+let breakers = []; // power cells
 let activated = 0;
 let gameOver = false;
 let won = false;
 let flashlight = false;
 let showMap = false;
-let floorNum = 1;
 let map = [];
-let moveAnim = 0;
+let storyState = 0; // story progression
+let quest = "Escape the Vault";
+let floorNum = 1;
 
-// Maze generation (recursive backtracker)
-function generateMaze() {
-  // Initialize walls
+// Generate Vault/Wasteland Map
+function generateMap(isVault = true) {
   map = Array(MAP_H).fill().map(() => Array(MAP_W).fill('#'));
   
-  // Start carving from (1,1)
-  const stack = [];
-  const startX = 1, startY = 1;
-  map[startY][startX] = '.';
-  stack.push([startX, startY]);
-
-  while (stack.length) {
-    const [cx, cy] = stack[stack.length - 1];
-    const dirs = [[0, -2], [2, 0], [0, 2], [-2, 0]].filter(([dx, dy]) => {
-      const nx = cx + dx, ny = cy + dy;
-      return nx > 0 && nx < MAP_W - 1 && ny > 0 && ny < MAP_H - 1 && map[ny][nx] === '#';
-    });
-    
-    if (dirs.length) {
-      const [dx, dy] = dirs[Math.floor(Math.random() * dirs.length)];
-      const wx = cx + dx / 2, wy = cy + dy / 2;
-      map[cy + dy][cx + dx] = '.';
-      map[wy][wx] = '.';
-      stack.push([cx + dx, cy + dy]);
-    } else {
-      stack.pop();
+  // Carve rooms and corridors
+  for (let i = 0; i < 8; i++) {
+    const rx = 3 + Math.floor(Math.random() * (MAP_W - 6));
+    const ry = 3 + Math.floor(Math.random() * (MAP_H - 6));
+    const rw = 4 + Math.floor(Math.random() * 5);
+    const rh = 4 + Math.floor(Math.random() * 4);
+    for (let y = ry; y < ry + rh; y++) {
+      for (let x = rx; x < rx + rw; x++) {
+        map[y][x] = '.';
+      }
+    }
+  }
+  // Connect rooms with corridors
+  for (let y = 1; y < MAP_H - 1; y++) {
+    for (let x = 1; x < MAP_W - 1; x++) {
+      if (Math.random() < 0.1 && map[y][x] === '#') map[y][x] = '.';
     }
   }
 
-  // Place 5 breakers randomly in open spaces
   breakers = [];
-  let attempts = 0;
-  while (breakers.length < 5 && attempts < 100) {
-    const x = 1 + Math.floor(Math.random() * (MAP_W - 2));
-    const y = 1 + Math.floor(Math.random() * (MAP_H - 2));
-    if (map[y][x] === '.') {
-      map[y][x] = 'B';
-      breakers.push({x: x + 0.5, y: y + 0.5, active: false});
-    }
-    attempts++;
+  enemies = [];
+  for (let i = 0; i < 5; i++) {
+    let bx, by;
+    do {
+      bx = Math.floor(Math.random() * MAP_W);
+      by = Math.floor(Math.random() * MAP_H);
+    } while (map[by][bx] !== '.');
+    breakers.push({x: bx + 0.5, y: by + 0.5, active: false});
   }
 
-  // Reset positions
-  player.x = 1.5; player.y = 1.5; player.vx = 0; player.vy = 0;
-  monster.x = MAP_W - 1.5; monster.y = MAP_H - 1.5;
+  // Enemies (mutants/raiders)
+  for (let i = 0; i < 4; i++) {
+    let ex, ey;
+    do {
+      ex = Math.floor(Math.random() * MAP_W);
+      ey = Math.floor(Math.random() * MAP_H);
+    } while (map[ey][ex] !== '.');
+    enemies.push({x: ex + 0.5, y: ey + 0.5, type: Math.random() < 0.5 ? 'mutant' : 'raider', health: 50});
+  }
+
+  player.x = 2.5; player.y = 2.5;
   activated = 0;
-  document.getElementById('count').textContent = 0;
-  document.getElementById('floor').textContent = ++floorNum;
-  won = false;
+  document.getElementById('count').textContent = activated;
+  storyState = 0;
+  quest = isVault ? "Find Power Cells to Open Door" : "Survive the Wasteland";
+  document.getElementById('quest').textContent = quest;
   gameOver = false;
+  won = false;
+  showStory(0);
+}
+
+// Story Dialogues
+const stories = [
+  // 0: Intro
+  "You wake in Vault 101. The alarm blares: 'Power failure!' You must find 5 power cells to restore power and escape. Watch for ghouls and raiders. Good luck, Vault Dweller.",
+  // 1: First cell
+  "Power cell found! But you hear growling... A feral ghoul attacks! [Fight or Run]",
+  // 2: Mid-game
+  "Halfway there. The Overseer speaks via PIP-BOY: 'Hurry, the vault is collapsing!'",
+  // 3: Encounter raider
+  "A raider ambushes you: 'Give me your caps!' [Fight] [Talk] [Run]",
+  // 4: Win vault
+  "Vault door opens! You step into the blinding wasteland sun. But the adventure is just beginning... [Enter Wasteland]",
+  // 5: Wasteland intro
+  "The Capital Wasteland is harsh. Find 5 water purifiers to survive. Super mutants roam.",
+  // 6: End game
+  "You found all purifiers! The Brotherhood of Steel recruits you. The end... or is it? [New Game+]"
+];
+
+function showStory(id) {
+  const storyDiv = document.getElementById('story');
+  storyDiv.innerHTML = `<p>${stories[id]}</p>`;
+  // Add choices based on id
+  if (id === 1) {
+    storyDiv.innerHTML += '<button onclick="choice(1, \'fight\')">Fight</button><button onclick="choice(1, \'run\')">Run</button>';
+  } else if (id === 3) {
+    storyDiv.innerHTML += '<button onclick="choice(3, \'fight\')">Fight</button><button onclick="choice(3, \'talk\')">Talk</button><button onclick="choice(3, \'run\')">Run</button>';
+  } else if (id === 4) {
+    storyDiv.innerHTML += '<button onclick="choice(4, \'enter\')">Enter Wasteland</button>';
+  } else if (id === 6) {
+    storyDiv.innerHTML += '<button onclick="choice(6, \'new\')">New Game+</button>';
+  } else {
+    storyDiv.innerHTML += '<button onclick="closeStory()">Continue</button>';
+  }
+  storyDiv.style.display = 'block';
+}
+
+function closeStory() {
+  document.getElementById('story').style.display = 'none';
+}
+
+function choice(id, opt) {
+  closeStory();
+  if (id === 1) {
+    if (opt === 'fight') {
+      player.health -= 20; // combat sim
+      showMsg('You defeated the ghoul! -20 HP');
+    } else {
+      player.health -= 10;
+      showMsg('You ran away! -10 HP');
+    }
+  } else if (id === 3) {
+    if (opt === 'fight') {
+      player.health -= 30;
+      player.ammo -= 5;
+      showMsg('Raider defeated! -30 HP, -5 Ammo');
+    } else if (opt === 'talk') {
+      showMsg('You convinced the raider to leave. No harm.');
+    } else {
+      player.health -= 15;
+      showMsg('Escaped! -15 HP');
+    }
+  } else if (id === 4) {
+    generateMap(false); // wasteland
+  } else if (id === 6) {
+    floorNum++;
+    generateMap(true); // new vault
+  }
+  if (player.health <= 0) gameOver = true;
 }
 
 const keys = {};
-window.addEventListener('keydown', e => {
-  keys[e.key.toLowerCase()] = true;
-  if (e.key === ' ') flashlight = !flashlight;
-  if (e.key.toLowerCase() === 'shift') {
-    showMap = !showMap;
-    document.getElementById('minimap').style.display = showMap ? 'block' : 'none';
-  }
-  if (e.key.toLowerCase() === 'e') activateBreaker();
-});
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
 window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
 
 function isWalkable(x, y) {
@@ -136,247 +195,136 @@ function isWalkable(x, y) {
   return tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H && map[ty][tx] !== '#';
 }
 
-function activateBreaker() {
-  for (let b of breakers) {
-    if (!b.active) {
-      const dx = Math.abs(b.x - player.x);
-      const dy = Math.abs(b.y - player.y);
-      if (dx < 1.2 && dy < 1.2) {
-        b.active = true;
-        activated++;
-        document.getElementById('count').textContent = activated;
-        showMsg('BREAKER POPPED!', PAL.ui);
-        if (activated >= 5) {
-          setTimeout(() => {
-            showMsg('FLOOR CLEARED!\nGENERATING NEXT...', PAL.winGlow, 2000);
-            setTimeout(generateMaze, 2000);
-          }, 1000);
-        }
-        return;
-      }
-    }
-  }
-}
-
 function update() {
   if (gameOver || won) return;
 
-  // Slower player movement (0.08 per frame ~ smooth walk)
-  const speed = 0.08;
+  const speed = 0.1;
   player.vx = 0; player.vy = 0;
-  if (keys['w'] || keys['arrowup']) { player.vy = -speed; player.facingY = -1; }
-  if (keys['s'] || keys['arrowdown']) { player.vy = speed; player.facingY = 1; }
-  if (keys['a'] || keys['arrowleft']) { player.vx = -speed; player.facingX = -1; }
-  if (keys['d'] || keys['arrowright']) { player.vx = speed; player.facingX = 1; }
+  if (keys['w'] || keys['arrowup']) player.vy = -speed;
+  if (keys['s'] || keys['arrowdown']) player.vy = speed;
+  if (keys['a'] || keys['arrowleft']) player.vx = -speed;
+  if (keys['d'] || keys['arrowright']) player.vx = speed;
 
-  // Move & collide
   let nx = player.x + player.vx, ny = player.y + player.vy;
   if (isWalkable(nx, player.y)) player.x = nx;
   if (isWalkable(player.x, ny)) player.y = ny;
 
-  // Camera follow
-  cameraX = player.x * TILE - 160;
-  cameraY = player.y * TILE - 112;
-
-  // Monster AI (pathfinding lite)
-  const mDist = dist(player.x, player.y, monster.x, monster.y);
-  if (mDist < 8 || flashlight && mDist < 12) {
-    const dx = (player.x > monster.x ? 0.04 : -0.04);
-    const dy = (player.y > monster.y ? 0.04 : -0.04);
-    let nx = monster.x + dx, ny = monster.y + dy;
-    if (isWalkable(nx, monster.y)) monster.x = nx;
-    if (isWalkable(monster.x, ny)) monster.y = ny;
-  } else {
-    // Random patrol
-    if (Math.random() < 0.02) {
-      const dirs = [[0.2,0],[-0.2,0],[0,0.2],[0,-0.2]];
-      const [dx, dy] = dirs[Math.floor(Math.random()*4)];
-      let nx = monster.x + dx, ny = monster.y + dy;
-      if (isWalkable(nx, monster.y)) monster.x = nx;
-      if (isWalkable(monster.x, ny)) monster.y = ny;
+  // Activate power cells
+  for (let b of breakers) {
+    if (!b.active && Math.hypot(b.x - player.x, b.y - player.y) < 1) {
+      b.active = true;
+      activated++;
+      document.getElementById('count').textContent = activated;
+      showMsg('Power Cell Activated!', '#00ff88');
+      storyState++;
+      if (Math.random() < 0.3) showStory(storyState % stories.length);
+      if (activated >= 5) {
+        won = true;
+        showStory(4); // win vault
+      }
     }
   }
 
-  // Caught
-  if (dist(player.x, player.y, monster.x, monster.y) < 0.8) jumpscare();
-
-  moveAnim += Math.abs(player.vx) + Math.abs(player.vy);
+  // Enemies AI & combat
+  enemies.forEach(e => {
+    const dist = Math.hypot(e.x - player.x, e.y - player.y);
+    if (dist < 6) {
+      const angle = Math.atan2(player.y - e.y, player.x - e.x);
+      let nx = e.x + Math.cos(angle) * 0.08;
+      let ny = e.y + Math.sin(angle) * 0.08;
+      if (isWalkable(nx, e.y)) e.x = nx;
+      if (isWalkable(e.x, ny)) e.y = ny;
+    }
+    if (dist < 1) {
+      player.health -= 10;
+      showMsg('Attacked! -10 HP');
+      if (player.health <= 0) {
+        gameOver = true;
+        showMsg('GAME OVER - Radiation Death', '#ff0000', 9999);
+      }
+    }
+  });
 }
 
-function dist(x1,y1,x2,y2) { return Math.hypot(x1-x2, y1-y2); }
-
-function jumpscare() {
-  gameOver = true;
-  showMsg('JUMPSCARE!\nCAUGHT!', '#ff0000', 9999);
-  try {
-    const a = new AudioContext();
-    const o = a.createOscillator(); o.type = 'sawtooth';
-    o.frequency.setValueAtTime(180, a.currentTime);
-    o.frequency.exponentialRampToValueAtTime(60, a.currentTime + 0.7);
-    o.connect(a.destination); o.start(); o.stop(a.currentTime + 0.7);
-  } catch(e) {}
+function showMsg(text, color = '#0f0', duration = 1500) {
+  const msg = document.getElementById('msg');
+  msg.textContent = text;
+  msg.style.color = color;
+  msg.style.opacity = 1;
+  setTimeout(() => msg.style.opacity = 0, duration);
 }
 
-function showMsg(text, color = PAL.ui, duration = 1500) {
-  const el = document.getElementById('msg');
-  el.innerHTML = text.replace('\n', '<br>');
-  el.style.color = color;
-  el.style.opacity = 1;
-  setTimeout(() => el.style.opacity = 0, duration);
-}
-
-// ────────────────────────────────
-// DETAILED PIXEL SPRITES & RENDER
-// ────────────────────────────────
 function render() {
   ctx.fillStyle = PAL.bg;
   ctx.fillRect(0, 0, 320, 224);
 
-  // Tiles
+  const camX = player.x * TILE - 160;
+  const camY = player.y * TILE - 112;
+
+  // Draw map
   for (let y = 0; y < MAP_H; y++) {
     for (let x = 0; x < MAP_W; x++) {
-      const tile = map[y][x];
-      const sx = x * TILE - cameraX;
-      const sy = y * TILE - cameraY;
+      const sx = x * TILE - camX;
+      const sy = y * TILE - camY;
       if (sx > -TILE && sx < 340 && sy > -TILE && sy < 244) {
-        if (tile === '#') {
-          // Gray walls with detail
-          ctx.fillStyle = PAL.wall1;
+        if (map[y][x] === '#') {
+          ctx.fillStyle = PAL.vaultWall;
           ctx.fillRect(sx, sy, TILE, TILE);
-          ctx.fillStyle = PAL.wall3;
-          ctx.fillRect(sx + 2, sy + 2, TILE - 4, 6);
-          ctx.fillRect(sx + 2, sy + TILE - 8, TILE - 4, 6);
-          ctx.fillStyle = PAL.locker;
-          ctx.fillRect(sx + TILE/2 - 2, sy + 4, 4, 8);
-        } else if (tile !== 'B') {
-          // Floor with color variation
+        } else {
           ctx.fillStyle = PAL.floor;
           ctx.fillRect(sx, sy, TILE, TILE);
-          ctx.fillStyle = '#2a2a40';
-          ctx.fillRect(sx + 4, sy + 4, 8, 8);
         }
       }
     }
   }
 
-  // Breakers (glowing box)
+  // Breakers (power cells)
   breakers.forEach(b => {
-    const sx = b.x * TILE - cameraX;
-    const sy = b.y * TILE - cameraY;
-    if (sx > -TILE && sx < 340 && sy > -TILE && sy < 244) {
-      ctx.fillStyle = b.active ? PAL.breakerOn : PAL.breakerOff;
-      ctx.shadowColor = b.active ? '#00ff88' : '#ff8800';
-      ctx.shadowBlur = 8;
-      ctx.fillRect(sx - 4, sy - 4, TILE + 8, TILE + 8);
-      ctx.shadowBlur = 0;
-      ctx.fillStyle = '#331100';
-      ctx.fillRect(sx - 1, sy - 1, TILE + 2, TILE + 2);
-      // Lock detail
-      ctx.fillStyle = '#ffaa44';
-      ctx.fillRect(sx + 2, sy + 2, 6, 6);
-    }
+    const sx = b.x * TILE - camX;
+    const sy = b.y * TILE - camY;
+    ctx.fillStyle = b.active ? PAL.powerOn : PAL.powerOff;
+    ctx.fillRect(sx - 4, sy - 4, 8, 8);
   });
 
-  // Player sprite (detailed kid)
-  const px = player.x * TILE - cameraX;
-  const py = player.y * TILE - cameraY;
-  const animFrame = Math.floor(moveAnim * 0.3) % 2;
-  ctx.save();
-  ctx.translate(px, py);
-  ctx.scale(player.facingX, player.facingY);
-  // Legs
-  ctx.fillStyle = '#204040';
-  ctx.fillRect(-3 + animFrame * 2, 8, 3, 6);
-  ctx.fillRect(0 - animFrame * 2, 8, 3, 6);
-  // Body
-  ctx.fillStyle = PAL.playerShirt;
-  ctx.fillRect(-5, 0, 10, 12);
-  // Arms
-  ctx.fillStyle = PAL.playerBody;
-  ctx.fillRect(-7, 2, 4, 6);
-  ctx.fillRect(3, 2, 4, 6);
-  // Head
-  ctx.fillStyle = PAL.playerHead;
-  ctx.fillRect(-4, -12, 8, 10);
-  ctx.fillStyle = '#101010';
-  ctx.fillRect(-2, -9, 4, 3);
-  // Eyes
-  ctx.fillStyle = PAL.playerEye;
-  ctx.fillRect(-1.5, -7, 1.5, 1.5);
-  ctx.fillRect(0.5, -7, 1.5, 1.5);
-  ctx.restore();
+  // Enemies
+  enemies.forEach(e => {
+    const sx = e.x * TILE - camX;
+    const sy = e.y * TILE - camY;
+    ctx.fillStyle = e.type === 'mutant' ? PAL.mutant : PAL.raider;
+    ctx.fillRect(sx - 6, sy - 10, 12, 20);
+  });
 
-  // Monster sprite (detailed shadow beast)
-  const mx = monster.x * TILE - cameraX;
-  const my = monster.y * TILE - cameraY;
-  if (flashlight || dist(player.x, player.y, monster.x, monster.y) < 6) {
-    ctx.save();
-    ctx.translate(mx, my);
-    // Body
-    ctx.fillStyle = PAL.monsterBody;
-    ctx.fillRect(-8, -4, 16, 20);
-    ctx.fillStyle = PAL.monsterHead;
-    ctx.fillRect(-10, -16, 20, 14);
-    // Eyes glow
-    ctx.shadowColor = '#ff6666';
-    ctx.shadowBlur = 12;
-    ctx.fillStyle = PAL.monsterEye;
-    ctx.fillRect(-6, -12, 5, 6);
-    ctx.fillRect(1, -12, 5, 6);
-    ctx.shadowBlur = 0;
-    // Teeth
-    ctx.fillStyle = PAL.monsterMouth;
-    ctx.fillRect(-4, -4, 8, 4);
-    ctx.fillStyle = '#ffffff';
-    for (let i = -3; i <= 3; i += 2) ctx.fillRect(-4 + i * 2, -4, 1.5, 2);
-    ctx.restore();
-  }
+  // Player
+  const px = player.x * TILE - camX;
+  const py = player.y * TILE - camY;
+  ctx.fillStyle = PAL.player;
+  ctx.fillRect(px - 5, py - 12, 10, 16);
 
-  // Flashlight radial light
+  // Flashlight
   if (flashlight) {
-    const grad = ctx.createRadialGradient(px, py, 0, px + player.facingX * 20, py + player.facingY * 20, 140);
-    grad.addColorStop(0, 'rgba(255,255,150,0.5)');
-    grad.addColorStop(0.3, 'rgba(150,200,255,0.3)');
-    grad.addColorStop(0.7, 'rgba(50,100,150,0.1)');
+    const grad = ctx.createRadialGradient(px, py, 0, px, py, 120);
+    grad.addColorStop(0, 'rgba(255,200,100,0.4)');
     grad.addColorStop(1, 'rgba(0,0,0,1)');
     ctx.fillStyle = grad;
     ctx.fillRect(0, 0, 320, 224);
   } else {
-    ctx.fillStyle = 'rgba(5,5,15,0.97)';
+    ctx.fillStyle = 'rgba(0,0,0,0.9)';
     ctx.fillRect(0, 0, 320, 224);
   }
 
-  // Scanlines + vignette
-  ctx.fillStyle = 'rgba(0,0,0,0.2)';
-  for (let y = 0; y < 224; y += 2) ctx.fillRect(0, y, 320, 1);
-  const vig = ctx.createRadialGradient(160,112,0,160,112,200);
-  vig.addColorStop(0,'rgba(0,0,0,0)'); vig.addColorStop(1,'rgba(0,0,0,0.5)');
-  ctx.fillStyle = vig; ctx.fillRect(0,0,320,224);
-
-  renderMinimap();
-}
-
-function renderMinimap() {
-  minimapCtx.fillStyle = '#000';
-  minimapCtx.fillRect(0, 0, 96, 70);
-  const scale = 4;
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      minimapCtx.fillStyle = map[y][x] === '#' ? PAL.wall2 : '#222';
-      minimapCtx.fillRect(x * scale, y * scale, scale, scale);
+  // Minimap
+  if (showMap) {
+    minimapCtx.fillStyle = '#000';
+    minimapCtx.fillRect(0, 0, 96, 70);
+    for (let y = 0; y < MAP_H; y++) {
+      for (let x = 0; x < MAP_W; x++) {
+        minimapCtx.fillStyle = map[y][x] === '#' ? '#444' : '#111';
+        minimapCtx.fillRect(x * 4, y * 4, 4, 4);
+      }
     }
+    minimapCtx.fillStyle = '#0f0';
+    minimapCtx.fillRect(player.x * 4, player.y * 4, 4, 4);
   }
-  // Player green
-  minimapCtx.fillStyle = '#0f0';
-  minimapCtx.fillRect(player.x * scale - 1, player.y * scale - 1, 3, 3);
-  // Monster red
-  minimapCtx.fillStyle = '#f00';
-  minimapCtx.fillRect(monster.x * scale - 1.5, monster.y * scale - 1.5, 4, 4);
-  // Breakers
-  breakers.forEach(b => {
-    minimapCtx.fillStyle = b.active ? '#0f0' : '#ff0';
-    minimapCtx.fillRect((b.x-0.5) * scale + 0.5, (b.y-0.5) * scale + 0.5, 2, 2);
-  });
 }
 
 function loop() {
@@ -385,15 +333,13 @@ function loop() {
   requestAnimationFrame(loop);
 }
 
-// Init first maze
-generateMaze();
-showMsg('NEW MAZE!\nFind 5 breakers (E)\nSPACE=Light  SHIFT=Map\nAvoid the beast!', PAL.ui, 5000);
+generateMap();
 loop();
 </script>
 
 <h3 style="text-align:center; color:#0f0; margin:20px; font-family:Courier New;">
-  WASD/Arrows: Move (slower now) | E: Pop Breaker | SPACE: Flashlight | SHIFT: Minimap<br>
-  Infinite floors, Elias! Each clear = new maze. More colors, better sprites, gray walls! 🏫🔥
+  Controls: WASD/Arrows to move | E to activate power cell | SPACE flashlight | SHIFT minimap<br>
+  Welcome to Fallout Echoes, Elias! Survive the apocalypse in this story-driven adventure.
 </h3>
 
 </body>
