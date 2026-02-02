@@ -10,20 +10,19 @@
   #msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:32px; color:#f00; background:rgba(0,0,0,0.8); opacity:0; transition:opacity 0.5s; pointer-events:none; font-weight:bold; text-shadow:0 0 8px #f00; }
   #story { position:absolute; bottom:20px; left:10%; width:80%; background:rgba(0,0,0,0.7); color:#0f0; padding:10px; font-size:14px; display:none; border:2px solid #0f0; pointer-events:auto; }
   #story button { background:#222; color:#0f0; border:1px solid #0f0; padding:5px 10px; margin:5px; cursor:pointer; }
-  #minimap { position:absolute; top:8px; right:8px; width:96px; height:70px; background:rgba(0,0,0,0.7); border:2px solid #0f0; display:none; image-rendering:pixelated; pointer-events:none; }
+  #minimap { position:absolute; top:8px; right:8px; width:120px; height:88px; background:rgba(0,0,0,0.7); border:2px solid #0f0; display:none; image-rendering:pixelated; pointer-events:none; }
 </style>
 </head>
 <body>
-
 <canvas id="game" width="320" height="224"></canvas>
-<div id="hud">VAULT POWER: <span id="count">0</span>/5  |  PIP-BOY: <span id="quest">Escape the Vault</span></div>
-<canvas id="minimap" width="96" height="70"></canvas>
+<div id="hud">VAULT POWER: <span id="count">0</span>/5 | HP: <span id="hp">100</span> | AMMO: <span id="ammo">20</span> | <span id="quest">Escape the Vault</span></div>
+<canvas id="minimap" width="120" height="88"></canvas>
 <div id="msg"></div>
 <div id="story"></div>
 
 <script>
 // ────────────────────────────────
-// FALLOUT ECHOES - STORYMODE GAME (Post-Apoc Adventure)
+// FALLOUT ECHOES - Improved 2025 Edition
 // ────────────────────────────────
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
@@ -36,311 +35,346 @@ const MAP_W = 25;
 const MAP_H = 18;
 
 const PAL = {
-  bg: '#1a0a00', // wasteland brown
-  floor: '#3a1a00',
-  wall: '#6a3a10',
-  vaultWall: '#4a4a6a',
-  powerOff: '#ff6600',
-  powerOn: '#00ff88',
-  player: '#40e0d0',
-  mutant: '#228b22', // green super mutant
-  raider: '#8b4513',
-  glow: '#ffff88'
+  bg: '#0a0a00', floor: '#3a2a10', wall: '#5a3a20',
+  vaultWall: '#4a4a6a', vaultFloor: '#2a2a3a',
+  wastelandFloor: '#8b5a2b', wastelandWall: '#6b3a1b',
+  powerOff: '#ff6600', powerOn: '#00ff88',
+  player: '#40e0d0', door: '#8b4513',
+  mutant: '#228b22', raider: '#8b4513', ghoul: '#556b2f',
+  bullet: '#ffff00'
 };
 
-let player = { x: 2.5, y: 2.5, vx: 0, vy: 0, facingX: 1, facingY: 0, health: 100, ammo: 20 };
+let player = { x: 2.5, y: 2.5, health: 100, ammo: 20, facing: 0 }; // 0=down,1=right,2=up,3=left
 let enemies = [];
-let breakers = []; // power cells
+let breakers = [];
+let bullets = [];
 let activated = 0;
 let gameOver = false;
 let won = false;
-let flashlight = false;
-let showMap = false;
+let flashlight = true;
+let showMinimap = false;
+let inWasteland = false;
 let map = [];
-let storyState = 0; // story progression
-let quest = "Escape the Vault";
-let floorNum = 1;
+let storyState = 0;
 
-// Generate Vault/Wasteland Map
-function generateMap(isVault = true) {
-  map = Array(MAP_H).fill().map(() => Array(MAP_W).fill('#'));
-  
-  // Carve rooms and corridors
-  for (let i = 0; i < 8; i++) {
-    const rx = 3 + Math.floor(Math.random() * (MAP_W - 6));
-    const ry = 3 + Math.floor(Math.random() * (MAP_H - 6));
-    const rw = 4 + Math.floor(Math.random() * 5);
-    const rh = 4 + Math.floor(Math.random() * 4);
-    for (let y = ry; y < ry + rh; y++) {
-      for (let x = rx; x < rx + rw; x++) {
+const stories = [
+  "Vault 101 – Power critical. Locate 5 fusion cells to open the vault door. Radiation leaks detected. Proceed with caution.",
+  "Fusion cell acquired. Something moves in the shadows… Feral ghoul detected!",
+  "Vault integrity dropping. The Overseer urges haste.",
+  "Raider spotted. 'Hand over the goods, tin-can!'",
+  "All cells inserted. Vault door grinding open… Welcome to the Wasteland.",
+  "Capital Wasteland. Radiation everywhere. Super mutants and worse roam free. Survive.",
+  "You’ve proven yourself. The Brotherhood offers you a place among us. For now… the wastes call."
+];
+
+function generateMap(vault = true) {
+  inWasteland = !vault;
+  map = Array(MAP_H).fill().map(()=>Array(MAP_W).fill('#'));
+
+  // Random rooms
+  for(let i=0;i<7;i++){
+    let rx = 2+Math.floor(Math.random()*(MAP_W-8));
+    let ry = 2+Math.floor(Math.random()*(MAP_H-8));
+    let rw = 5+Math.floor(Math.random()*5);
+    let rh = 4+Math.floor(Math.random()*5);
+    for(let y=ry;y<ry+rh&&y<MAP_H;y++)
+      for(let x=rx;x<rx+rw&&x<MAP_W;x++)
         map[y][x] = '.';
-      }
-    }
   }
-  // Connect rooms with corridors
-  for (let y = 1; y < MAP_H - 1; y++) {
-    for (let x = 1; x < MAP_W - 1; x++) {
-      if (Math.random() < 0.1 && map[y][x] === '#') map[y][x] = '.';
-    }
-  }
+
+  // Rough connections
+  for(let y=1;y<MAP_H-1;y++)
+    for(let x=1;x<MAP_W-1;x++)
+      if(Math.random()<0.08 && map[y][x]==='#') map[y][x]='.';
 
   breakers = [];
   enemies = [];
-  for (let i = 0; i < 5; i++) {
-    let bx, by;
-    do {
-      bx = Math.floor(Math.random() * MAP_W);
-      by = Math.floor(Math.random() * MAP_H);
-    } while (map[by][bx] !== '.');
-    breakers.push({x: bx + 0.5, y: by + 0.5, active: false});
+  bullets = [];
+
+  // Power cells / purifiers
+  for(let i=0;i<5;i++){
+    let x,y;
+    do{ x=Math.floor(Math.random()*MAP_W); y=Math.floor(Math.random()*MAP_H); }
+    while(map[y][x]!=='.');
+    breakers.push({x:x+0.5, y:y+0.5, active:false});
   }
 
-  // Enemies (mutants/raiders)
-  for (let i = 0; i < 4; i++) {
-    let ex, ey;
-    do {
-      ex = Math.floor(Math.random() * MAP_W);
-      ey = Math.floor(Math.random() * MAP_H);
-    } while (map[ey][ex] !== '.');
-    enemies.push({x: ex + 0.5, y: ey + 0.5, type: Math.random() < 0.5 ? 'mutant' : 'raider', health: 50});
+  // Enemies
+  let enemyCount = vault ? 4 : 6;
+  for(let i=0;i<enemyCount;i++){
+    let x,y;
+    do{ x=Math.floor(Math.random()*MAP_W); y=Math.floor(Math.random()*MAP_H); }
+    while(map[y][x]!=='.' || Math.hypot(x+0.5-player.x, y+0.5-player.y)<6);
+    let type = vault
+      ? (Math.random()<0.6 ? 'ghoul' : 'raider')
+      : (Math.random()<0.7 ? 'mutant' : 'raider');
+    enemies.push({x:x+0.5, y:y+0.5, type, health: type==='mutant'?80:50, maxHealth:type==='mutant'?80:50});
   }
 
   player.x = 2.5; player.y = 2.5;
   activated = 0;
   document.getElementById('count').textContent = activated;
-  storyState = 0;
-  quest = isVault ? "Find Power Cells to Open Door" : "Survive the Wasteland";
-  document.getElementById('quest').textContent = quest;
-  gameOver = false;
-  won = false;
-  showStory(0);
+  document.getElementById('hp').textContent = player.health;
+  document.getElementById('ammo').textContent = player.ammo;
+  document.getElementById('quest').textContent = vault ? "Restore Power – Find 5 Cells" : "Survive – Find 5 Purifiers";
+  gameOver = won = false;
+  showStory(vault ? 0 : 5);
 }
 
-// Story Dialogues
-const stories = [
-  // 0: Intro
-  "You wake in Vault 101. The alarm blares: 'Power failure!' You must find 5 power cells to restore power and escape. Watch for ghouls and raiders. Good luck, Vault Dweller.",
-  // 1: First cell
-  "Power cell found! But you hear growling... A feral ghoul attacks! [Fight or Run]",
-  // 2: Mid-game
-  "Halfway there. The Overseer speaks via PIP-BOY: 'Hurry, the vault is collapsing!'",
-  // 3: Encounter raider
-  "A raider ambushes you: 'Give me your caps!' [Fight] [Talk] [Run]",
-  // 4: Win vault
-  "Vault door opens! You step into the blinding wasteland sun. But the adventure is just beginning... [Enter Wasteland]",
-  // 5: Wasteland intro
-  "The Capital Wasteland is harsh. Find 5 water purifiers to survive. Super mutants roam.",
-  // 6: End game
-  "You found all purifiers! The Brotherhood of Steel recruits you. The end... or is it? [New Game+]"
-];
-
-function showStory(id) {
-  const storyDiv = document.getElementById('story');
-  storyDiv.innerHTML = `<p>${stories[id]}</p>`;
-  // Add choices based on id
-  if (id === 1) {
-    storyDiv.innerHTML += '<button onclick="choice(1, \'fight\')">Fight</button><button onclick="choice(1, \'run\')">Run</button>';
-  } else if (id === 3) {
-    storyDiv.innerHTML += '<button onclick="choice(3, \'fight\')">Fight</button><button onclick="choice(3, \'talk\')">Talk</button><button onclick="choice(3, \'run\')">Run</button>';
-  } else if (id === 4) {
-    storyDiv.innerHTML += '<button onclick="choice(4, \'enter\')">Enter Wasteland</button>';
-  } else if (id === 6) {
-    storyDiv.innerHTML += '<button onclick="choice(6, \'new\')">New Game+</button>';
-  } else {
-    storyDiv.innerHTML += '<button onclick="closeStory()">Continue</button>';
-  }
-  storyDiv.style.display = 'block';
+function showMsg(text, color='#0f0', duration=1800){
+  const el = document.getElementById('msg');
+  el.textContent = text;
+  el.style.color = color;
+  el.style.opacity = 1;
+  setTimeout(()=>el.style.opacity=0, duration);
 }
 
-function closeStory() {
-  document.getElementById('story').style.display = 'none';
+function showStory(id){
+  const div = document.getElementById('story');
+  div.innerHTML = `<p>${stories[id] || stories[0]}</p>`;
+  let btns = '';
+  if(id===1) btns = '<button onclick="choice(1,\'fight\')">Fight</button><button onclick="choice(1,\'run\')">Run</button>';
+  else if(id===3) btns = '<button onclick="choice(3,\'fight\')">Fight</button><button onclick="choice(3,\'talk\')">Talk</button><button onclick="choice(3,\'run\')">Run</button>';
+  else if(id===4) btns = '<button onclick="choice(4,\'enter\')">Step Into the Wasteland</button>';
+  else if(id===6) btns = '<button onclick="choice(6,\'restart\')">Begin Again</button>';
+  else btns = '<button onclick="closeStory()">Continue</button>';
+  div.innerHTML += btns;
+  div.style.display = 'block';
 }
 
-function choice(id, opt) {
+function closeStory(){ document.getElementById('story').style.display='none'; }
+
+function choice(id, opt){
   closeStory();
-  if (id === 1) {
-    if (opt === 'fight') {
-      player.health -= 20; // combat sim
-      showMsg('You defeated the ghoul! -20 HP');
-    } else {
-      player.health -= 10;
-      showMsg('You ran away! -10 HP');
-    }
-  } else if (id === 3) {
-    if (opt === 'fight') {
-      player.health -= 30;
-      player.ammo -= 5;
-      showMsg('Raider defeated! -30 HP, -5 Ammo');
-    } else if (opt === 'talk') {
-      showMsg('You convinced the raider to leave. No harm.');
-    } else {
-      player.health -= 15;
-      showMsg('Escaped! -15 HP');
-    }
-  } else if (id === 4) {
-    generateMap(false); // wasteland
-  } else if (id === 6) {
-    floorNum++;
-    generateMap(true); // new vault
+  if(id===1){
+    if(opt==='fight'){ player.health-=25; showMsg("Ghoul defeated. -25 HP"); }
+    else { player.health-=12; showMsg("Escaped… barely. -12 HP"); }
+  } else if(id===3){
+    if(opt==='fight'){ player.health-=35; player.ammo-=6; showMsg("Raider down. -35 HP, -6 ammo"); }
+    else if(opt==='talk'){ showMsg("You bluffed. Raider left."); }
+    else { player.health-=18; showMsg("Narrow escape. -18 HP"); }
+  } else if(id===4){
+    generateMap(false);
+  } else if(id===6){
+    generateMap(true);
   }
-  if (player.health <= 0) gameOver = true;
+  if(player.health<=0){ gameOver=true; showMsg("YOU DIED – Irradiated", "#f00", 9999); }
 }
 
 const keys = {};
-window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
-window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+window.addEventListener('keydown', e=>{ keys[e.key.toLowerCase()]=true; if(e.key==='e') tryActivate(); });
+window.addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
 
-function isWalkable(x, y) {
-  const tx = Math.floor(x), ty = Math.floor(y);
-  return tx >= 0 && tx < MAP_W && ty >= 0 && ty < MAP_H && map[ty][tx] !== '#';
-}
-
-function update() {
-  if (gameOver || won) return;
-
-  const speed = 0.1;
-  player.vx = 0; player.vy = 0;
-  if (keys['w'] || keys['arrowup']) player.vy = -speed;
-  if (keys['s'] || keys['arrowdown']) player.vy = speed;
-  if (keys['a'] || keys['arrowleft']) player.vx = -speed;
-  if (keys['d'] || keys['arrowright']) player.vx = speed;
-
-  let nx = player.x + player.vx, ny = player.y + player.vy;
-  if (isWalkable(nx, player.y)) player.x = nx;
-  if (isWalkable(player.x, ny)) player.y = ny;
-
-  // Activate power cells
-  for (let b of breakers) {
-    if (!b.active && Math.hypot(b.x - player.x, b.y - player.y) < 1) {
+function tryActivate(){
+  for(let b of breakers){
+    if(!b.active && Math.hypot(b.x-player.x, b.y-player.y)<1.2){
       b.active = true;
       activated++;
       document.getElementById('count').textContent = activated;
-      showMsg('Power Cell Activated!', '#00ff88');
+      showMsg("Fusion Cell / Purifier Activated", "#00ff88");
       storyState++;
-      if (Math.random() < 0.3) showStory(storyState % stories.length);
-      if (activated >= 5) {
+      if(Math.random()<0.35 || activated===5) showStory(Math.min(storyState, stories.length-1));
+      if(activated>=5){
         won = true;
-        showStory(4); // win vault
+        showStory(4);
       }
+      return;
+    }
+  }
+  showMsg("Nothing to activate here.");
+}
+
+function isWalkable(x,y){
+  const tx=Math.floor(x), ty=Math.floor(y);
+  return tx>=0 && tx<MAP_W && ty>=0 && ty<MAP_H && map[ty][tx]!=='#';
+}
+
+function update(){
+  if(gameOver || won) return;
+
+  // Movement
+  let speed = 0.09;
+  let dx=0, dy=0;
+  if(keys['w']||keys['arrowup'])    { dy=-speed; player.facing=2; }
+  if(keys['s']||keys['arrowdown'])   { dy= speed; player.facing=0; }
+  if(keys['a']||keys['arrowleft'])   { dx=-speed; player.facing=3; }
+  if(keys['d']||keys['arrowright'])  { dx= speed; player.facing=1; }
+
+  let nx = player.x + dx;
+  let ny = player.y + dy;
+  if(isWalkable(nx, player.y)) player.x = nx;
+  if(isWalkable(player.x, ny)) player.y = ny;
+
+  // Flashlight & minimap toggle
+  if(keys[' ']){ keys[' ']=false; flashlight=!flashlight; }
+  if(keys['shift']){ keys['shift']=false; showMinimap=!showMinimap; document.getElementById('minimap').style.display=showMinimap?'block':'none'; }
+
+  // Shooting
+  if(keys['f']){
+    keys['f']=false;
+    if(player.ammo>0){
+      player.ammo--;
+      document.getElementById('ammo').textContent=player.ammo;
+      let angle = player.facing * Math.PI/2;
+      bullets.push({
+        x: player.x, y: player.y,
+        vx: Math.cos(angle)*0.35,
+        vy: Math.sin(angle)*0.35,
+        life: 60
+      });
+    } else {
+      showMsg("Out of ammo!", "#ff8800");
     }
   }
 
-  // Enemies AI & combat
-  enemies.forEach(e => {
-    const dist = Math.hypot(e.x - player.x, e.y - player.y);
-    if (dist < 6) {
-      const angle = Math.atan2(player.y - e.y, player.x - e.x);
-      let nx = e.x + Math.cos(angle) * 0.08;
-      let ny = e.y + Math.sin(angle) * 0.08;
-      if (isWalkable(nx, e.y)) e.x = nx;
-      if (isWalkable(e.x, ny)) e.y = ny;
+  // Bullet movement & hit
+  bullets = bullets.filter(b=>{
+    b.x += b.vx; b.y += b.vy; b.life--;
+    if(b.life<=0) return false;
+    for(let e of enemies){
+      if(Math.hypot(e.x-b.x, e.y-b.y)<0.6 && e.health>0){
+        e.health -= 25;
+        if(e.health<=0){
+          showMsg(`${e.type.toUpperCase()} KILLED`, "#ff4444", 1200);
+        }
+        return false; // bullet disappears
+      }
     }
-    if (dist < 1) {
-      player.health -= 10;
-      showMsg('Attacked! -10 HP');
-      if (player.health <= 0) {
-        gameOver = true;
-        showMsg('GAME OVER - Radiation Death', '#ff0000', 9999);
+    return isWalkable(b.x,b.y);
+  });
+
+  // Enemy AI
+  enemies.forEach(e=>{
+    if(e.health<=0) return;
+    let dist = Math.hypot(e.x-player.x, e.y-player.y);
+    if(dist<7){
+      let ang = Math.atan2(player.y-e.y, player.x-e.x);
+      let nx = e.x + Math.cos(ang)*0.06;
+      let ny = e.y + Math.sin(ang)*0.06;
+      if(isWalkable(nx,e.y)) e.x=nx;
+      if(isWalkable(e.x,ny)) e.y=ny;
+    }
+    if(dist<1.1){
+      player.health -= inWasteland ? 12 : 8;
+      document.getElementById('hp').textContent = player.health;
+      showMsg("Hit! -" + (inWasteland?12:8) + " HP", "#ff4444", 800);
+      if(player.health<=0){
+        gameOver=true;
+        showMsg("YOU DIED", "#f00", 9999);
       }
     }
   });
+
+  document.getElementById('hp').textContent = Math.max(0, player.health);
 }
 
-function showMsg(text, color = '#0f0', duration = 1500) {
-  const msg = document.getElementById('msg');
-  msg.textContent = text;
-  msg.style.color = color;
-  msg.style.opacity = 1;
-  setTimeout(() => msg.style.opacity = 0, duration);
-}
+function render(){
+  ctx.fillStyle = inWasteland ? '#1a0f00' : PAL.bg;
+  ctx.fillRect(0,0,320,224);
 
-function render() {
-  ctx.fillStyle = PAL.bg;
-  ctx.fillRect(0, 0, 320, 224);
+  const camX = player.x*TILE - 160;
+  const camY = player.y*TILE - 112;
 
-  const camX = player.x * TILE - 160;
-  const camY = player.y * TILE - 112;
-
-  // Draw map
-  for (let y = 0; y < MAP_H; y++) {
-    for (let x = 0; x < MAP_W; x++) {
-      const sx = x * TILE - camX;
-      const sy = y * TILE - camY;
-      if (sx > -TILE && sx < 340 && sy > -TILE && sy < 244) {
-        if (map[y][x] === '#') {
-          ctx.fillStyle = PAL.vaultWall;
-          ctx.fillRect(sx, sy, TILE, TILE);
+  // Floor & walls
+  for(let y=0;y<MAP_H;y++){
+    for(let x=0;x<MAP_W;x++){
+      let sx = x*TILE - camX;
+      let sy = y*TILE - camY;
+      if(sx>-TILE&&sx<340 && sy>-TILE&&sy<244){
+        if(map[y][x]==='#'){
+          ctx.fillStyle = inWasteland ? PAL.wastelandWall : PAL.vaultWall;
         } else {
-          ctx.fillStyle = PAL.floor;
-          ctx.fillRect(sx, sy, TILE, TILE);
+          ctx.fillStyle = inWasteland ? PAL.wastelandFloor : PAL.vaultFloor;
         }
+        ctx.fillRect(sx,sy,TILE,TILE);
       }
     }
   }
 
-  // Breakers (power cells)
-  breakers.forEach(b => {
-    const sx = b.x * TILE - camX;
-    const sy = b.y * TILE - camY;
+  // Vault door when won
+  if(won && !inWasteland){
+    let doorX = MAP_W-2, doorY = Math.floor(MAP_H/2);
+    let sx = doorX*TILE - camX, sy = doorY*TILE - camY;
+    ctx.fillStyle = PAL.door;
+    ctx.fillRect(sx-4, sy-8, 24, 32);
+  }
+
+  // Breakers
+  breakers.forEach(b=>{
+    let sx = b.x*TILE - camX;
+    let sy = b.y*TILE - camY;
     ctx.fillStyle = b.active ? PAL.powerOn : PAL.powerOff;
-    ctx.fillRect(sx - 4, sy - 4, 8, 8);
+    ctx.fillRect(sx-5,sy-5,10,10);
   });
 
   // Enemies
-  enemies.forEach(e => {
-    const sx = e.x * TILE - camX;
-    const sy = e.y * TILE - camY;
-    ctx.fillStyle = e.type === 'mutant' ? PAL.mutant : PAL.raider;
-    ctx.fillRect(sx - 6, sy - 10, 12, 20);
+  enemies.forEach(e=>{
+    if(e.health<=0) return;
+    let sx = e.x*TILE - camX;
+    let sy = e.y*TILE - camY;
+    ctx.fillStyle = e.type==='mutant'?PAL.mutant : e.type==='ghoul'?PAL.ghoul : PAL.raider;
+    ctx.fillRect(sx-7,sy-14,14,24);
+  });
+
+  // Bullets
+  bullets.forEach(b=>{
+    let sx = b.x*TILE - camX;
+    let sy = b.y*TILE - camY;
+    ctx.fillStyle = PAL.bullet;
+    ctx.fillRect(sx-2,sy-2,4,4);
   });
 
   // Player
-  const px = player.x * TILE - camX;
-  const py = player.y * TILE - camY;
+  let px = player.x*TILE - camX;
+  let py = player.y*TILE - camY;
   ctx.fillStyle = PAL.player;
-  ctx.fillRect(px - 5, py - 12, 10, 16);
+  ctx.fillRect(px-6, py-14, 12, 20);
 
-  // Flashlight
-  if (flashlight) {
-    const grad = ctx.createRadialGradient(px, py, 0, px, py, 120);
-    grad.addColorStop(0, 'rgba(255,200,100,0.4)');
-    grad.addColorStop(1, 'rgba(0,0,0,1)');
-    ctx.fillStyle = grad;
-    ctx.fillRect(0, 0, 320, 224);
+  // Lighting
+  if(flashlight){
+    let grad = ctx.createRadialGradient(px,py,0, px,py,140);
+    grad.addColorStop(0,'rgba(255,220,140,0.45)');
+    grad.addColorStop(0.6,'rgba(180,140,60,0.15)');
+    grad.addColorStop(1,'rgba(0,0,0,0.98)');
+    ctx.fillStyle=grad;
+    ctx.fillRect(0,0,320,224);
   } else {
-    ctx.fillStyle = 'rgba(0,0,0,0.9)';
-    ctx.fillRect(0, 0, 320, 224);
+    ctx.fillStyle='rgba(0,0,0,0.92)';
+    ctx.fillRect(0,0,320,224);
   }
 
   // Minimap
-  if (showMap) {
-    minimapCtx.fillStyle = '#000';
-    minimapCtx.fillRect(0, 0, 96, 70);
-    for (let y = 0; y < MAP_H; y++) {
-      for (let x = 0; x < MAP_W; x++) {
-        minimapCtx.fillStyle = map[y][x] === '#' ? '#444' : '#111';
-        minimapCtx.fillRect(x * 4, y * 4, 4, 4);
+  if(showMinimap){
+    minimapCtx.fillStyle='#000';
+    minimapCtx.fillRect(0,0,120,88);
+    for(let y=0;y<MAP_H;y++)
+      for(let x=0;x<MAP_W;x++){
+        minimapCtx.fillStyle = map[y][x]==='#' ? '#444' : inWasteland?'#6b4e2f':'#222';
+        minimapCtx.fillRect(x*4.8, y*4.8, 4.8, 4.8);
       }
-    }
-    minimapCtx.fillStyle = '#0f0';
-    minimapCtx.fillRect(player.x * 4, player.y * 4, 4, 4);
+    minimapCtx.fillStyle='#0f0';
+    minimapCtx.fillRect(player.x*4.8-2, player.y*4.8-2, 8, 8);
   }
 }
 
-function loop() {
+function loop(){
   update();
   render();
   requestAnimationFrame(loop);
 }
 
-generateMap();
+generateMap(true);
 loop();
+
+// Extra flavor: restart hint
+setTimeout(()=>{
+  if(!gameOver && !won) showMsg("CONTROLS: WASD move • E activate • F shoot • SPACE light • SHIFT map", "#88ff88", 6000);
+}, 4000);
 </script>
 
 <h3 style="text-align:center; color:#0f0; margin:20px; font-family:Courier New;">
-  Controls: WASD/Arrows to move | E to activate power cell | SPACE flashlight | SHIFT minimap<br>
-  Welcome to Fallout Echoes, Elias! Survive the apocalypse in this story-driven adventure.
+  Fallout Echoes – Elias Edition<br>
+  WASD / Arrows = Move  •  E = Activate / Interact  •  F = Shoot  •  SPACE = Flashlight  •  SHIFT = Minimap
 </h3>
-
 </body>
 </html>
