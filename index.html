@@ -2,60 +2,117 @@
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>FALLOUT ECHOES - Storymode Adventure</title>
+<title>FALLOUT MINI</title>
 <style>
-  body { margin:0; background:#000; overflow:hidden; font-family:'Courier New',monospace; color:#0f0; }
-  #game { position:absolute; top:50%; left:50%; transform:translate(-50%,-50%); image-rendering:pixelated; box-shadow:0 0 40px #000; z-index:1; }
-  #hud { position:absolute; top:8px; left:8px; font-size:14px; text-shadow:0 0 4px #000; pointer-events:none; color:#00ff88; z-index:10; }
-  #msg { position:absolute; inset:0; display:flex; align-items:center; justify-content:center; font-size:32px; color:#f00; background:rgba(0,0,0,0.8); opacity:0; transition:opacity 0.5s; pointer-events:none; font-weight:bold; text-shadow:0 0 8px #f00; z-index:20; }
-  #story { position:absolute; bottom:20px; left:10%; width:80%; background:rgba(0,0,0,0.7); color:#0f0; padding:12px; font-size:15px; display:none; border:2px solid #0f0; pointer-events:auto; z-index:15; line-height:1.4; }
-  #story button { background:#111; color:#0f0; border:1px solid #0f0; padding:6px 12px; margin:6px 4px; cursor:pointer; font-family:inherit; }
-  #minimap { position:absolute; top:8px; right:8px; width:120px; height:88px; background:rgba(0,0,0,0.7); border:2px solid #0f0; display:none; image-rendering:pixelated; pointer-events:none; z-index:10; }
-  #pipboy {
-    position: absolute; inset: 0; background: #001100; color: #00ff44; display: none; flex-direction: column;
-    font-size: 16px; padding: 20px; box-sizing: border-box; z-index: 30; image-rendering: pixelated;
-    border: 4px solid #00aa33; box-shadow: inset 0 0 40px #003300;
+  body {
+    margin:0;
+    background:#000;
+    overflow:hidden;
+    font-family:'Courier New', Courier, monospace;
+    color:#0f0;
   }
-  #pipboy h2 { margin: 0 0 12px; text-align: center; color: #88ff88; text-shadow: 0 0 6px #00ff00; }
-  #pipboy .section { margin: 12px 0; border-bottom: 1px dashed #004400; padding-bottom: 8px; }
-  #pipboy .label { color: #55ff55; font-weight: bold; }
-  #pipboy .value { color: #aaffaa; }
-  #pipboy .map-small { width: 180px; height: 132px; background: #000; border: 2px solid #00aa33; image-rendering: pixelated; margin: 10px auto; display: block; }
+  #game {
+    position:absolute;
+    top:50%;
+    left:50%;
+    transform:translate(-50%,-50%);
+    image-rendering:pixelated;
+    box-shadow:0 0 40px #000;
+  }
+  #hud {
+    position:absolute;
+    top:8px;
+    left:8px;
+    font-size:14px;
+    text-shadow:0 0 5px #000;
+    pointer-events:none;
+    color:#00ff88;
+    z-index:10;
+  }
+  #msg {
+    position:absolute;
+    inset:0;
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    font-size:28px;
+    color:#f00;
+    background:rgba(0,0,0,0.75);
+    opacity:0;
+    transition:opacity 0.6s;
+    pointer-events:none;
+    font-weight:bold;
+    text-shadow:0 0 10px #f00;
+    z-index:20;
+  }
+  #pipboy {
+    position:absolute;
+    inset:0;
+    background:#001100;
+    color:#00ff44;
+    display:none;
+    flex-direction:column;
+    padding:24px;
+    box-sizing:border-box;
+    z-index:30;
+    border:4px solid #008833;
+    box-shadow:inset 0 0 60px #003300;
+    font-size:15px;
+  }
+  #pipboy h2 {
+    margin:0 0 16px;
+    text-align:center;
+    color:#88ff88;
+    text-shadow:0 0 8px #00ff00;
+  }
+  .pip-section {
+    margin:14px 0;
+    border-bottom:1px dashed #004400;
+    padding-bottom:10px;
+  }
+  .label { color:#55ff55; font-weight:bold; }
+  .value  { color:#aaffaa; }
+  #pipmap {
+    width:200px;
+    height:146px;
+    background:#000811;
+    border:2px solid #00aa33;
+    image-rendering:pixelated;
+    margin:12px auto;
+    display:block;
+  }
 </style>
 </head>
 <body>
+
 <canvas id="game" width="320" height="224"></canvas>
-<div id="hud">CELLS: <span id="count">0</span>/5 | HP: <span id="hp">100</span> | AMMO: <span id="ammo">20</span> | <span id="quest">Escape Vault 101</span></div>
-<canvas id="minimap" width="120" height="88"></canvas>
+<div id="hud">
+  CELLS: <span id="cells">0</span>/5 │ HP: <span id="hp">100</span> │ AMMO: <span id="ammo">20</span> │ <span id="quest">Escape Vault 101</span>
+</div>
 <div id="msg"></div>
-<div id="story"></div>
 
 <div id="pipboy">
-  <h2>PIP-BOY 2000</h2>
-  <div class="section">
-    <div><span class="label">STATUS:</span> <span id="pip_hp">100</span> / 100 HP</div>
-    <div><span class="label">AMMO:</span> <span id="pip_ammo">20</span> rounds (10mm)</div>
-    <div><span class="label">OBJECTIVE:</span> <span id="pip_quest">Find 5 fusion cells</span></div>
-    <div><span class="label">CELLS:</span> <span id="pip_cells">0</span> / 5</div>
+  <h2>PIP-BOY 2000 Mk VI</h2>
+  <div class="pip-section">
+    <div><span class="label">STATUS</span> <span id="p_hp">100</span>/100 HP</div>
+    <div><span class="label">AMMO</span> <span id="p_ammo">20</span> × 10mm</div>
+    <div><span class="label">CELLS</span> <span id="p_cells">0</span>/5</div>
+    <div><span class="label">QUEST</span> <span id="p_quest">Find 5 fusion cells</span></div>
   </div>
-  <div class="section">
-    <div><span class="label">LOCATION:</span> Vault 101 - Level 1</div>
-    <div><span class="label">DATE:</span> October 23, 2077 + <span id="days">216</span> years</div>
+  <div class="pip-section">
+    <div><span class="label">LOCATION</span> Vault 101 – Sublevel C</div>
+    <div><span class="label">RADS</span> 0 / 200</div>
   </div>
-  <canvas id="pipmap" class="map-small" width="180" height="132"></canvas>
-  <div style="text-align:center; margin-top:20px; color:#44ff44;">
-    Press TAB to close Pip-Boy
+  <canvas id="pipmap" width="200" height="146"></canvas>
+  <div style="text-align:center; margin-top:24px; color:#44ff44; font-size:14px;">
+    TAB to close Pip-Boy
   </div>
 </div>
 
 <script>
-// ────────────────────────────────
-// FALLOUT ECHOES - with Pip-Boy (TAB)
-// ────────────────────────────────
+// FALLOUT MINI – simple top-down vault crawler
 const canvas = document.getElementById('game');
 const ctx = canvas.getContext('2d');
-const minimapCtx = document.getElementById('minimap').getContext('2d');
-const pipmapCtx = document.getElementById('pipmap').getContext('2d');
 canvas.style.width  = '960px';
 canvas.style.height = '672px';
 
@@ -64,314 +121,289 @@ const MAP_W = 25;
 const MAP_H = 18;
 
 const PAL = {
-  bg: '#0a0a00', floor: '#2a1a08', wall: '#4a2a10',
-  vaultWall: '#3a3a5a', vaultFloor: '#1f1f2f',
-  wastelandFloor: '#7b4a1b', wastelandWall: '#5b2a0b',
-  powerOff: '#ff8800', powerOn: '#00ff88',
-  player: '#30c0c0', playerDark: '#107070',
-  door: '#8b4513', bullet: '#ffff99',
-  mutant: '#1a6c1a', raider: '#8b4513', ghoul: '#4c5b1f'
+  bg: '#0a0a00',
+  floor: '#2a1a08',
+  wall: '#4a2a10',
+  vaultWall: '#3a3a5a',
+  vaultFloor: '#1f1f2f',
+  cellOff: '#ff8800',
+  cellOn:  '#00ff88',
+  player: '#30c0c0',
+  playerDark: '#107070',
+  mutant: '#1a6c1a',
+  raider: '#8b4513',
+  ghoul:  '#4c5b1f',
+  bullet: '#ffff99',
+  door:   '#8b4513'
 };
 
-let player = { x: 2.5, y: 2.5, health: 100, ammo: 20, facing: 0 }; // 0 down, 1 right, 2 up, 3 left
+let player = { x:2.5, y:2.5, hp:100, ammo:20, facing:0 }; // 0=down 1=right 2=up 3=left
 let enemies = [];
-let breakers = [];
+let cells   = [];
 let bullets = [];
-let activated = 0;
-let gameOver = false;
-let won = false;
-let flashlight = true;
-let showMinimap = false;
-let inWasteland = false;
-let pipboyOpen = false;
+let collected = 0;
+let gameOver  = false;
+let levelWon  = false;
+let pipOpen   = false;
 let map = [];
 
 const stories = [
-  "Vault 101 – Critical power failure. Locate 5 fusion cells to restore door function.",
-  "Fusion cell secured. Feral ghoul activity detected nearby.",
-  "Vault collapsing. Overseer advises immediate evacuation.",
-  "Raider contact. 'Gimme everything you got, smoothskin.'",
-  "All cells placed. Vault door cycling open. Surface radiation: lethal.",
-  "Capital Wasteland. No vault, no rules. Find clean water sources.",
-  "Survival milestone reached. Brotherhood may take interest."
+  "Vault 101 – power critical. Find 5 fusion cells to open the door.",
+  "Cell acquired. Something growls in the dark…",
+  "Structural failure imminent. Move fast.",
+  "Raider ahead. 'Nice pip-boy, vault boy… hand it over.'",
+  "All cells in. Vault door opening. Good luck out there."
 ];
 
-function generateMap(isVault = true) {
-  inWasteland = !isVault;
+function generateLevel() {
   map = Array(MAP_H).fill().map(()=>Array(MAP_W).fill('#'));
 
-  for (let i = 0; i < 8; i++) {
-    let rx = 2 + ~~(Math.random() * (MAP_W-8));
-    let ry = 2 + ~~(Math.random() * (MAP_H-8));
-    let rw = 5 + ~~(Math.random() * 5);
-    let rh = 4 + ~~(Math.random() * 5);
-    for (let y = ry; y < ry + rh && y < MAP_H; y++)
-      for (let x = rx; x < rx + rw && x < MAP_W; x++)
+  // rooms
+  for(let i=0; i<7; i++){
+    let rx=3+~~(Math.random()*(MAP_W-10));
+    let ry=3+~~(Math.random()*(MAP_H-10));
+    let rw=5+~~(Math.random()*6);
+    let rh=4+~~(Math.random()*6);
+    for(let y=ry; y<ry+rh && y<MAP_H; y++)
+      for(let x=rx; x<rx+rw && x<MAP_W; x++)
         map[y][x] = '.';
   }
 
-  for (let y = 1; y < MAP_H-1; y++)
-    for (let x = 1; x < MAP_W-1; x++)
-      if (Math.random() < 0.085) map[y][x] = '.';
+  // corridors
+  for(let y=1;y<MAP_H-1;y++)
+    for(let x=1;x<MAP_W-1;x++)
+      if(Math.random()<0.09) map[y][x]='.';
 
-  breakers = []; enemies = []; bullets = [];
+  cells = [];
+  enemies = [];
+  bullets = [];
 
-  for (let i = 0; i < 5; i++) {
-    let x, y;
-    do { x = ~~(Math.random()*MAP_W); y = ~~(Math.random()*MAP_H); }
-    while (map[y][x] !== '.');
-    breakers.push({x: x+0.5, y: y+0.5, active: false});
+  // cells
+  for(let i=0;i<5;i++){
+    let x,y;
+    do{x=~~(Math.random()*MAP_W); y=~~(Math.random()*MAP_H);}while(map[y][x]!=='.');
+    cells.push({x:x+0.5,y:y+0.5,active:false});
   }
 
-  let ec = isVault ? 5 : 8;
-  for (let i = 0; i < ec; i++) {
-    let x, y;
-    do {
-      x = ~~(Math.random()*MAP_W); y = ~~(Math.random()*MAP_H);
-    } while (map[y][x] !== '.' || Math.hypot(x+0.5-player.x, y+0.5-player.y) < 6);
-    let t = isVault ? (Math.random()<0.55?'ghoul':'raider') : (Math.random()<0.7?'mutant':'raider');
-    enemies.push({x:x+0.5, y:y+0.5, type:t, health: t==='mutant'?90:50, max:t==='mutant'?90:50});
+  // enemies
+  for(let i=0;i<6;i++){
+    let x,y;
+    do{x=~~(Math.random()*MAP_W); y=~~(Math.random()*MAP_H);}while(map[y][x]!=='.' || Math.hypot(x+0.5-2.5,y+0.5-2.5)<5);
+    let t = Math.random()<0.6?'ghoul':'raider';
+    enemies.push({x:x+0.5,y:y+0.5,type:t,hp:t==='ghoul'?40:55});
   }
 
-  player.x = 2.5; player.y = 2.5;
-  activated = 0;
-  document.getElementById('count').textContent = 0;
-  document.getElementById('hp').textContent = player.health;
-  document.getElementById('ammo').textContent = player.ammo;
-  document.getElementById('quest').textContent = isVault ? "Find 5 Fusion Cells" : "Find 5 Purifiers";
-  updatePipBoy();
-  gameOver = won = false;
-  showStory(isVault ? 0 : 5);
+  player.x=2.5; player.y=2.5;
+  collected=0;
+  gameOver=levelWon=false;
+  updateHUD();
+  showStory(0);
 }
 
-function showMsg(text, color='#0f0', dur=1600){
+function updateHUD(){
+  document.getElementById('cells').textContent = collected;
+  document.getElementById('hp').textContent   = player.hp;
+  document.getElementById('ammo').textContent = player.ammo;
+  updatePipBoy();
+}
+
+function showMsg(txt, col='#0f0', dur=1400){
   const m = document.getElementById('msg');
-  m.textContent = text; m.style.color = color; m.style.opacity=1;
+  m.textContent = txt;
+  m.style.color = col;
+  m.style.opacity = 1;
   setTimeout(()=>m.style.opacity=0, dur);
 }
 
-function showStory(id){
-  const d = document.getElementById('story');
-  d.innerHTML = `<p>${stories[id]||stories[0]}</p>`;
-  let btns = '';
-  if(id===1) btns = '<button onclick="choice(1,\'fight\')">Fight</button><button onclick="choice(1,\'run\')">Run</button>';
-  else if(id===3) btns = '<button onclick="choice(3,\'fight\')">Fight</button><button onclick="choice(3,\'talk\')">Talk</button><button onclick="choice(3,\'run\')">Run</button>';
-  else if(id===4) btns = '<button onclick="choice(4,\'enter\')">Enter Wasteland</button>';
-  else btns = '<button onclick="closeStory()">Continue</button>';
-  d.innerHTML += btns;
-  d.style.display = 'block';
+function showStory(idx){
+  showMsg(stories[idx] || stories[0], '#88ff88', 4000);
 }
 
-function closeStory(){ document.getElementById('story').style.display='none'; }
+function updatePipBoy(){
+  document.getElementById('p_hp').textContent    = player.hp;
+  document.getElementById('p_ammo').textContent  = player.ammo;
+  document.getElementById('p_cells').textContent = collected;
+  document.getElementById('p_quest').textContent = collected<5 ? "Find 5 fusion cells" : "Exit the vault";
 
-function choice(id, opt){
-  closeStory();
-  if(id===1){
-    player.health -= opt==='fight'?24:11;
-    showMsg(opt==='fight'?"Ghoul terminated. -24 HP":"Escaped. -11 HP");
-  }else if(id===3){
-    if(opt==='fight'){player.health-=34; player.ammo-=6; showMsg("Raider neutralized. -34 HP, -6 ammo");}
-    else if(opt==='talk'){showMsg("Persuasion successful. Raider departed.");}
-    else {player.health-=16; showMsg("Escaped. -16 HP");}
-  }else if(id===4){
-    generateMap(false);
+  // mini map
+  const pm = document.getElementById('pipmap').getContext('2d');
+  pm.fillStyle = '#000811';
+  pm.fillRect(0,0,200,146);
+  for(let y=0;y<MAP_H;y++)for(let x=0;x<MAP_W;x++){
+    pm.fillStyle = map[y][x]==='#' ? '#222244' : '#0a2211';
+    pm.fillRect(x*8, y*8, 8, 8);
   }
-  document.getElementById('hp').textContent = Math.max(0,player.health);
-  if(player.health<=0){ gameOver=true; showMsg("YOU DIED","#f00",9999); }
-  updatePipBoy();
+  pm.fillStyle = '#00ff88';
+  pm.fillRect(player.x*8-5, player.y*8-5, 12, 12);
 }
 
 const keys = {};
 window.addEventListener('keydown', e=>{
   const k = e.key.toLowerCase();
-  keys[k] = true;
-  if (k === 'tab') {
+  if (k==='tab') {
     e.preventDefault();
-    pipboyOpen = !pipboyOpen;
-    document.getElementById('pipboy').style.display = pipboyOpen ? 'flex' : 'none';
+    pipOpen = !pipOpen;
+    document.getElementById('pipboy').style.display = pipOpen?'flex':'none';
   }
-  if (k === 'e') tryActivate();
-  if (k === 'f' && !e.repeat) shoot();
+  keys[k] = true;
+  if (k==='e') tryCollect();
+  if (k==='f' && !e.repeat) tryShoot();
 });
 window.addEventListener('keyup', e=>keys[e.key.toLowerCase()]=false);
 
-function tryActivate(){
-  for(let b of breakers){
-    if(!b.active && Math.hypot(b.x-player.x, b.y-player.y)<1.4){
-      b.active=true; activated++;
-      document.getElementById('count').textContent=activated;
-      showMsg("Fusion Cell Activated","#00ff88");
-      if(activated>=5){ won=true; showStory(4); }
-      updatePipBoy();
+function tryCollect(){
+  for(let c of cells){
+    if(!c.active && Math.hypot(c.x-player.x, c.y-player.y)<1.4){
+      c.active = true;
+      collected++;
+      showMsg("FUSION CELL ACQUIRED","#00ff88");
+      updateHUD();
+      if(collected>=5){
+        levelWon = true;
+        showMsg("VAULT DOOR OPENING…","#88ff88",5000);
+      }
       return;
     }
   }
-  showMsg("No usable object nearby.");
 }
 
-function shoot(){
-  if(player.ammo<=0){ showMsg("Out of 10mm ammo!","#ff8800"); return; }
-  player.ammo--; document.getElementById('ammo').textContent=player.ammo;
+function tryShoot(){
+  if(player.ammo<=0){ showMsg("CLICK – no ammo","#ff8800"); return; }
+  player.ammo--;
+  updateHUD();
+
   const dirs = [Math.PI/2, 0, -Math.PI/2, Math.PI]; // down right up left
   bullets.push({
     x:player.x, y:player.y,
-    vx: Math.cos(dirs[player.facing])*0.42,
-    vy: Math.sin(dirs[player.facing])*0.42,
-    life:55
+    vx:Math.cos(dirs[player.facing])*0.45,
+    vy:Math.sin(dirs[player.facing])*0.45,
+    life:50
   });
-  updatePipBoy();
 }
 
 function isWalkable(x,y){
-  let tx=~~x, ty=~~y;
-  return tx>=0&&tx<MAP_W && ty>=0&&ty<MAP_H && map[ty][tx]!=='#';
+  const tx=~~x, ty=~~y;
+  return tx>=0 && tx<MAP_W && ty>=0 && ty<MAP_H && map[ty][tx]!=='#';
 }
 
 function update(){
-  if(gameOver || won || pipboyOpen) return;
+  if(gameOver || levelWon || pipOpen) return;
 
+  // ─── MOVEMENT ─────────────────────────────────────
   let dx=0, dy=0;
-  if(keys['w']||keys['arrowup'   ]) { dy-=0.11; player.facing=2; }
-  if(keys['s']||keys['arrowdown' ]) { dy+=0.11; player.facing=0; }
-  if(keys['a']||keys['arrowleft' ]) { dx-=0.11; player.facing=3; }
-  if(keys['d']||keys['arrowright']) { dx+=0.11; player.facing=1; }
+  if(keys['w'] || keys['arrowup'   ]) { dy -= 0.12; player.facing = 2; }
+  if(keys['s'] || keys['arrowdown' ]) { dy += 0.12; player.facing = 0; }
+  if(keys['a'] || keys['arrowleft' ]) { dx -= 0.12; player.facing = 3; }
+  if(keys['d'] || keys['arrowright']) { dx += 0.12; player.facing = 1; }
 
-  if(dx&&dy){ dx*=0.707; dy*=0.707; }
+  if(dx !== 0 && dy !== 0){ dx *= 0.707; dy *= 0.707; }
 
-  let nx=player.x+dx, ny=player.y+dy;
-  if(isWalkable(nx,player.y)) player.x=nx;
-  if(isWalkable(player.x,ny)) player.y=ny;
+  let nx = player.x + dx;
+  let ny = player.y + dy;
 
-  if(keys[' ']){ keys[' ']=false; flashlight=!flashlight; }
-  if(keys['shift']){ keys['shift']=false; showMinimap=!showMinimap; document.getElementById('minimap').style.display=showMinimap?'block':'none'; }
+  if(isWalkable(nx, player.y)) player.x = nx;
+  if(isWalkable(player.x, ny)) player.y = ny;
+  // ──────────────────────────────────────────────────
 
-  // Bullets
+  // bullets
   bullets = bullets.filter(b=>{
-    b.x+=b.vx; b.y+=b.vy; b.life--;
+    b.x += b.vx; b.y += b.vy; b.life--;
     if(b.life<=0 || !isWalkable(b.x,b.y)) return false;
     for(let e of enemies){
-      if(e.health>0 && Math.hypot(e.x-b.x,e.y-b.y)<0.75){
-        e.health-=30;
-        if(e.health<=0) showMsg(e.type.toUpperCase()+" DESTROYED","#ff4444");
+      if(e.hp>0 && Math.hypot(e.x-b.x, e.y-b.y)<0.8){
+        e.hp -= 35;
+        if(e.hp<=0) showMsg(e.type.toUpperCase()+" KILLED","#ff4444");
         return false;
       }
     }
     return true;
   });
 
-  // Enemies
+  // enemies chase + contact damage
   enemies.forEach(e=>{
-    if(e.health<=0) return;
-    let d = Math.hypot(e.x-player.x, e.y-player.y);
-    if(d<7){
-      let a = Math.atan2(player.y-e.y, player.x-e.x);
-      let nx = e.x + Math.cos(a)*0.07;
-      let ny = e.y + Math.sin(a)*0.07;
-      if(isWalkable(nx,e.y)) e.x=nx;
-      if(isWalkable(e.x,ny)) e.y=ny;
+    if(e.hp<=0) return;
+    let dist = Math.hypot(e.x-player.x, e.y-player.y);
+    if(dist < 6.5){
+      let ang = Math.atan2(player.y-e.y, player.x-e.x);
+      let nx = e.x + Math.cos(ang)*0.075;
+      let ny = e.y + Math.sin(ang)*0.075;
+      if(isWalkable(nx,e.y)) e.x = nx;
+      if(isWalkable(e.x,ny)) e.y = ny;
     }
-    if(d<1.3){
-      player.health -= inWasteland?13:9;
-      document.getElementById('hp').textContent = Math.max(0,player.health);
-      showMsg(`Injured! -${inWasteland?13:9} HP`,"#ff4444",600);
-      if(player.health<=0){ gameOver=true; showMsg("YOU DIED","#f00",9999); }
-      updatePipBoy();
+    if(dist < 1.2){
+      player.hp -= 10;
+      document.getElementById('hp').textContent = Math.max(0,player.hp);
+      showMsg("HIT! -10 HP","#ff4444",600);
+      if(player.hp<=0){
+        gameOver=true;
+        showMsg("YOU DIED","#f00",9999);
+      }
     }
   });
 }
 
-let camX, camY;
+let camx, camy;
 
 function render(){
-  ctx.fillStyle = inWasteland ? '#140b00' : PAL.bg;
+  ctx.fillStyle = PAL.bg;
   ctx.fillRect(0,0,320,224);
 
-  camX = player.x*TILE - 160;
-  camY = player.y*TILE - 112;
+  camx = player.x * TILE - 160;
+  camy = player.y * TILE - 112;
 
+  // map tiles
   for(let y=0;y<MAP_H;y++)for(let x=0;x<MAP_W;x++){
-    let sx = x*TILE - camX, sy = y*TILE - camY;
-    if(sx>-16&&sx<336 && sy>-16&&sy<240){
-      ctx.fillStyle = map[y][x]==='#' ?
-        (inWasteland ? PAL.wastelandWall : PAL.vaultWall) :
-        (inWasteland ? PAL.wastelandFloor : PAL.vaultFloor);
+    let sx = x*TILE - camx;
+    let sy = y*TILE - camy;
+    if(sx>-TILE && sx<340 && sy>-TILE && sy<250){
+      ctx.fillStyle = map[y][x]==='#' ? PAL.vaultWall : PAL.vaultFloor;
       ctx.fillRect(sx,sy,TILE,TILE);
     }
   }
 
-  if(won && !inWasteland){
-    let dx=MAP_W-2, dy=~~(MAP_H/2);
-    let sx=dx*TILE-camX, sy=dy*TILE-camY;
-    ctx.fillStyle=PAL.door;
-    ctx.fillRect(sx-8,sy-16,32,48);
-  }
-
-  breakers.forEach(b=>{
-    let sx=b.x*TILE-camX, sy=b.y*TILE-camY;
-    ctx.fillStyle = b.active?PAL.powerOn:PAL.powerOff;
+  // cells
+  cells.forEach(c=>{
+    let sx = c.x*TILE - camx;
+    let sy = c.y*TILE - camy;
+    ctx.fillStyle = c.active ? PAL.cellOn : PAL.cellOff;
     ctx.fillRect(sx-6,sy-6,12,12);
   });
 
+  // enemies
   enemies.forEach(e=>{
-    if(e.health<=0) return;
-    let sx=e.x*TILE-camX, sy=e.y*TILE-camY;
-    ctx.fillStyle = e.type==='mutant'?PAL.mutant : e.type==='ghoul'?PAL.ghoul : PAL.raider;
-    ctx.fillRect(sx-8,sy-18,16,28);
+    if(e.hp<=0) return;
+    let sx = e.x*TILE - camx;
+    let sy = e.y*TILE - camy;
+    ctx.fillStyle = e.type==='ghoul'?PAL.ghoul:PAL.raider;
+    ctx.fillRect(sx-8,sy-16,16,26);
   });
 
+  // bullets
   bullets.forEach(b=>{
-    let sx=b.x*TILE-camX, sy=b.y*TILE-camY;
-    ctx.fillStyle=PAL.bullet;
+    let sx = b.x*TILE - camx;
+    let sy = b.y*TILE - camy;
+    ctx.fillStyle = PAL.bullet;
     ctx.fillRect(sx-3,sy-3,6,6);
   });
 
-  // Player
-  let px=player.x*TILE-camX, py=player.y*TILE-camY;
-  ctx.fillStyle=PAL.player;
+  // player
+  let px = player.x*TILE - camx;
+  let py = player.y*TILE - camy;
+  ctx.fillStyle = PAL.player;
   ctx.fillRect(px-7,py-16,14,22);
-  ctx.fillStyle=PAL.playerDark;
+  ctx.fillStyle = PAL.playerDark;
   ctx.fillRect(px-9,py-14,5,12);
   ctx.fillRect(px+4,py-14,5,12);
-  ctx.fillStyle='#d0d080';
+  ctx.fillStyle = '#d0d080';
   ctx.fillRect(px-5,py-22,10,10);
 
-  // Lighting
-  if(flashlight){
-    let g = ctx.createRadialGradient(160,112,0,160,112,150);
-    g.addColorStop(0,'rgba(240,220,120,0.42)');
-    g.addColorStop(0.6,'rgba(140,100,40,0.12)');
-    g.addColorStop(1,'rgba(0,0,0,0.96)');
-    ctx.fillStyle=g; ctx.fillRect(0,0,320,224);
-  } else {
-    ctx.fillStyle='rgba(0,0,0,0.93)'; ctx.fillRect(0,0,320,224);
-  }
-
-  if(showMinimap){
-    minimapCtx.fillStyle='#000'; minimapCtx.fillRect(0,0,120,88);
-    for(let y=0;y<MAP_H;y++)for(let x=0;x<MAP_W;x++){
-      minimapCtx.fillStyle=map[y][x]==='#'?'#333':inWasteland?'#5a3a1a':'#1a1a2e';
-      minimapCtx.fillRect(x*4.8,y*4.8,4.8,4.8);
-    }
-    minimapCtx.fillStyle='#0f0';
-    minimapCtx.fillRect(player.x*4.8-4,player.y*4.8-4,12,12);
-  }
-}
-
-function updatePipBoy(){
-  document.getElementById('pip_hp').textContent = player.health;
-  document.getElementById('pip_ammo').textContent = player.ammo;
-  document.getElementById('pip_cells').textContent = activated;
-  document.getElementById('pip_quest').textContent = document.getElementById('quest').textContent;
-
-  // Small map in Pip-Boy
-  pipmapCtx.fillStyle = '#000811';
-  pipmapCtx.fillRect(0,0,180,132);
-  for(let y=0;y<MAP_H;y++)for(let x=0;x<MAP_W;x++){
-    pipmapCtx.fillStyle = map[y][x]==='#' ? '#222244' : '#0a2211';
-    pipmapCtx.fillRect(x*7.2, y*7.2, 7.2, 7.2);
-  }
-  pipmapCtx.fillStyle = '#00ff88';
-  pipmapCtx.fillRect(player.x*7.2-4, player.y*7.2-4, 12, 12);
+  // simple vignette / darkness
+  let grad = ctx.createRadialGradient(160,112,0,160,112,180);
+  grad.addColorStop(0,'rgba(0,0,0,0)');
+  grad.addColorStop(0.7,'rgba(0,0,0,0.85)');
+  grad.addColorStop(1,'rgba(0,0,0,0.98)');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,320,224);
 }
 
 function loop(){
@@ -380,18 +412,18 @@ function loop(){
   requestAnimationFrame(loop);
 }
 
-generateMap(true);
+generateLevel();
 loop();
 
 setTimeout(()=>{
-  if(!gameOver&&!won)
-    showMsg("WASD/Arrows = Move • E = Interact • F = Shoot • SPACE = Flashlight • TAB = Pip-Boy • SHIFT = Minimap","#88ffcc",8000);
-},2500);
+  showMsg("WASD / arrows = move   E = collect cell   F = shoot   TAB = pip-boy", "#88ffcc", 7000);
+}, 1200);
 </script>
 
 <h3 style="text-align:center; color:#0f0; margin:20px; font-family:Courier New;">
-  Fallout Echoes – Elias Edition<br>
-  WASD / Arrows = Move  •  E = Use  •  F = Shoot  •  SPACE = Light  •  TAB = Pip-Boy  •  SHIFT = Minimap
+  FALLOUT MINI – Elias Edition<br>
+  WASD / Arrows = Move • E = Collect Cell • F = Shoot • TAB = Pip-Boy
 </h3>
+
 </body>
 </html>
